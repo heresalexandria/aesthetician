@@ -14,6 +14,7 @@ import subprocess
 
 import cv2
 import numpy as np
+from scipy import fft as sfft
 
 from ...engine import media
 from ...engine.graph import Context, Effect, Param, register
@@ -60,6 +61,9 @@ def _codec_choices() -> tuple[str, ...]:
 
 _CODECS = _codec_choices()
 _DEFAULT_CODEC = "mpeg2video" if "mpeg2video" in _CODECS else _CODECS[0]
+
+# Codecs whose encoders support true interlaced DCT / motion estimation.
+_ILACE_CODECS = frozenset({"mpeg2video", "mpeg4"})
 
 # MPEG-1 only accepts the broadcast frame rates.
 _MPEG1_FPS = (23.976, 24.0, 25.0, 29.97, 30.0, 50.0, 59.94, 60.0)
@@ -111,11 +115,24 @@ class CodecEra(Effect):
         Param("passes", "Generations", "int", 1, 1, 3, group="Quality",
               desc="Repeated decode→re-encode cycles — the web-era generation loss "
                    "of clips re-uploaded over and over."),
+        Param("field_mode", "Field Mode", "enum", "progressive",
+              choices=("progressive", "interlaced_tff"), group="Codec",
+              desc="interlaced_tff encodes with real interlaced DCT and motion "
+                   "estimation (+ilme+ildct, top field first) — the genuine "
+                   "DVD/broadcast MPEG-2 field structure. Ignored by codecs "
+                   "without interlaced modes."),
+        Param("denoise_pre", "Encoder Pre-Filter", "float", 0.0, 0.0, 1.0, iscale=True,
+              group="Quality",
+              desc="Broadcast-encoder noise pre-filter ahead of the first encode: "
+                   "trades fine texture for cleaner blocks — the slightly waxy "
+                   "softness of professionally bit-starved digital TV."),
     )
 
     def _codec_args(self, codec: str, fps_out: float | None) -> list[str]:
         enc = _ENCODER_FOR[codec]
         args = ["-c:v", enc, "-g", str(int(self.v["gop"]))]
+        if self.v["field_mode"] == "interlaced_tff" and codec in _ILACE_CODECS:
+            args += ["-flags", "+ilme+ildct", "-top", "1"]
         if codec == "mjpeg":
             q = int(self.v["qscale"]) or max(2, min(31, int(round(24 - 20 * (self.v["kbps"] / 8000.0)))))
             args += ["-q:v", str(q), "-pix_fmt", "yuvj420p"]
@@ -144,9 +161,16 @@ class CodecEra(Effect):
                 enc_fps = best  # resample to a legal MPEG-1 rate, restore after
 
         if tgt is not None:
-            first_vf = ["-vf", f"scale={tgt[0]}:{tgt[1]}:flags=lanczos"]
+            first_chain = [f"scale={tgt[0]}:{tgt[1]}:flags=lanczos"]
         else:
-            first_vf = ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"]
+            first_chain = ["scale=trunc(iw/2)*2:trunc(ih/2)*2"]
+        dn = float(self.v["denoise_pre"])
+        if dn > 0.0:
+            # hqdn3d at its stock 4:3:6:4.5 strength when denoise_pre = 1
+            first_chain.append(
+                f"hqdn3d={4.0 * dn:.3f}:{3.0 * dn:.3f}:{6.0 * dn:.3f}:{4.5 * dn:.3f}"
+            )
+        first_vf = ["-vf", ",".join(first_chain)]
 
         temps: list[str] = []
         try:
@@ -207,6 +231,14 @@ class CodecGlitch(Effect):
         Param("gop", "Keyframe Interval", "int", 48, 12, 300, unit="frames", group="Codec",
               desc="Long GOPs make each glitch drag further before resyncing — "
                    "damage compounds until the next keyframe."),
+        Param("freeze_p", "Freeze-Ups", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",
+              desc="Brief full-frame stalls: every packet in a window is discarded, "
+                   "so the picture freezes while time (and audio) march on, then "
+                   "snaps forward. ~0.3 = a stall every ten seconds or so."),
+        Param("slice_shift", "Slice Drag", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",
+              desc="Extra per-slice displacement after decode: macroblock-row bands "
+                   "shear sideways and hold for a beat — the classic sliced-drag "
+                   "tear of a corrupted transport stream."),
     )
 
     # Note on determinism: the noise bitstream filter has no seed option, but
@@ -219,14 +251,19 @@ class CodecGlitch(Effect):
         info = media.probe(in_path)
         amount = float(self.v["amount"])
         drop_p = float(self.v["drop_p"])
-        if amount <= 0.0 and drop_p <= 0.0:
+        freeze_p = float(self.v["freeze_p"])
+        slice_shift = float(self.v["slice_shift"])
+        if amount <= 0.0 and drop_p <= 0.0 and freeze_p <= 0.0:
             media._run([media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path,
                         *_INTERMEDIATE, out_path])
+            if slice_shift > 0.0:
+                self._slice_drag(out_path, ctx, slice_shift)
             return
 
         g = self.rng_stream(ctx)
         seed_off = int(g.integers(0, 997))
         jitter = 0.8 + 0.4 * float(g.random())
+        self._freezes = self._freeze_windows(ctx, freeze_p, info.n_frames, info.fps)
 
         enc = _ENCODER_FOR[self.v["codec"]]
         base = f"{out_path}.carrier.avi"
@@ -261,12 +298,16 @@ class CodecGlitch(Effect):
                     )
                     got = media.probe(out_path).n_frames
                     if got >= 0.9 * expected:
+                        if slice_shift > 0.0:
+                            self._slice_drag(out_path, ctx, slice_shift)
                         return
                 except media.MediaError:
                     pass
             # beyond salvage — clean passthrough so the render never breaks
             media._run([media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path,
                         *_INTERMEDIATE, out_path])
+            if slice_shift > 0.0:
+                self._slice_drag(out_path, ctx, slice_shift)
         finally:
             for t in temps:
                 if os.path.exists(t):
@@ -282,6 +323,29 @@ class CodecGlitch(Effect):
     def rng_stream(self, ctx: Context) -> np.random.Generator:
         return ctx.rng(f"{self.key}:bsf")
 
+    def _freeze_windows(self, ctx: Context, freeze_p: float, n_frames: int, fps: float) -> list[tuple[int, int]]:
+        """Packet-index windows to drop wholesale → full-frame stalls.
+
+        The AVI carrier keeps timing with null chunks, so the CFR decode
+        duplicates the last good frame across the hole: a genuine freeze that
+        snaps forward, duration preserved (audio keeps running)."""
+        if freeze_p <= 0.0:
+            return []
+        g = ctx.rng(f"{self.key}:freeze")
+        fps = max(fps, 1.0)
+        n = max(n_frames, 8)
+        windows: list[tuple[int, int]] = []
+        fi = int(fps * 0.5)                      # never stall the very first beat
+        p_start = freeze_p / (3.5 * fps)         # ~1 stall / 3.5 s at freeze_p = 1
+        while fi < n - 4 and len(windows) < 10:
+            if g.random() < p_start:
+                dur = max(3, int(fps * (0.25 + 0.65 * float(g.random()))))
+                windows.append((fi, min(fi + dur, n - 2)))
+                fi += dur + int(fps * 0.8)       # refractory gap after a stall
+            else:
+                fi += 1
+        return windows
+
     def _corrupt(self, src: str, dst: str, bsf_amount: int, drop_p: float, seed_off: int) -> None:
         protect = bool(self.v["keyframes"])
         opts: list[str] = []
@@ -291,18 +355,69 @@ class CodecGlitch(Effect):
             burst = f"({bsf_amount}*(0.4+mod(n*3+{seed_off}\\,8)))"
             expr = f"not(key)*{burst}" if protect else f"gt(n\\,0)*{burst}"
             opts.append(f"amount={expr}")
+        drop_parts: list[str] = []
         if drop_p > 0:
             t = int(round(min(drop_p, 1.0) * 997))
             if protect:
-                dexpr = f"not(key)*gt(n\\,0)*lt(mod(n*7919+{seed_off}\\,997)\\,{t})"
+                drop_parts.append(f"not(key)*gt(n\\,0)*lt(mod(n*7919+{seed_off}\\,997)\\,{t})")
             else:
                 # unprotected: keyframes 3x more likely to drop → stale-reference pulls
-                dexpr = f"gt(n\\,0)*lt(mod(n*7919+{seed_off}\\,997)\\,{t}*(1+2*key))"
-            opts.append(f"drop={dexpr}")
+                drop_parts.append(f"gt(n\\,0)*lt(mod(n*7919+{seed_off}\\,997)\\,{t}*(1+2*key))")
+        # freeze windows drop everything — keyframes included, that's the stall
+        drop_parts += [f"between(n\\,{a}\\,{b})" for a, b in getattr(self, "_freezes", [])]
+        if drop_parts:
+            opts.append("drop=" + "+".join(drop_parts))
         media._run(
             [media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", src,
              "-c", "copy", "-bsf:v", "noise=" + ":".join(opts), dst]
         )
+
+    def _slice_drag(self, path: str, ctx: Context, amount: float) -> None:
+        """Post-decode per-slice horizontal displacement: macroblock-row bands
+        shear sideways and hold for a stretch — decoded slices landing at the
+        wrong offset. Streams the decoded intermediate through a numpy pass."""
+        info = media.probe(path)
+        W, H, fps = info.width, info.height, info.fps
+        n = max(info.n_frames, 1)
+        g = ctx.rng(f"{self.key}:slices")
+        # events: (first frame, last frame, rows of (y0, h, dx, grow))
+        events = []
+        n_ev = int(g.poisson(amount * n / max(fps, 1.0) * 0.55)) + (1 if amount > 0.15 else 0)
+        for _ in range(min(n_ev, 24)):
+            f0 = int(g.integers(0, max(n - 4, 1)))
+            dur = max(2, int(max(fps, 1.0) * (0.20 + 0.85 * float(g.random()))))
+            bands = []
+            for _b in range(1 + int(g.integers(0, 3))):
+                y0 = int(g.integers(0, max(H // 16, 1))) * 16
+                bh = 16 * (1 + int(g.integers(0, 3)))
+                dx = float(g.uniform(8.0, 90.0)) * amount * (1.0 if g.random() < 0.5 else -1.0)
+                grow = float(g.uniform(0.0, 0.05))       # drag accumulates a little
+                bands.append((y0, min(bh, H - y0), dx, grow))
+            events.append((f0, min(f0 + dur, n), bands))
+        if not events:
+            return
+        active: dict[int, list] = {}
+        for f0, f1, bands in events:
+            for fi in range(f0, f1):
+                active.setdefault(fi, []).extend((y0, bh, dx * (1.0 + grow * (fi - f0)))
+                                                 for y0, bh, dx, grow in bands)
+        tmp = path + ".slice.mp4"
+        writer = media.FrameWriter(tmp, W, H, fps, crf=8, preset="fast", pix_fmt="yuv444p")
+        try:
+            for fi, frame in enumerate(media.read_frames(path, W, H, fps)):
+                for y0, bh, dx in active.get(fi, ()):  # type: ignore[misc]
+                    band = frame[y0:y0 + bh]
+                    s = int(np.clip(round(dx), -(W - 2), W - 2))
+                    if s > 0:
+                        band[:, s:] = band[:, :-s].copy()
+                        band[:, :s] = band[:, s:s + 1]
+                    elif s < 0:
+                        band[:, :s] = band[:, -s:].copy()
+                        band[:, s:] = band[:, s - 1:s]
+                writer.write(frame)
+        finally:
+            writer.close()
+        os.replace(tmp, path)
 
 
 # ── frame effects ──────────────────────────────────────────────────────
@@ -320,6 +435,8 @@ def _pal(*hexes: str) -> np.ndarray:
 _PALETTES: dict[str, np.ndarray] = {
     "gameboy_dmg": _pal("0F380F", "306230", "8BAC0F", "9BBC0F"),  # dark → light
     "cga": _pal("000000", "55FFFF", "FF55FF", "FFFFFF"),
+    # CGA mode-1 low intensity: black / cyan / magenta / light gray
+    "cga_cyan": _pal("000000", "00AAAA", "AA00AA", "AAAAAA"),
     "ega16": _pal("000000", "0000AA", "00AA00", "00AAAA", "AA0000", "AA00AA",
                   "AA5500", "AAAAAA", "555555", "5555FF", "55FF55", "55FFFF",
                   "FF5555", "FF55FF", "FFFF55", "FFFFFF"),
@@ -329,13 +446,53 @@ _PALETTES: dict[str, np.ndarray] = {
     "apple2": _pal("000000", "FFFFFF", "14F53C", "FF44FD", "FF6A3C", "14CFFD"),
     "teletext": _pal("000000", "FF0000", "00FF00", "FFFF00", "0000FF", "FF00FF",
                      "00FFFF", "FFFFFF"),
+    # ZX Spectrum non-bright palette; attribute clash is applied on top
+    "zx_spectrum": _pal("000000", "0000D8", "D80000", "D800D8", "00D800",
+                        "00D8D8", "D8D800", "D8D8D8"),
 }
 
 # Ordered-dither spread ≈ quantization step of each palette.
 _DITHER_SPREAD = {
-    "none": 0.0, "gameboy_dmg": 0.30, "cga": 0.30, "ega16": 0.17,
-    "vga256": 0.10, "c64": 0.17, "apple2": 0.26, "teletext": 0.30,
+    "none": 0.0, "gameboy_dmg": 0.30, "cga": 0.30, "cga_cyan": 0.30, "ega16": 0.17,
+    "vga256": 0.10, "c64": 0.17, "apple2": 0.26, "teletext": 0.30, "zx_spectrum": 0.24,
 }
+
+
+def _zx_attribute_clash(small: np.ndarray, idx: np.ndarray, pal: np.ndarray) -> np.ndarray:
+    """The Spectrum's attribute grid: every 8x8 character cell may hold only
+    TWO palette colors (ink + paper). Pick each cell's two dominant mapped
+    colors and re-snap every pixel in the cell to the nearer of the pair."""
+    h, w = idx.shape
+    npal = len(pal)
+    ch, cw = -(-h // 8), -(-w // 8)
+    ph, pw = ch * 8, cw * 8
+    pidx = np.zeros((ph, pw), np.int64)
+    pidx[:h, :w] = idx
+    if pw > w:                                  # pad with the edge column/row so
+        pidx[:h, w:] = idx[:, -1:]              # border cells vote with real data
+    if ph > h:
+        pidx[h:, :] = pidx[h - 1: h, :]
+    cells = pidx.reshape(ch, 8, cw, 8).transpose(0, 2, 1, 3).reshape(-1, 64)
+    counts = np.bincount(
+        (cells + np.arange(cells.shape[0])[:, None] * npal).ravel(),
+        minlength=cells.shape[0] * npal,
+    ).reshape(-1, npal)
+    order = np.argsort(counts, axis=1)
+    a = order[:, -1]                            # paper (dominant)
+    b = order[:, -2]                            # ink (runner-up)
+    b = np.where(counts[np.arange(len(b)), b] == 0, a, b)
+    ps = np.zeros((ph, pw, 3), np.float32)
+    ps[:h, :w] = small
+    if pw > w:
+        ps[:h, w:] = small[:, -1:]
+    if ph > h:
+        ps[h:, :] = ps[h - 1: h, :]
+    cellpx = ps.reshape(ch, 8, cw, 8, 3).transpose(0, 2, 1, 3, 4).reshape(-1, 64, 3)
+    da = (((cellpx - pal[a][:, None, :]) ** 2) * _LUMA_W).sum(-1)
+    db = (((cellpx - pal[b][:, None, :]) ** 2) * _LUMA_W).sum(-1)
+    pick = np.where(da <= db, a[:, None], b[:, None])
+    out = pick.reshape(ch, cw, 8, 8).transpose(0, 2, 1, 3).reshape(ph, pw)
+    return out[:h, :w]
 
 
 def _bayer(n: int) -> np.ndarray:
@@ -361,13 +518,19 @@ class PixelEra(Effect):
         Param("res_h", "Vertical Resolution", "int", 240, 64, 480, unit="px", group="Geometry",
               desc="Vertical pixel count of the simulated display."),
         Param("palette", "Palette", "enum", "none",
-              choices=("none", "gameboy_dmg", "cga", "ega16", "vga256", "c64", "apple2", "teletext"),
-              group="Color", desc="Machine palette; vga256 quantizes to the 6x6x6 cube."),
+              choices=("none", "gameboy_dmg", "cga", "cga_cyan", "ega16", "vga256",
+                       "c64", "apple2", "teletext", "zx_spectrum"),
+              group="Color", desc="Machine palette; vga256 quantizes to the 6x6x6 cube, "
+                                  "cga_cyan is the low-intensity mode-1 cyan/magenta set, "
+                                  "zx_spectrum adds true 8x8 attribute clash."),
         Param("dither", "Dithering", "enum", "bayer4",
               choices=("none", "bayer2", "bayer4", "bayer8"), group="Color",
               desc="Ordered (Bayer) dither applied before quantization."),
         Param("contrast_snap", "Contrast Snap", "float", 0.3, 0.0, 1.0, group="Color",
               desc="Pre-quantization contrast so midtones don't collapse into mud."),
+        Param("pixel_aspect", "Pixel Aspect", "float", 1.0, 0.5, 2.0, group="Geometry",
+              desc="Pixel width ÷ height. 1.25 ≈ 320x200 stretched over a 4:3 tube "
+                   "(fat pixels); below 1 gives tall skinny pixels."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -376,7 +539,7 @@ class PixelEra(Effect):
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         H, W = frame.shape[:2]
         hl = min(int(self.v["res_h"]), H)
-        wl = max(2, int(round(W * hl / H)))
+        wl = max(2, int(round(W * hl / (H * float(self.v["pixel_aspect"])))))
         small = cv2.resize(frame, (wl, hl), interpolation=cv2.INTER_AREA)
 
         cs = self.v["contrast_snap"]
@@ -403,9 +566,13 @@ class PixelEra(Effect):
             out_small = pal[idx]
         else:
             pal = _PALETTES[pal_name]
-            px = np.clip(small, 0.0, 1.0).reshape(-1, 1, 3)
+            snapped = np.clip(small, 0.0, 1.0)
+            px = snapped.reshape(-1, 1, 3)
             d2 = ((px - pal[None, :, :]) ** 2 * _LUMA_W).sum(axis=-1)
-            out_small = pal[np.argmin(d2, axis=-1)].reshape(hl, wl, 3)
+            idx = np.argmin(d2, axis=-1).reshape(hl, wl)
+            if pal_name == "zx_spectrum":
+                idx = _zx_attribute_clash(snapped, idx, pal)
+            out_small = pal[idx]
 
         return cv2.resize(
             out_small.astype(np.float32), (W, H), interpolation=cv2.INTER_NEAREST
@@ -429,9 +596,41 @@ class ChromaDV(Effect):
                    "4:1:0 = quarter-res chroma both ways."),
         Param("edge_sharpen", "Edge Sharpen", "float", 0.35, 0.0, 2.0, iscale=True,
               group="Luma", desc="DV in-camera sharpening with its telltale halos."),
+        Param("dct_blocks", "DCT Blocks", "float", 0.0, 0.0, 1.0, iscale=True, group="Luma",
+              desc="Faint 8x8 luma block boundaries surfacing under motion — real "
+                   "intra-frame DCT quantization, DV's compression signature. "
+                   "Keep low; it should whisper, not shout."),
     )
 
     _FACTORS = {"4:2:0": (2, 2), "4:1:1": (4, 1), "4:1:0": (4, 4)}
+
+    # JPEG/DV-style luminance quantization weights, normalized so DC = 1.
+    _QTAB = (np.array(
+        [[16, 11, 10, 16, 24, 40, 51, 61],
+         [12, 12, 14, 19, 26, 58, 60, 55],
+         [14, 13, 16, 24, 40, 57, 69, 56],
+         [14, 17, 22, 29, 51, 87, 80, 62],
+         [18, 22, 37, 56, 68, 109, 103, 77],
+         [24, 35, 55, 64, 81, 104, 113, 92],
+         [49, 64, 78, 87, 103, 121, 120, 101],
+         [72, 92, 95, 98, 112, 100, 103, 99]], dtype=np.float32,
+    ) / 16.0).reshape(1, 8, 1, 8)
+
+    def prepare(self, ctx: Context) -> None:
+        self._prev_y: np.ndarray | None = None
+
+    def _dct_quant(self, y: np.ndarray, db: float) -> np.ndarray:
+        """Real 8x8 DCT quantization of the luma plane."""
+        H, W = y.shape
+        ph, pw = -(-H // 8) * 8, -(-W // 8) * 8
+        y2 = y if (ph, pw) == (H, W) else cv2.copyMakeBorder(
+            y, 0, ph - H, 0, pw - W, cv2.BORDER_REPLICATE)
+        blocks = y2.reshape(ph // 8, 8, pw // 8, 8)
+        coef = sfft.dctn(blocks, axes=(1, 3), norm="ortho")
+        q = self._QTAB * np.float32(0.11 * db)
+        coef = np.round(coef / q) * q
+        out = sfft.idctn(coef, axes=(1, 3), norm="ortho").astype(np.float32)
+        return np.ascontiguousarray(out.reshape(ph, pw)[:H, :W])
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         H, W = frame.shape[:2]
@@ -446,6 +645,17 @@ class ChromaDV(Effect):
             y = ycc[..., 0]
             blur = cv2.GaussianBlur(y, (0, 0), 1.1)
             ycc[..., 0] = y + (y - blur) * (k * 0.9)
+        db = float(self.v["dct_blocks"])
+        if db > 0:
+            y = np.ascontiguousarray(ycc[..., 0])
+            if self._prev_y is not None and self._prev_y.shape == y.shape:
+                # the quantizer coarsens where the picture is changing — block
+                # edges surface with motion and melt away on stills
+                d = cv2.GaussianBlur(np.abs(y - self._prev_y), (0, 0), 2.5)
+                m = np.clip(d * 16.0, 0.0, 1.0)
+                yq = self._dct_quant(y, db)
+                ycc[..., 0] = y + (yq - y) * m
+            self._prev_y = y
         out = cv2.cvtColor(ycc, cv2.COLOR_YCrCb2RGB)
         return np.clip(out, 0.0, 1.0).astype(np.float32)
 
@@ -473,6 +683,17 @@ class LCDScreen(Effect):
         Param("viewing_angle", "Viewing Angle", "float", 0.15, -1.0, 1.0, group="Panel",
               desc="Off-axis gamma shift across the frame (+right side washed, "
                    "-left side washed)."),
+        Param("subpixel", "Subpixel Structure", "enum", "none",
+              choices=("none", "rgb_stripe_lcd"), group="Panel",
+              desc="Resolve the panel's R/G/B stripe triads inside each pixel cell "
+                   "— the close-enough-to-see-the-subpixels camera look. Wants "
+                   "scale >= 3 so each stripe gets a column."),
+        Param("dead_pixels", "Dead Pixels", "int", 0, 0, 24, group="Panel",
+              desc="Stuck panel pixels at seed-stable positions: mostly dark-dead, "
+                   "sometimes a subpixel latched bright red/green/blue."),
+        Param("moire_cam", "Camera Moiré", "float", 0.0, 0.0, 1.0, iscale=True, group="Camera",
+              desc="The interference bands of pointing a camera at an LCD: broad "
+                   "magenta/green fringes drifting slowly as the framing breathes."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -484,7 +705,53 @@ class LCDScreen(Effect):
         if g > 0:
             tile[-1, :] *= 1.0 - 0.75 * g
             tile[:, -1] *= 1.0 - 0.75 * g
-        self._grid = np.tile(tile, (-(-H // s), -(-W // s)))[:H, :W][..., None]
+        if self.v["subpixel"] == "rgb_stripe_lcd":
+            # each s-wide cell splits into R/G/B thirds; a channel lights only
+            # inside its own stripe (with leak), roughly energy-preserving
+            sub = np.empty((s, s, 3), np.float32)
+            for c in range(s):
+                stripe = min(c * 3 // max(s, 1), 2)
+                gains = np.full(3, 0.26, np.float32)
+                gains[stripe] = 2.05
+                sub[:, c, :] = gains
+            sub *= tile[..., None] * 1.10
+            self._grid = np.ascontiguousarray(
+                np.tile(sub, (-(-H // s), -(-W // s), 1))[:H, :W])
+        else:
+            self._grid = np.tile(tile, (-(-H // s), -(-W // s)))[:H, :W][..., None]
+
+        self._dead: list[tuple[int, int, np.ndarray]] = []
+        ndp = int(self.v["dead_pixels"])
+        if ndp > 0:
+            gd = ctx.rng(f"{self.key}:dead")
+            for _ in range(ndp):
+                cy = int(gd.integers(0, max(H // s, 1))) * s
+                cx = int(gd.integers(0, max(W // s, 1))) * s
+                if gd.random() < 0.6:            # dark dead pixel
+                    col = np.full(3, float(gd.uniform(0.0, 0.02)), np.float32)
+                else:                            # stuck-bright subpixel
+                    col = np.full(3, 0.03, np.float32)
+                    col[int(gd.integers(0, 3))] = float(gd.uniform(0.85, 1.0))
+                self._dead.append((cy, cx, col))
+
+        self._moire_a = self._moire_b = None
+        if self.v["moire_cam"] > 0:
+            gm = ctx.rng(f"{self.key}:moire")
+            yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+            a = np.zeros((H, W), np.float32)
+            b = np.zeros((H, W), np.float32)
+            for _ in range(2):                   # two detuned beat components
+                th = float(gm.uniform(0.0, np.pi))
+                lam = float(gm.uniform(0.16, 0.42)) * min(H, W)   # beat wavelength
+                ph = (np.cos(th) * xx + np.sin(th) * yy) * (2.0 * np.pi / lam)
+                w = float(gm.uniform(0.6, 1.0))
+                a += np.cos(ph) * w
+                b += np.sin(ph) * w
+            self._moire_a, self._moire_b = a * 0.5, b * 0.5
+            self._moire_ph = ctx.noise.smooth(f"{self.key}:mo_ph", 0.25) * np.pi
+            self._moire_amp = 0.65 + 0.35 * ctx.noise.smooth(f"{self.key}:mo_amp", 0.15)
+            # camera moiré is colored: opposing magenta/green fringes
+            self._moire_tint = np.asarray([1.0, -0.85, 0.75], np.float32)
 
         rng = ctx.rng(f"{self.key}:bleed")
         gh, gw = max(2, H // 16), max(2, W // 16)
@@ -527,9 +794,22 @@ class LCDScreen(Effect):
             ys = np.clip(y, 1e-4, 1.0)
             ratio = (np.power(ys, self._gamma) / ys)[..., None]
             x = x * ratio
-        if self.v["grid"] > 0:
+        if self._dead:
+            s = int(self.v["scale"])
+            gap = 1 if self.v["grid"] > 0 else 0   # leave the lattice line dark
+            for cy, cx, col in self._dead:
+                x[cy:cy + s - gap, cx:cx + s - gap] = col
+        if self.v["grid"] > 0 or self.v["subpixel"] != "none":
             x = x * self._grid
         bb = float(self.v["backlight_bleed"])
         if bb > 0:
             x = x + self._bleed * (bb * 0.22) * (1.0 - x)
+        mo = float(self.v["moire_cam"])
+        if mo > 0 and self._moire_a is not None:
+            fi = min(ctx.fi_out, len(self._moire_ph) - 1)
+            ph = float(self._moire_ph[fi])
+            pat = self._moire_a * np.cos(ph) + self._moire_b * np.sin(ph)
+            amp = mo * 0.13 * float(self._moire_amp[fi])
+            for c in range(3):
+                x[..., c] *= 1.0 + (amp * float(self._moire_tint[c])) * pat
         return np.clip(x, 0.0, 1.0).astype(np.float32)
