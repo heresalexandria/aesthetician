@@ -217,7 +217,8 @@ class Mono(Effect):
               choices=("panchromatic", "orthochromatic", "blue_sensitive", "modern"),
               desc="Orthochromatic (pre-1927) renders reds dark; blue-sensitive even darker lips/skin."),
         Param("tint", "Print Tint", "enum", "neutral",
-              choices=("neutral", "silver", "sepia", "cyanotype", "nitrate_warm"), desc="Toning of the print."),
+              choices=("neutral", "silver", "sepia", "cyanotype", "nitrate_warm", "phosphor_green", "amber_crt"),
+              desc="Toning of the print (or CRT phosphor color for tube looks)."),
         Param("tint_amt", "Tint Amount", "float", 0.25, 0.0, 1.0),
     )
 
@@ -230,6 +231,7 @@ class Mono(Effect):
     _T = {
         "silver": (1.00, 1.02, 1.06), "sepia": (1.12, 1.00, 0.82),
         "cyanotype": (0.82, 0.98, 1.16), "nitrate_warm": (1.08, 1.01, 0.90),
+        "phosphor_green": (0.42, 1.22, 0.52), "amber_crt": (1.24, 0.86, 0.38),
     }
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
