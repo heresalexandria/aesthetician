@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy import signal as sps
 
 from ...engine.graph import Context, Effect, Param, register
 from ...engine.rng import stream

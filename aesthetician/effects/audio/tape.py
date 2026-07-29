@@ -4,7 +4,6 @@ oxide dropouts and azimuth error."""
 from __future__ import annotations
 
 import numpy as np
-from scipy import signal as sps
 
 from ...engine.graph import Context, Effect, Param, register
 from ...engine.rng import stream
@@ -61,10 +60,10 @@ class ATapeHiss(Effect):
     desc = "Bias hiss of the tape formulation: pre-emphasized noise floor, decorrelated per channel."
     # (top-tilt dB, lowpass Hz, level offset dB)
     _TYPES = {
-        "cassette": (6.0, 12000.0, 0.0),
-        "reel_15ips": (3.0, 17000.0, -7.0),
-        "reel_375ips": (5.0, 9500.0, 2.0),
-        "dictaphone": (2.0, 5200.0, 6.0),
+        "cassette": (6.0, 11000.0, 0.0),
+        "reel_15ips": (3.0, 16000.0, -7.0),
+        "reel_375ips": (5.0, 9000.0, 2.0),
+        "dictaphone": (2.0, 4500.0, 6.0),
     }
     PARAMS = (
         Param("level_db", "Hiss Level", "float", -46.0, -70.0, -25.0, unit="dB",
@@ -83,7 +82,7 @@ class ATapeHiss(Effect):
             cols.append(w)
         hiss = np.stack(cols, axis=1)
         hiss = U.tilt(hiss, ctx.sr, tilt_db, pivot_hz=2500.0)
-        hiss = U.lowpass(hiss, lp_hz, ctx.sr, order=3)
+        hiss = U.lowpass(hiss, lp_hz, ctx.sr, order=5)  # steep head-gap shoulder
         hiss = U.highpass(hiss, 35.0, ctx.sr, order=1)
         target = U.db_to_lin(self.v["level_db"] + off_db)
         hiss *= target / U.rms(hiss)

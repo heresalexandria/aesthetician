@@ -14,7 +14,7 @@ class AGain(Effect):
     label = "Gain"
     kind = "audio"
     desc = "Output gain in dB."
-    PARAMS = (Param("db", "Gain", "float", 0.0, -24.0, 24.0, unit="dB"),)
+    PARAMS = (Param("db", "Gain", "float", 0.0, -60.0, 24.0, unit="dB", desc="−60 is effectively mute."),)
 
     def process_audio(self, audio: np.ndarray, ctx: Context) -> np.ndarray:
         return audio * (10.0 ** (self.v["db"] / 20.0))

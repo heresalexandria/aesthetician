@@ -92,21 +92,30 @@ def read_frames(
     ]
     frame_bytes = width * height * 3
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    finished = False
     try:
         assert proc.stdout is not None
         while True:
             buf = proc.stdout.read(frame_bytes)
             if len(buf) < frame_bytes:
+                finished = True
                 break
             yield (
                 np.frombuffer(buf, dtype=np.uint8).reshape(height, width, 3).astype(np.float32) / 255.0
             )
     finally:
         proc.stdout.close()  # type: ignore[union-attr]
-        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
-        code = proc.wait()
-        if code not in (0, -13):  # -13: SIGPIPE when we stop early
-            raise MediaError(f"ffmpeg decode failed ({code}): {stderr[-1500:]}")
+        if not finished:
+            # generator closed early (e.g. remap consumed fewer frames) — not an error
+            proc.kill()
+            proc.wait()
+            if proc.stderr:
+                proc.stderr.close()
+        else:
+            stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+            code = proc.wait()
+            if code not in (0, -13):  # -13: SIGPIPE when we stop early
+                raise MediaError(f"ffmpeg decode failed ({code}): {stderr[-1500:]}")
 
 
 class FrameWriter:
