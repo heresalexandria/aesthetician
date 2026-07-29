@@ -12,6 +12,7 @@ register_preset(Preset(
     family="audio",
     era="1945",
     desc="A memo on a spool of steel: highs shimmering underwater, the wire's 2.8 kHz twang, kinks punching quick holes in the voice.",
+    tagline="Watery highs, 2.8k twang, kink dropouts",
     tags=("audio-only", "40s", "wire"),
     audio=[
         ("a_wire_recorder", {"flutter": 0.7, "watery": 0.7, "twang": 0.55,
@@ -35,6 +36,7 @@ register_preset(Preset(
     family="audio",
     era="1938",
     desc="Sixteen inches of lacquer at 33⅓: wider and calmer than any 78, the surface breathing a soft swish once per revolution.",
+    tagline="Wide lacquer band, once-per-turn swish",
     tags=("audio-only", "30s", "radio", "disc"),
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -59,6 +61,7 @@ register_preset(Preset(
     family="audio",
     era="1974",
     desc="Stereo 8 in the dashboard: syrupy wow, the next program ghosting up from under the floor, and the ker-CHUNK that always lands mid-solo.",
+    tagline="Wow, ghost program, mid-song clunk",
     tags=("audio-only", "70s", "tape", "car"),
     audio=[
         ("a_tape_sat", {"drive": 2.2, "bump_db": 1.5}),
@@ -82,6 +85,7 @@ register_preset(Preset(
     family="audio",
     era="1986",
     desc="Note to self at 2.4 centimeters per second: the AGC gulping air between words, flutter on every syllable, hiss like rain on a tin roof.",
+    tagline="Gulping AGC, per-syllable flutter, hiss",
     tags=("audio-only", "80s", "tape", "dictation"),
     audio=[
         ("a_microcassette", {"flutter": 0.75, "agc": 0.85, "hiss_db": -37.0}),
@@ -105,6 +109,7 @@ register_preset(Preset(
     family="audio",
     era="1962",
     desc="Somewhere east of the dial: the signal breathes away mid-word, RTTY chatters under a drifting whistle, lightning slaps from a storm a thousand miles off.",
+    tagline="Fades mid-word, RTTY, lightning cracks",
     tags=("audio-only", "60s", "radio", "shortwave"),
     audio=[
         ("a_shortwave", {"hi_hz": 3000.0, "fade": 0.75, "het_db": -44.0,
@@ -129,6 +134,7 @@ register_preset(Preset(
     family="audio",
     era="1977",
     desc="Breaker one-nine on a wound-up mic: clipped to a bark, squelch kshhh-chk on both ends, the next channel bleeding through the floor.",
+    tagline="Clipped bark, squelch tails, channel bleed",
     tags=("audio-only", "70s", "radio", "cb"),
     audio=[
         ("a_cb_radio", {"drive": 5.0, "squelch_tails": True, "bleed": 0.45,
@@ -150,6 +156,7 @@ register_preset(Preset(
     family="audio",
     era="1969",
     desc="Cleared to land two-niner: a tight 300–2500 carrier, AGC riding every syllable up to the same calm level, empty hiss between transmissions.",
+    tagline="300-2500 Hz, AGC-flattened, dead-air hiss",
     tags=("audio-only", "60s", "radio", "aviation"),
     audio=[
         ("a_bandlimit", {"low_hz": 300.0, "high_hz": 2500.0, "order": 6}),
@@ -169,6 +176,7 @@ register_preset(Preset(
     family="audio",
     era="1948",
     desc="The good radiogram after supper: tubes warm as toast, the transformer sagging on the loud notes, a soft 60-cycle heartbeat under the room.",
+    tagline="Soft clipping, supply sag, 60-cycle hum",
     tags=("audio-only", "40s", "tube", "hifi"),
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 7500.0}),
@@ -190,6 +198,7 @@ register_preset(Preset(
     family="audio",
     era="1994",
     desc="The demo master, digital and dying: pristine audio that freezes for a heartbeat, then a hard blink of nothing where the helical scan gave up.",
+    tagline="Clean until it freezes, then hard mutes",
     tags=("audio-only", "90s", "digital", "tape"),
     audio=[
         ("a_compressor", {"ratio": 2.0}),
@@ -209,6 +218,7 @@ register_preset(Preset(
     family="audio",
     era="1999",
     desc="Anti-shock in name only: forty milliseconds of the chorus, six times in a row, then suddenly it's later in the song. The bus didn't care.",
+    tagline="40 ms loops, then jumps ahead",
     tags=("audio-only", "90s", "digital", "cd"),
     audio=[
         ("a_cd_skip", {"rate": 12.0}),
@@ -228,6 +238,7 @@ register_preset(Preset(
     family="audio",
     era="1988",
     desc="Would you like fries with the distortion? Phone-grade wiring into a gravel-lot squawk box, clipping on every consonant, the line buzzing behind it.",
+    tagline="Phone band, hard clipping, line buzz",
     tags=("audio-only", "80s", "pa", "intercom"),
     audio=[
         ("a_telephone", {"era": "touchtone_1985", "line_noise_db": -42.0, "exchange_noise": 0.5}),
@@ -250,6 +261,7 @@ register_preset(Preset(
     family="audio",
     era="1972",
     desc="A column speaker bolted to limestone: horn midrange arriving twice, three seconds of stone tail on every pause, the amplifier humming through the sermon.",
+    tagline="Horn mids, doubled slap, stone tail",
     tags=("audio-only", "70s", "pa", "reverb"),
     audio=[
         ("a_bandlimit", {"low_hz": 130.0, "high_hz": 5500.0}),
@@ -273,6 +285,7 @@ register_preset(Preset(
     family="audio",
     era="1989",
     desc="Cassette backing track with the echo knob at maximum: every line answered by itself through a boingy spring and a boxy little PA.",
+    tagline="Boingy spring echo, wobbling backing tape",
     tags=("audio-only", "80s", "tape", "pa"),
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 9000.0}),
@@ -297,6 +310,7 @@ register_preset(Preset(
     family="audio",
     era="1975",
     desc="The next-train announcement, shredded by horn speakers and flung down a tiled tube — arriving as reverb with a rumor of words inside.",
+    tagline="Words lost in horn mush and tile echo",
     tags=("audio-only", "70s", "pa", "transit"),
     audio=[
         ("a_bandlimit", {"low_hz": 300.0, "high_hz": 3400.0, "order": 5}),
@@ -322,6 +336,7 @@ register_preset(Preset(
     family="audio",
     era="1993",
     desc="Your call is important: a worn tape loop wandering flat and sharp under phone-band gauze, the exchange clicking through other people's afternoons.",
+    tagline="Drifting tape loop under phone band",
     tags=("audio-only", "90s", "phone", "tape"),
     audio=[
         ("a_wow_flutter", {"wow_depth": 10.0, "flutter_depth": 4.0, "drift_long": 0.8}),
@@ -344,6 +359,7 @@ register_preset(Preset(
     family="audio",
     era="1979",
     desc="Recorded with Dolby, played without: quiet passages hiss bright, loud ones dull down — the whole top end breathes with the music, and the borrowed deck's EQ never matched anyway.",
+    tagline="Top end breathing with the music",
     tags=("audio-only", "70s", "tape", "nerd"),
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 14000.0}),

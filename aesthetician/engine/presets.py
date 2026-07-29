@@ -32,6 +32,9 @@ class Preset:
     family: str
     era: str
     desc: str
+    # Very short artifact-focused summary (<=45 chars) shown under the name in
+    # the GUI list. Falls back to `desc` when empty.
+    tagline: str = ""
     video: ChainSpec = field(default_factory=list)
     audio: ChainSpec = field(default_factory=list)
     tags: tuple[str, ...] = ()

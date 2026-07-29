@@ -8,6 +8,7 @@ register_preset(Preset(
     family="digital",
     era="1999",
     desc="Buffering... buffering: a postage stamp of smeared blocks that freezes mid-gesture, snaps forward, and sounds like a phone call from inside an aquarium.",
+    tagline="Postage-stamp blocks, freeze and snap",
     tags=("90s", "web", "streaming", "codec"),
     video=[
         ("tone", {"contrast": 1.02}),
@@ -38,6 +39,7 @@ register_preset(Preset(
     family="digital",
     era="2006",
     desc="Converted for the bus ride: widescreen crushed to Memory Stick bitrates, edges oversharpened into halos by the rip tool, earbuds doing the mastering.",
+    tagline="Low-bitrate widescreen, sharpening halos",
     tags=("00s", "handheld", "codec"),
     video=[
         ("tone", {"contrast": 1.06}),
@@ -62,6 +64,7 @@ register_preset(Preset(
     family="digital",
     era="2005",
     desc="The 320-line pocket theater: a clean careful little encode, soft but composed, whole seasons riding to work through white earbuds.",
+    tagline="Soft tidy 320-line encode, earbuds",
     tags=("00s", "handheld", "clean"),
     video=[
         ("tone", {"contrast": 1.04, "knee": 0.88}),
@@ -84,6 +87,7 @@ register_preset(Preset(
     family="digital",
     era="2006",
     desc="Embedded in a glitter profile: FLV re-crunched from someone else's re-upload, gradients collapsing into contour bands, 32 kbps mono doing the vocals.",
+    tagline="Re-upload banding, 32k mono vocals",
     tags=("00s", "web", "generation-loss"),
     video=[
         ("tone", {"contrast": 1.08}),
@@ -111,6 +115,7 @@ register_preset(Preset(
     family="digital",
     era="2008",
     desc="HD at last, interlaced anyway: razor edges and pumped broadcast color, weave combs surviving every pan, the encoder's denoiser waxing the fine detail.",
+    tagline="Razor edges, weave combs, waxed detail",
     tags=("00s", "hd", "broadcast", "interlaced"),
     video=[
         ("tone", {"contrast": 1.1, "knee": 0.86}),
@@ -141,6 +146,7 @@ register_preset(Preset(
     family="digital",
     era="2005",
     desc="Dad's VHS archive 'digitized': the noise reducer wipes away the tape grain and half of every face with it — waxy skin, ghost trails, a menu with beach clip-art.",
+    tagline="DVNR-waxed faces, ghost trails, MPEG-2",
     tags=("00s", "vhs", "dvnr", "transfer"),
     proc_height=540,
     upscale="soft",
@@ -176,6 +182,7 @@ register_preset(Preset(
     family="digital",
     era="2012",
     desc="The laptop lid's eye: sharper than the ball-cam era but pumping white balance at every lamp, motion collapsing into blocks, one subpixel stuck on red.",
+    tagline="Pumping white balance, blocks, dead pixel",
     tags=("10s", "webcam", "streaming"),
     video=[
         ("exposure_auto", {"lag": 0.9, "overshoot": 0.2, "agc_gain_noise": 0.4,
@@ -207,6 +214,7 @@ register_preset(Preset(
     family="digital",
     era="2009",
     desc="No capture card, no problem: a camera aimed at an LCD — moiré bands breathing over the subpixel stripes, backlight blooming in the corners, room tone on the mic.",
+    tagline="Subpixel moire, backlight bloom, room tone",
     tags=("00s", "lcd", "bootleg", "meta"),
     video=[
         ("exposure_auto", {"lag": 0.8, "overshoot": 0.25, "wb_amount": 0.15}),
@@ -241,6 +249,7 @@ register_preset(Preset(
     family="digital",
     era="2013",
     desc="Shot tall on a phone before that was allowed: pillarboxed 9:16, exposure pumping at every window, a nervous little stabilizer wobble it can't quite hide.",
+    tagline="Pillarboxed tall frame, pumping exposure",
     tags=("10s", "phone", "vertical"),
     video=[
         ("exposure_auto", {"lag": 0.5, "overshoot": 0.35, "agc_gain_noise": 0.35,
@@ -270,6 +279,7 @@ register_preset(Preset(
     family="digital",
     era="1998",
     desc="A camcorder smuggled past the usher, pressed to shiny silver discs: hot screen center, keystone lean, MPEG-1 blocks blooming on every cut, the multiplex air conditioning on the soundtrack.",
+    tagline="Hot screen center, keystone, MPEG-1 blocks",
     tags=("90s", "bootleg", "vcd", "cinema"),
     video=[
         ("tone", {"contrast": 1.08, "lift": 0.05, "knee": 0.8}),

@@ -47,6 +47,7 @@ def preset_schema() -> dict[str, Any]:
             "family": p.family,
             "era": p.era,
             "desc": p.desc,
+            "tagline": p.tagline,
             "tags": list(p.tags),
             "proc_height": p.proc_height,
             "upscale": p.upscale,

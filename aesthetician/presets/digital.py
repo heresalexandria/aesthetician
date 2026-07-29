@@ -8,6 +8,7 @@ register_preset(Preset(
     family="digital",
     era="2001",
     desc="A first-wave DVD authoring job: real MPEG-2 at modest bitrate — gentle macroblocks in motion, mosquito noise around titles.",
+    tagline="Gentle macroblocks, mosquito noise",
     tags=("2000s", "mpeg2", "codec"),
     video=[
         ("tone", {"contrast": 1.05}),
@@ -31,6 +32,7 @@ register_preset(Preset(
     family="digital",
     era="1997",
     desc="The bootleg standard of the 90s: real MPEG-1 at 352 lines and 1150 kbps, blocks blooming on every cut, audio squeezed thin.",
+    tagline="352 lines, blocks blooming on cuts",
     tags=("90s", "mpeg1", "bootleg"),
     video=[
         ("tone", {"contrast": 1.04}),
@@ -52,6 +54,7 @@ register_preset(Preset(
     family="digital",
     era="2006",
     desc="240 lines of dial-up dreams: real FLV/Sorenson-era encoding, double-compressed, with 22 kHz mono MP3 audio. Broadcast yourself.",
+    tagline="240p Sorenson mush, 32k mono",
     tags=("2000s", "flv", "youtube"),
     video=[
         ("codec_era", {"codec": "flv1", "kbps": 240, "res": "240p", "passes": 2}),
@@ -73,6 +76,7 @@ register_preset(Preset(
     family="digital",
     era="2004",
     desc="A ball-shaped webcam on a CRT bezel: tiny sensor smear, frame stutter, blocky motion and VoIP audio artifacts.",
+    tagline="Sensor smear, frame stutter, VoIP crackle",
     tags=("2000s", "webcam", "voip"),
     video=[
         ("exposure_auto", {}),
@@ -96,6 +100,7 @@ register_preset(Preset(
     family="digital",
     era="2007",
     desc="176×144 of pure memory: real 3GP-era encoding, smeared blocks, and speech-codec audio that turns concerts into soup.",
+    tagline="176x144 blocks, speech-codec soup",
     tags=("2000s", "3gp", "phone"),
     video=[
         ("exposure_auto", {}),
@@ -114,6 +119,7 @@ register_preset(Preset(
     family="digital",
     era="2000",
     desc="The millennium home format: crisp but over-sharpened edges, 4:1:1 chroma stair-steps, interlace combing on every pan.",
+    tagline="Over-sharp edges, 4:1:1 chroma steps",
     tags=("2000s", "dv", "camcorder"),
     proc_height=640,
     video=[
@@ -140,6 +146,7 @@ register_preset(Preset(
     family="digital",
     era="2009",
     desc="Real bitstream corruption, decoded with error concealment: motion drags the world apart in smeared prediction blocks. Chaos, curated.",
+    tagline="Motion smearing into prediction blocks",
     tags=("glitch", "corruption", "experimental"),
     video=[
         ("codec_glitch", {"amount": 0.5, "drop_p": 0.3}),
@@ -164,6 +171,7 @@ register_preset(Preset(
     family="digital",
     era="1994",
     desc="Camera 3, aisle 5: cool drained color, time-lapse stutter, phosphor smear on movement and a white timestamp that never blinks.",
+    tagline="Drained color, 3-frame stutter, timestamp",
     tags=("90s", "cctv", "surveillance", "timestamp"),
     proc_height=480,
     upscale="soft",
@@ -200,6 +208,7 @@ register_preset(Preset(
     family="digital",
     era="2001",
     desc="Infrared home video: phosphor-green faces with glowing eyes, blooming highlights, gained-up noise crawling in the dark.",
+    tagline="IR green, glowing eyes, crawling noise",
     tags=("2000s", "infrared", "camcorder"),
     proc_height=560,
     video=[
@@ -226,6 +235,7 @@ register_preset(Preset(
     family="digital",
     era="1990",
     desc="256 colors if you were lucky: fat pixels, ordered dither shimmer, palette-snapped hues straight off a CRT monitor.",
+    tagline="Fat VGA pixels, ordered dither shimmer",
     tags=("retro", "pixel", "games"),
     video=[
         ("tone", {"contrast": 1.1}),

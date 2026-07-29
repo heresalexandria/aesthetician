@@ -9,6 +9,7 @@ register_preset(Preset(
     family="print",
     era="1946",
     desc="Above the fold: one coarse 45-degree screen, ink gaining into gray newsprint, contrast pushed until the photo shouts as loud as the headline.",
+    tagline="Coarse 45-degree screen, ink gain",
     tags=("40s", "newspaper", "halftone", "bw"),
     upscale="sharp",
     video=[
@@ -38,6 +39,7 @@ register_preset(Preset(
     family="print",
     era="1972",
     desc="Four fat rosettes of CMYK on butcher-grade paper: the yellow plate a hair east of the others, colors louder than the sermon you skipped.",
+    tagline="Fat halftone dots, yellow plate adrift",
     tags=("70s", "comics", "halftone", "cmyk"),
     upscale="sharp",
     video=[
@@ -67,6 +69,7 @@ register_preset(Preset(
     family="print",
     era="1981",
     desc="Fourth-generation Xerox gospel: detail clogged to pure black and white, toner starving in streaks, the page always a few degrees off square.",
+    tagline="Clogged blacks, toner streaks, skew",
     tags=("80s", "zine", "photocopy", "punk", "bw"),
     upscale="sharp",
     video=[
@@ -99,6 +102,7 @@ register_preset(Preset(
     family="print",
     era="1958",
     desc="The newspaper morgue at reading speed: red-blind document film, a glare blob wandering the reader screen, roller scratches shimmering through fifty years of Tuesdays.",
+    tagline="Reader glare blob, roller scratches",
     tags=("50s", "microfilm", "library", "bw"),
     proc_height=600,
     upscale="soft",
@@ -128,6 +132,7 @@ register_preset(Preset(
     family="print",
     era="1985",
     desc="Two drums, one basement: blue doing the drawing, red arriving two pixels late, stencil grain chewing the midtones. Doors at eight, bring earplugs.",
+    tagline="Blue and red two pixels apart",
     tags=("80s", "risograph", "flyer", "diy"),
     upscale="sharp",
     video=[
@@ -156,6 +161,7 @@ register_preset(Preset(
     family="print",
     era="1967",
     desc="Coated-stock confidence: a fine rosette you need a loupe to catch, colors rich as the advertised cocktail, highlights rolling off like lacquer.",
+    tagline="Loupe-fine rosette, lacquered highlights",
     tags=("60s", "magazine", "halftone", "gloss"),
     upscale="sharp",
     video=[

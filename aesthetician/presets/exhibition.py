@@ -9,6 +9,7 @@ register_preset(Preset(
     family="exhibition",
     era="1957",
     desc="Two projectors, one feature: cue dots blink in the corner, the splice bumps through the gate, and the whole show hums from the booth at the back of your neck.",
+    tagline="Cue dots, splice bump, 35mm clatter",
     tags=("50s", "projection", "changeover", "bw"),
     upscale="soft",
     video=[
@@ -50,6 +51,7 @@ register_preset(Preset(
     family="exhibition",
     era="1966",
     desc="No screen tonight — straight onto the wall: roller-mottle under the picture, keystone from the bookshelf perch, the cart jolting every time someone finds the couch.",
+    tagline="Roller-mottle plaster, keystone, jolts",
     tags=("60s", "8mm", "home-projection", "silent"),
     proc_height=520,
     upscale="soft",
@@ -89,6 +91,7 @@ register_preset(Preset(
     family="exhibition",
     era="1972",
     desc="A bedsheet on the clothesline, Super 8 after dark: hotspot glowing through the weave, the picture billowing with every breeze, moths auditioning in the beam.",
+    tagline="Hotspot through weave, billowing picture",
     tags=("70s", "super8", "backyard", "silent"),
     proc_height=520,
     upscale="soft",
@@ -130,6 +133,7 @@ register_preset(Preset(
     family="exhibition",
     era="1993",
     desc="The neighborhood's first big screen: three CRT guns drifting apart at the corners, a hotspot that follows you to the good couch, lenticular lines up close.",
+    tagline="Corner misconvergence, hotspot, louvres",
     tags=("90s", "rptv", "big-screen", "broadcast"),
     proc_height=560,
     upscale="soft",
@@ -163,6 +167,7 @@ register_preset(Preset(
     family="exhibition",
     era="1961",
     desc="Scope through a windshield at dusk: the screen ghosting in the glass, dashboard glow rising from the bottom of the world, one aluminum speaker doing the talking.",
+    tagline="Screen ghosting in glass, dash glow",
     tags=("60s", "drive-in", "scope", "windshield"),
     upscale="soft",
     video=[
@@ -200,6 +205,7 @@ register_preset(Preset(
     family="exhibition",
     era="1955",
     desc="A scope print that has met every projector in the county: pink-leaning color, splices at the reel ends, the hall's own echo under the optical hiss.",
+    tagline="Reel-end splices, hall echo, faded dyes",
     tags=("50s", "scope", "matinee", "worn-print"),
     upscale="soft",
     video=[
