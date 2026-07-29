@@ -58,9 +58,18 @@ real engine, so what you see is what exports) → hold **A/B** for the original 
 **Export Full Video**.
 
 Each row in the browse list carries a thumbnail of that treatment (hover to see it
-move) and a one-line summary of its artifacts. Two master dials sit above the
-parameter stack: **Intensity** (damage, warping, glow) and **Texture** (grain,
-tape noise, dust, speckle — drag to 0 for a perfectly clean version of the look).
+move) and a one-line summary of its artifacts. Hover any knob for a tooltip
+explaining what it physically models, its range, and the `--set` path to reach it
+from the CLI. Two master dials sit above the parameter stack: **Intensity**
+(damage, warping, glow) and **Texture** (grain, tape noise, dust, speckle — drag
+to 0 for a perfectly clean version of the look).
+
+Open as many clips as you like: each is a tab with its own aesthetic and knob
+positions, so you can try one clip several ways side by side, and switching back
+is instant. The footer shows what the preview cache is costing you on disk, with
+**Clear** and **Reveal** beside it.
+
+Full walkthrough: [docs/app-guide.md](docs/app-guide.md).
 
 Thumbnails are generated once:
 
