@@ -37,6 +37,14 @@ class Optics(Effect):
               desc="Slow wandering of overall focus."),
         Param("hunt_rate", "Focus Hunts", "float", 0.0, 0.0, 20.0, unit="/min", group="Focus",
               desc="Autofocus hunting: quick out-and-back focus excursions."),
+        Param("bokeh_swirl", "Swirl", "float", 0.0, 0.0, 1.0, iscale=True, group="Optics",
+              desc="Petzval/triplet field curvature: low-frequency (defocused) detail smears tangentially "
+                   "toward the frame edges while the sharp core stays put."),
+        Param("veiling_flare", "Veiling Flare", "float", 0.0, 0.0, 1.0, iscale=True, group="Optics",
+              desc="Uncoated-glass scatter: when bright sources are present, a milky veil lifts contrast "
+                   "across the whole frame, heaviest near the source."),
+        Param("aperture_ghost", "Aperture Ghost", "float", 0.0, 0.0, 1.0, iscale=True, group="Optics",
+              desc="Faint iris-shaped ghost mirrored through the frame center opposite a strong light source."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -54,6 +62,10 @@ class Optics(Effect):
             kern = np.sin(np.linspace(0.0, np.pi, klen)).astype(np.float32) ** 1.5
             env = np.convolve(ev, kern)[:n].astype(np.float32)
         self._sigma_track = (base + np.clip(env, 0.0, 1.2) * 0.9).astype(np.float32)
+        self._swirl_mask: np.ndarray | None = None
+        self._ghost_pos: tuple[float, float] | None = None
+        self._ghost_s = 0.0
+        self._ghost_rot = ctx.noise.smooth(f"{self.key}:grot", 0.05) if self.v["aperture_ghost"] > 0 else None
 
     # ── geometry: distortion + CA composed into per-channel remap grids ─
 
@@ -132,6 +144,49 @@ class Optics(Effect):
                 fc += hi                                              # milky highlights
             frame = cv2.addWeighted(frame, 1.0 - 0.12 * d, b, 0.12 * d, 0.0)  # lowered local contrast
 
+        bs = self.v["bokeh_swirl"]
+        if bs > 0:
+            # tangential smear of the low-pass band: rotate the low band a touch
+            # both ways about center and average — the sharp core is added back
+            hw, hh = max(W // 2, 16), max(H // 2, 16)
+            small = cv2.resize(frame, (hw, hh), interpolation=cv2.INTER_AREA)
+            lp = cv2.GaussianBlur(small, (0, 0), 1.6 * max(hscale, 0.4) + 0.6)
+            ang = 1.0 + 2.0 * bs
+            ctr = ((hw - 1) / 2.0, (hh - 1) / 2.0)
+            r1 = cv2.warpAffine(lp, cv2.getRotationMatrix2D(ctr, ang, 1.0), (hw, hh),
+                                flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            r2 = cv2.warpAffine(lp, cv2.getRotationMatrix2D(ctr, -ang, 1.0), (hw, hh),
+                                flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            diff = cv2.resize((r1 + r2 + lp) * np.float32(1.0 / 3.0) - lp, (W, H),
+                              interpolation=cv2.INTER_LINEAR)
+            if self._swirl_mask is None:
+                nx = np.linspace(-1, 1, W, dtype=np.float32)[None, :] ** 2
+                ny = np.linspace(-1, 1, H, dtype=np.float32)[:, None] ** 2
+                self._swirl_mask = (color.smoothstep(0.30, 1.05, np.sqrt(nx + ny)) ** 1.3).astype(np.float32)
+            m = self._swirl_mask * np.float32(min(bs * 1.4, 1.0))
+            for ci in range(3):
+                frame[..., ci] += diff[..., ci] * m
+
+        vf = self.v["veiling_flare"]
+        if vf > 0:
+            y = color.luma(frame)
+            hot = color.smoothstep(0.78, 0.97, y)
+            e = float(hot.mean())
+            if e > 4e-4:
+                ds = 6
+                sm = np.ascontiguousarray(hot[::ds, ::ds])
+                sm = cv2.GaussianBlur(sm, (0, 0), max(H * 0.16 / ds, 2.0))
+                veil = cv2.resize(sm, (W, H), interpolation=cv2.INTER_LINEAR)
+                eg = min(e * 9.0, 1.0)
+                k = vf * (0.10 * eg + 0.24 * veil)   # local halo + global lift
+                for ci, wc in enumerate((1.0, 0.97, 0.90)):
+                    fc = frame[..., ci]
+                    fc += k * wc * (1.0 - fc)
+
+        ag = self.v["aperture_ghost"]
+        if ag > 0:
+            frame = self._apply_ghost(frame, ag, ctx, H, W)
+
         cs = self.v["corner_softness"]
         if cs > 0:
             if self._corner_mask is None:
@@ -147,6 +202,49 @@ class Optics(Effect):
                 fc += b[..., ci] * m
 
         return np.clip(frame, 0.0, 1.0, out=frame)
+
+    def _apply_ghost(self, frame: np.ndarray, ag: float, ctx: Context, H: int, W: int) -> np.ndarray:
+        """Iris-shaped internal reflection mirrored through the frame center."""
+        step = 6
+        ys = color.luma(frame[::step, ::step])
+        hotm = np.clip((ys - 0.90) * 12.0, 0.0, 1.0)
+        mass = float(hotm.mean())
+        if mass > 2e-4:
+            mm = cv2.moments(hotm)
+            if mm["m00"] > 1e-6:
+                cx = mm["m10"] / mm["m00"] * step
+                cy = mm["m01"] / mm["m00"] * step
+                a = 0.30  # positional smoothing so the ghost doesn't jitter
+                if self._ghost_pos is None:
+                    self._ghost_pos = (cx, cy)
+                else:
+                    self._ghost_pos = (self._ghost_pos[0] + a * (cx - self._ghost_pos[0]),
+                                       self._ghost_pos[1] + a * (cy - self._ghost_pos[1]))
+                # a lamp-sized source (~0.1% of frame) already casts a clear ghost
+                self._ghost_s += 0.35 * (min((mass * 250.0) ** 0.6, 1.0) - self._ghost_s)
+        else:
+            self._ghost_s *= 0.82
+        if self._ghost_s < 0.03 or self._ghost_pos is None:
+            return frame
+        gx = (W - 1) - self._ghost_pos[0]
+        gy = (H - 1) - self._ghost_pos[1]
+        ds = 4
+        cw, ch = max(W // ds, 16), max(H // ds, 16)
+        canvas = np.zeros((ch, cw), np.float32)
+        rad = H * (0.040 + 0.035 * self._ghost_s) / ds
+        rot = 0.28
+        if self._ghost_rot is not None:
+            rot += 0.2 * float(self._ghost_rot[min(ctx.fi_src, len(self._ghost_rot) - 1)])
+        angs = rot + np.arange(7, dtype=np.float32) * (2 * np.pi / 7)
+        pts = np.stack([gx / ds + rad * np.cos(angs), gy / ds + rad * np.sin(angs)], axis=-1)
+        cv2.fillConvexPoly(canvas, pts.astype(np.int32), 1.0, cv2.LINE_AA)
+        canvas = cv2.GaussianBlur(canvas, (0, 0), max(rad * 0.13, 0.8))
+        ghost = cv2.resize(canvas, (W, H), interpolation=cv2.INTER_LINEAR)
+        alpha = ag * 0.30 * self._ghost_s
+        for ci, wc in enumerate((0.55, 0.92, 0.75)):  # coating-green reflection
+            fc = frame[..., ci]
+            fc += ghost * (alpha * wc) * (1.0 - fc)
+        return frame
 
 
 @register
@@ -168,6 +266,12 @@ class ExposureAuto(Effect):
               desc="Luma noise added proportionally as AGC gain rises."),
         Param("wb_amount", "WB Drift", "float", 0.3, 0.0, 1.0, iscale=True, group="Exposure",
               desc="Auto white balance wandering warm/cool."),
+        Param("flicker_60hz", "Mains Beat", "float", 0.0, 0.0, 1.0, iscale=True, group="Exposure",
+              desc="Fluorescent/mains beat: a fast, shallow luma ripple from the shutter beating against "
+                   "50/60 Hz lighting — the indoor-camcorder shimmer."),
+        Param("iris_step", "Stepped Iris", "float", 0.0, 0.0, 1.0, group="Exposure",
+              desc="Auto-iris moves in discrete clicks instead of gliding: exposure corrections land as "
+                   "small visible steps."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -176,6 +280,14 @@ class ExposureAuto(Effect):
         self._init = False
         self._wb = ctx.noise.smooth(f"{self.key}:wb", 0.06)
         self._wb2 = ctx.noise.smooth(f"{self.key}:wb2", 0.045)
+        self._beat = None
+        if self.v["flicker_60hz"] > 0:
+            fps = max(ctx.fps, 1.0)
+            hz = 9.0 + 2.8 * ctx.noise.smooth(f"{self.key}:beathz", 0.06)  # aliased beat wanders
+            ph = np.cumsum(2 * np.pi * hz / fps)
+            depth = 0.55 + 0.45 * ctx.noise.smooth(f"{self.key}:beatd", 0.16)
+            self._beat = (np.sin(ph) * depth).astype(np.float32)
+        self._iris_q: float | None = None
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         H, W = frame.shape[:2]
@@ -190,10 +302,22 @@ class ExposureAuto(Effect):
         acc = wn * wn * (desired - self._g) - 2.0 * zeta * wn * self._vel
         self._vel += acc * dt
         self._g += self._vel * dt
-        gain = float(np.exp(np.clip(self._g, np.log(0.2), np.log(maxb * 1.25))))
+        g_applied = self._g
+        step = self.v["iris_step"]
+        if step > 0:
+            # quantize the applied gain: the servo still glides, the iris clicks
+            q = 0.046 + 0.231 * step  # ≈1/15 .. 0.4 stop per click
+            if self._iris_q is None or abs(self._g - self._iris_q) > 0.62 * q:
+                self._iris_q = round(self._g / q) * q
+            g_applied = self._iris_q
+        gain = float(np.exp(np.clip(g_applied, np.log(0.2), np.log(maxb * 1.25))))
         frame *= gain
         if gain > 1.02:
             frame = color.soft_clip_highlights(frame, 0.90)
+
+        if self._beat is not None:
+            b = float(self._beat[min(ctx.fi_src, len(self._beat) - 1)])
+            frame *= np.float32(1.0 + self.v["flicker_60hz"] * 0.034 * b)
 
         agc = self.v["agc_gain_noise"]
         if agc > 0 and gain > 1.05:
