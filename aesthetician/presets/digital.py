@@ -54,7 +54,7 @@ register_preset(Preset(
     desc="240 lines of dial-up dreams: real FLV/Sorenson-era encoding, double-compressed, with 22 kHz mono MP3 audio. Broadcast yourself.",
     tags=("2000s", "flv", "youtube"),
     video=[
-        ("codec_era", {"codec": "flv1", "kbps": 320, "res": "240p", "passes": 2}),
+        ("codec_era", {"codec": "flv1", "kbps": 240, "res": "240p", "passes": 2}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
