@@ -8,6 +8,7 @@
 </head>
 <body>
   <div id="titlebar"><span class="brand">AESTHETICIAN</span><span id="file-chip" class="hidden"></span></div>
+  <div id="tab-bar" class="hidden"></div>
 
   <div id="drop-screen">
     <div class="drop-inner" id="drop-zone">
@@ -18,6 +19,7 @@
       </svg>
       <h1>Drop a clip</h1>
       <p>Drag a video here to start applying archival aesthetics<br/><span class="dim">MP4 · MOV · anything ffmpeg reads</span></p>
+      <button id="btn-drop-cancel" class="hidden">← back to what I was working on</button>
       <div id="env-warning" class="hidden"></div>
     </div>
   </div>
@@ -55,6 +57,12 @@
       <div id="export-bar">
         <div id="export-status" class="dim">Ready.</div>
         <div class="grow"></div>
+        <div id="cache-row" class="dim">
+          <span class="cache-label">Preview cache</span>
+          <span id="cache-size">—</span>
+          <button id="btn-cache-clear" class="link-btn" title="Delete every cached preview render. They are only rebuilt when you need them again.">Clear</button>
+          <button id="btn-cache-reveal" class="link-btn" title="Open the cache folder">Reveal</button>
+        </div>
         <label class="check dim"><input type="checkbox" id="exp-video-only"/> video only</label>
         <label class="check dim"><input type="checkbox" id="exp-audio-only"/> audio only</label>
         <button id="btn-export" class="accent big">Export Full Video</button>

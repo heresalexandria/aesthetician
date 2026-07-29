@@ -4,27 +4,45 @@
 
 const $ = (id) => document.getElementById(id);
 
-const state = {
+/* App-wide state. Per-video state lives in G.sessions; `state` always points at
+   the active session, so every existing state.* reference keeps working. */
+const G = {
   schema: null,
-  file: null,          // {path, width, height, fps, duration, has_audio}
-  presetId: null,
-  variant: null,
-  sets: {},            // "effectKey.param" -> value (user overrides)
-  seed: 1,
-  intensity: 1.0,
-  texture: 1.0,
-  previewT: 0,
-  duration: 3.0,
-  scale: 0.5,
-  autoPreview: true,
-  muted: true,
+  thumbs: {},          // presetId -> {poster, anim|null}
+  collapsed: new Set(),
+  sessions: [],
+  activeId: null,
+  seq: 0,
   jobCounter: 0,
   activeJob: null,
   exportJob: null,
-  originalSrc: null,
-  treatedSrc: null,
-  thumbs: {},          // presetId -> {poster, anim|null}  (absolute paths)
+  duration: 3.0,       // preview length
+  scale: 0.5,          // preview scale
+  autoPreview: true,
+  muted: true,
 };
+
+function newSession(info) {
+  return {
+    id: `s${++G.seq}`,
+    file: info,
+    presetId: null,
+    variant: null,
+    sets: {},
+    seed: 1 + Math.floor(Math.random() * 99999),
+    intensity: 1.0,
+    texture: 1.0,
+    previewT: Math.max((info.duration - G.duration) / 2, 0),
+    treatedSrc: null,
+    originalSrc: null,
+    originalT: null,
+  };
+}
+
+/* The active session, or a blank stand-in before the first video is loaded so
+   early reads never explode. */
+let state = newSession({ path: '', duration: 0, width: 0, height: 0 });
+G.sessions = [];
 
 const videoA = $('video-a'); // treated
 const videoB = $('video-b'); // original
@@ -37,14 +55,13 @@ const videoB = $('video-b'); // original
     w.classList.remove('hidden');
     w.textContent = env.problems.join('\n\n');
   }
-  state.seed = 1 + Math.floor(Math.random() * 99999);
   try {
-    state.thumbs = (await window.aesth.thumbs()).thumbs || {};
+    G.thumbs = (await window.aesth.thumbs()).thumbs || {};
   } catch (_) {
-    state.thumbs = {}; // thumbs are optional: rows fall back to a placeholder
+    G.thumbs = {}; // thumbs are optional: rows fall back to a placeholder
   }
   try {
-    state.schema = await window.aesth.schema();
+    G.schema = await window.aesth.schema();
     buildPresetList();
   } catch (err) {
     const w = $('env-warning');
@@ -54,7 +71,9 @@ const videoB = $('video-b'); // original
   window.aesth.onProgress(onProgress);
   wireDrop();
   wireControls();
-  if (state.schema) console.log('aesth:renderer-ready');
+  renderTabs();
+  refreshCacheInfo();
+  if (G.schema) console.log('aesth:renderer-ready');
 })();
 
 // ── drag & drop ─────────────────────────────────────────────────────
@@ -77,22 +96,261 @@ function wireDrop() {
 async function loadFile(p) {
   try {
     const info = await window.aesth.probe(p);
-    state.file = info;
-    state.previewT = Math.max((info.duration - state.duration) / 2, 0);
-    $('file-chip').textContent = `${p.split('/').pop()} · ${info.width}×${info.height} · ${info.duration.toFixed(1)}s`;
-    $('file-chip').classList.remove('hidden');
-    $('drop-screen').classList.add('hidden');
-    $('workspace').classList.remove('hidden');
-    const scrub = $('scrub');
-    scrub.max = Math.max(info.duration - state.duration, 0).toFixed(1);
-    scrub.value = state.previewT.toFixed(1);
-    $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
-    state.originalSrc = null; state.treatedSrc = null;
-    if (state.presetId) schedulePreview(true);
+    const sess = newSession(info);
+    G.sessions.push(sess);
+    activateSession(sess.id);
   } catch (err) {
     alert('Could not read that file:\n' + err.message);
   }
 }
+
+// ── sessions (one open video each) ───────────────────────────────────
+function activeSession() {
+  return G.sessions.find((s) => s.id === G.activeId) || null;
+}
+
+function activateSession(id) {
+  const sess = G.sessions.find((s) => s.id === id);
+  if (!sess) return;
+  G.activeId = id;
+  state = sess;
+  G.activeJob = null;              // any in-flight preview belongs to the old tab
+
+  $('drop-screen').classList.add('hidden');
+  $('workspace').classList.remove('hidden');
+  $('file-chip').textContent =
+    `${basename(sess.file.path)} · ${sess.file.width}×${sess.file.height} · ${sess.file.duration.toFixed(1)}s`;
+  $('file-chip').classList.remove('hidden');
+
+  const scrub = $('scrub');
+  scrub.max = Math.max(sess.file.duration - G.duration, 0).toFixed(1);
+  scrub.value = sess.previewT.toFixed(1);
+  $('scrub-label').textContent = `preview at ${sess.previewT.toFixed(1)}s`;
+  $('seed').value = sess.seed;
+  $('intensity').value = sess.intensity;
+  $('intensity-val').textContent = sess.intensity.toFixed(2);
+  $('texture').value = sess.texture;
+  $('texture-val').textContent = sess.texture.toFixed(2);
+
+  renderTabs();
+  buildPresetList();
+  if (sess.presetId) buildParamPane();
+  else {
+    $('preset-title').textContent = '—';
+    $('variant-row').innerHTML = '';
+    $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
+  }
+
+  // Restore this tab's already-rendered preview if it has one; the files live in
+  // the preview cache, so switching back is instant and costs no re-render.
+  if (sess.treatedSrc && sess.originalSrc) {
+    $('player-empty').classList.add('hidden');
+    setVideo(videoA, sess.treatedSrc);
+    setVideo(videoB, sess.originalSrc);
+  } else {
+    videoA.removeAttribute('src'); videoB.removeAttribute('src');
+    videoA.load(); videoB.load();
+    $('player-empty').classList.remove('hidden');
+    $('player-empty').textContent = sess.presetId
+      ? 'Press Preview to render this clip'
+      : 'Pick an aesthetic to render a preview';
+    if (sess.presetId) schedulePreview(true);
+  }
+  setExportStatus('Ready.');
+}
+
+function closeSession(id) {
+  const i = G.sessions.findIndex((s) => s.id === id);
+  if (i < 0) return;
+  G.sessions.splice(i, 1);
+  if (G.activeId !== id) { renderTabs(); return; }
+  const next = G.sessions[i] || G.sessions[i - 1];
+  if (next) {
+    activateSession(next.id);
+  } else {
+    // last tab closed → back to the drop screen
+    G.activeId = null;
+    state = newSession({ path: '', duration: 0, width: 0, height: 0 });
+    G.sessions = [];
+    videoA.removeAttribute('src'); videoB.removeAttribute('src');
+    videoA.load(); videoB.load();
+    $('workspace').classList.add('hidden');
+    $('drop-screen').classList.remove('hidden');
+    $('file-chip').classList.add('hidden');
+    renderTabs();
+  }
+}
+
+/* Show the drop screen without discarding open tabs. */
+function showNewSessionScreen() {
+  G.activeId = null;
+  $('workspace').classList.add('hidden');
+  $('drop-screen').classList.remove('hidden');
+  $('file-chip').classList.add('hidden');
+  renderTabs();
+}
+
+function basename(p) {
+  return (p || '').split('/').pop();
+}
+
+function renderTabs() {
+  const bar = $('tab-bar');
+  bar.innerHTML = '';
+  bar.classList.toggle('hidden', G.sessions.length === 0);
+  document.body.classList.toggle('has-tabs', G.sessions.length > 0);
+  const cancel = $('btn-drop-cancel');
+  cancel.classList.toggle('hidden', !(G.sessions.length && G.activeId === null));
+  for (const sess of G.sessions) {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (sess.id === G.activeId ? ' active' : '');
+    tab.title = `${sess.file.path}\n${sess.presetId ? presetName(sess.presetId) : 'no aesthetic yet'}`;
+
+    const name = document.createElement('span');
+    name.className = 't-name';
+    name.textContent = basename(sess.file.path);
+    tab.appendChild(name);
+
+    if (sess.presetId) {
+      const badge = document.createElement('span');
+      badge.className = 't-preset';
+      badge.textContent = presetName(sess.presetId);
+      tab.appendChild(badge);
+    }
+
+    const x = document.createElement('button');
+    x.className = 't-close';
+    x.textContent = '×';
+    x.title = 'Close this video';
+    x.onclick = (e) => { e.stopPropagation(); closeSession(sess.id); };
+    tab.appendChild(x);
+
+    tab.onclick = () => { if (sess.id !== G.activeId) activateSession(sess.id); };
+    bar.appendChild(tab);
+  }
+  const add = document.createElement('button');
+  add.className = 'tab-add' + (G.activeId === null && G.sessions.length ? ' armed' : '');
+  add.textContent = '+';
+  add.title = 'Open another video';
+  add.onclick = showNewSessionScreen;
+  bar.appendChild(add);
+}
+
+function presetName(pid) {
+  return (G.schema && G.schema.presets[pid] && G.schema.presets[pid].name) || pid;
+}
+
+// ── preview cache ───────────────────────────────────────────────────
+function fmtBytes(n) {
+  if (!n) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), u.length - 1);
+  return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`;
+}
+
+async function refreshCacheInfo() {
+  try {
+    const info = await window.aesth.cacheInfo();
+    G.cacheDir = info.dir;
+    $('cache-size').textContent = `${fmtBytes(info.bytes)} · ${info.count} preview${info.count === 1 ? '' : 's'}`;
+    $('cache-row').title = `Preview cache: ${info.dir}`;
+  } catch (_) {
+    $('cache-size').textContent = 'unavailable';
+  }
+}
+
+// ── hover tooltips ──────────────────────────────────────────────────
+/* Every parameter already carries a written description in the schema; this
+   surfaces it on hover (with range, default and the --set path) instead of
+   relying on the OS tooltip, which is slow and unstyled. */
+let tipEl = null;
+let tipTimer = null;
+
+function tipNode() {
+  if (!tipEl) {
+    tipEl = document.createElement('div');
+    tipEl.id = 'tip';
+    document.body.appendChild(tipEl);
+  }
+  return tipEl;
+}
+
+function hideTip() {
+  clearTimeout(tipTimer);
+  if (tipEl) tipEl.classList.remove('show');
+}
+
+function showTipAt(anchor, { title, desc, facts = [], path = '' }) {
+  const el = tipNode();
+  el.innerHTML = '';
+  const h = document.createElement('div');
+  h.className = 'tip-title';
+  h.textContent = title;
+  el.appendChild(h);
+  if (desc) {
+    const d = document.createElement('div');
+    d.className = 'tip-desc';
+    d.textContent = desc;
+    el.appendChild(d);
+  }
+  if (facts.length) {
+    const f = document.createElement('div');
+    f.className = 'tip-facts';
+    for (const t of facts) {
+      const sp = document.createElement('span');
+      sp.textContent = t;
+      f.appendChild(sp);
+    }
+    el.appendChild(f);
+  }
+  if (path) {
+    const pth = document.createElement('div');
+    pth.className = 'tip-path';
+    pth.textContent = `--set ${path}=…`;
+    el.appendChild(pth);
+  }
+  el.classList.add('show');
+  // place to the left of the (right-hand) panel, clamped to the viewport
+  const r = anchor.getBoundingClientRect();
+  const tr = el.getBoundingClientRect();
+  let left = r.left - tr.width - 12;
+  if (left < 8) left = Math.min(r.right + 12, window.innerWidth - tr.width - 8);
+  let top = r.top + r.height / 2 - tr.height / 2;
+  top = Math.max(8, Math.min(top, window.innerHeight - tr.height - 8));
+  el.style.left = `${Math.round(left)}px`;
+  el.style.top = `${Math.round(top)}px`;
+}
+
+/* attach(el, () => payload) — payload is built lazily on hover */
+function attachTip(el, build) {
+  el.addEventListener('mouseenter', () => {
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => showTipAt(el, build()), 260);
+  });
+  el.addEventListener('mouseleave', hideTip);
+  el.addEventListener('mousedown', hideTip);
+}
+
+function paramTip(path, prm, baseVal) {
+  const facts = [];
+  if (prm.kind === 'float' || prm.kind === 'int') {
+    facts.push(`range ${prm.lo} – ${prm.hi}${prm.unit ? ' ' + prm.unit : ''}`);
+  } else if (prm.kind === 'enum') {
+    facts.push(`${prm.choices.length} options`);
+  }
+  facts.push(`preset value ${baseVal}`);
+  if (String(prm.default) !== String(baseVal)) facts.push(`effect default ${prm.default}`);
+  if (prm.iscale) facts.push('follows Intensity');
+  if (NOISE_HINT.has(path.split('.').pop()) ) facts.push('follows Texture');
+  return { title: prm.label, desc: prm.desc || '', facts, path };
+}
+
+/* Params the master Texture dial scales (mirrors engine/texture.py). Used only
+   to annotate tooltips. */
+const NOISE_HINT = new Set(['amount', 'luma_noise', 'chroma_noise', 'fm_sparkle',
+  'azimuth_error', 'phase_noise', 'snow', 'impulse_noise', 'noise_floor',
+  'retrace_lines', 'moire_cam', 'agc_gain_noise', 'density', 'toner', 'grain_ink',
+  'intermittent', 'mottle']);
 
 // ── preset list ─────────────────────────────────────────────────────
 const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -169,7 +427,7 @@ function armHoverAnim(card, holder, animPath) {
 function thumbFor(p) {
   const holder = document.createElement('div');
   holder.className = 'p-thumb';
-  const t = state.thumbs[p.id];
+  const t = G.thumbs[p.id];
   if (t && t.poster) {
     const img = document.createElement('img');
     img.className = 't-poster';
@@ -226,7 +484,7 @@ function presetCard(p) {
   }
   card.appendChild(text);
 
-  const t = state.thumbs[p.id];
+  const t = G.thumbs[p.id];
   if (t && t.anim && !isAudioOnly(p)) armHoverAnim(card, holder, t.anim);
   card.onclick = () => selectPreset(p.id);
   return card;
@@ -236,10 +494,9 @@ function buildPresetList() {
   const list = $('preset-list');
   stopHoverAnim(); // the row that owned it is about to be discarded
   list.innerHTML = '';
-  const presets = Object.values(state.schema.presets)
+  const presets = Object.values(G.schema.presets)
     .sort((a, b) => (famRank(a.family) - famRank(b.family)) || a.id.localeCompare(b.id));
   const q = ($('preset-search').value || '').toLowerCase();
-  state.collapsed = state.collapsed || new Set();
   let family = null;
   let familyBody = null;
   for (const p of presets) {
@@ -250,12 +507,12 @@ function buildPresetList() {
       const count = presets.filter((x) => x.family === family).length;
       const fl = document.createElement('div');
       fl.className = 'family-label clickable';
-      const isCollapsed = !q && state.collapsed.has(family);
+      const isCollapsed = !q && G.collapsed.has(family);
       fl.innerHTML = `<span class="chev">${isCollapsed ? '▸' : '▾'}</span> ${family.toUpperCase()} <span class="count">${count}</span>`;
       const fam = family;
       fl.onclick = () => {
-        if (state.collapsed.has(fam)) state.collapsed.delete(fam);
-        else state.collapsed.add(fam);
+        if (G.collapsed.has(fam)) G.collapsed.delete(fam);
+        else G.collapsed.add(fam);
         buildPresetList();
       };
       list.appendChild(fl);
@@ -273,6 +530,7 @@ function selectPreset(pid) {
   state.variant = null;
   state.sets = {};
   buildPresetList();
+  renderTabs();          // the tab shows which aesthetic the clip is wearing
   buildParamPane();
   schedulePreview(true);
 }
@@ -288,13 +546,13 @@ function chainWithKeys(chain) {
 
 function variantOverrides() {
   if (!state.variant) return {};
-  const p = state.schema.presets[state.presetId];
+  const p = G.schema.presets[state.presetId];
   const v = p.variants.find((x) => x.id === state.variant);
   return v ? { ...v.video, ...v.audio } : {};
 }
 
 function buildParamPane() {
-  const p = state.schema.presets[state.presetId];
+  const p = G.schema.presets[state.presetId];
   $('preset-title').textContent = p.name;
   $('preset-title').title = p.desc;
 
@@ -333,13 +591,19 @@ function buildParamPane() {
 }
 
 function effectCard({ eid, key, params }, variantOv) {
-  const eff = state.schema.effects[eid];
+  const eff = G.schema.effects[eid];
   const card = document.createElement('div');
   card.className = 'effect-card';
   const head = document.createElement('div');
   head.className = 'effect-head';
   head.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`;
-  head.title = eff.desc;
+  attachTip(head, () => ({
+    title: eff.label,
+    desc: eff.desc || '',
+    facts: [`${eff.params.length} parameter${eff.params.length === 1 ? '' : 's'}`,
+            eff.kind === 'filepass' ? 'real codec pass' : eff.kind],
+    path: `${key}.<param>`,
+  }));
   head.onclick = () => card.classList.toggle('open');
   card.appendChild(head);
   const body = document.createElement('div');
@@ -368,8 +632,8 @@ function paramRow(path, prm, baseVal, curVal) {
   row.className = 'prow' + (path in state.sets ? ' overridden' : '');
   const label = document.createElement('label');
   label.textContent = prm.label;
-  label.title = `${path}\n${prm.desc || ''}${prm.unit ? `\nUnit: ${prm.unit}` : ''}`;
   row.appendChild(label);
+  attachTip(row, () => paramTip(path, prm, baseVal));
 
   const commit = (val) => {
     if (val === baseVal || String(val) === String(baseVal)) delete state.sets[path];
@@ -436,15 +700,15 @@ function fmtVal(v, prm) {
 let previewTimer = null;
 function schedulePreview(immediate = false) {
   if (!state.file || !state.presetId) return;
-  if (!state.autoPreview && !immediate) return;
+  if (!G.autoPreview && !immediate) return;
   clearTimeout(previewTimer);
   previewTimer = setTimeout(runPreview, immediate ? 40 : 550);
 }
 
 async function runPreview() {
   if (!state.file || !state.presetId) return;
-  const jobId = `job${++state.jobCounter}`;
-  state.activeJob = jobId;
+  const jobId = `job${++G.jobCounter}`;
+  G.activeJob = jobId;
   showRenderOverlay(true, 'rendering preview…', 0);
   const req = {
     jobId,
@@ -456,8 +720,8 @@ async function runPreview() {
     intensity: state.intensity,
     texture: state.texture,
     start: state.previewT,
-    duration: state.duration,
-    scale: state.scale,
+    duration: G.duration,
+    scale: G.scale,
     crf: 19,
     videoOnly: $('exp-video-only').checked,
     audioOnly: $('exp-audio-only').checked,
@@ -467,9 +731,9 @@ async function runPreview() {
       window.aesth.preview(req),
       state.originalSrc && state.originalT === state.previewT
         ? Promise.resolve({ output: state.originalSrc })
-        : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: state.duration, scale: state.scale }),
+        : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale }),
     ]);
-    if (state.activeJob !== jobId) return; // superseded
+    if (G.activeJob !== jobId) return; // superseded
     state.treatedSrc = treated.output;
     state.originalSrc = original.output;
     state.originalT = state.previewT;
@@ -480,7 +744,8 @@ async function runPreview() {
     if (String(err.message || '').includes('superseded')) return;
     setExportStatus(`Preview failed: ${err.message.slice(0, 300)}`, true);
   } finally {
-    if (state.activeJob === jobId) showRenderOverlay(false);
+    if (G.activeJob === jobId) showRenderOverlay(false);
+    refreshCacheInfo();
   }
 }
 
@@ -490,7 +755,7 @@ function setVideo(el, src) {
   el.load();
   el.onloadeddata = () => {
     try { el.currentTime = Math.min(t, el.duration - 0.05) || 0; } catch (_) {}
-    el.muted = el === videoB ? true : state.muted;
+    el.muted = el === videoB ? true : G.muted;
     el.play().catch(() => {});
   };
 }
@@ -501,9 +766,9 @@ function showRenderOverlay(show, phase = '', frac = 0) {
 }
 
 function onProgress(msg) {
-  if (msg.jobId === state.activeJob) {
+  if (msg.jobId === G.activeJob) {
     showRenderOverlay(true, `${msg.phase} ${(msg.progress * 100).toFixed(0)}%`, msg.progress);
-  } else if (msg.jobId === state.exportJob) {
+  } else if (msg.jobId === G.exportJob) {
     setExportStatus(`Exporting… ${msg.phase} ${(msg.progress * 100).toFixed(0)}%`);
     $('btn-export').textContent = `Exporting ${(msg.progress * 100).toFixed(0)}%`;
   }
@@ -520,24 +785,24 @@ function wireControls() {
   });
   scrub.addEventListener('change', () => schedulePreview());
 
-  $('auto-preview').addEventListener('change', (e) => { state.autoPreview = e.target.checked; });
+  $('auto-preview').addEventListener('change', (e) => { G.autoPreview = e.target.checked; });
   $('btn-render').addEventListener('click', () => { clearTimeout(previewTimer); runPreview(); });
 
   const ab = $('btn-ab');
   const showOriginal = (on) => {
     videoA.style.opacity = on ? '0' : '1';
     $('ab-badge').classList.toggle('hidden', !on);
-    if (on) { videoB.currentTime = videoA.currentTime; videoB.muted = state.muted; videoA.muted = true; }
-    else { videoA.muted = state.muted; videoB.muted = true; }
+    if (on) { videoB.currentTime = videoA.currentTime; videoB.muted = G.muted; videoA.muted = true; }
+    else { videoA.muted = G.muted; videoB.muted = true; }
   };
   ab.addEventListener('mousedown', () => showOriginal(true));
   ab.addEventListener('mouseup', () => showOriginal(false));
   ab.addEventListener('mouseleave', () => showOriginal(false));
 
   $('btn-mute').addEventListener('click', () => {
-    state.muted = !state.muted;
-    videoA.muted = state.muted;
-    $('btn-mute').textContent = state.muted ? '🔇' : '🔊';
+    G.muted = !G.muted;
+    videoA.muted = G.muted;
+    $('btn-mute').textContent = G.muted ? '🔇' : '🔊';
   });
 
   $('intensity').addEventListener('input', (e) => {
@@ -555,8 +820,7 @@ function wireControls() {
   $('seed').value = state.seed;
   $('seed').addEventListener('change', (e) => { state.seed = parseInt(e.target.value || '1', 10); schedulePreview(); });
   $('btn-dice').addEventListener('click', () => {
-    state.seed = 1 + Math.floor(Math.random() * 99999);
-    $('seed').value = state.seed;
+      $('seed').value = state.seed;
     schedulePreview();
   });
 
@@ -570,6 +834,49 @@ function wireControls() {
   });
 
   $('btn-export').addEventListener('click', doExport);
+
+  $('btn-drop-cancel').addEventListener('click', () => {
+    const last = G.sessions[G.sessions.length - 1];
+    if (last) activateSession(last.id);
+  });
+
+  $('btn-cache-clear').addEventListener('click', async () => {
+    const btn = $('btn-cache-clear');
+    btn.disabled = true;
+    try {
+      const r = await window.aesth.cacheClear();
+      // the open tabs' cached previews are gone; keep params, drop the players
+      for (const sess of G.sessions) { sess.treatedSrc = null; sess.originalSrc = null; sess.originalT = null; }
+      videoA.removeAttribute('src'); videoB.removeAttribute('src');
+      videoA.load(); videoB.load();
+      $('player-empty').classList.remove('hidden');
+      $('player-empty').textContent = 'Cache cleared — press Preview to render again';
+      setExportStatus(`Cleared ${r.removed} cached preview${r.removed === 1 ? '' : 's'} (${fmtBytes(r.bytes)}).`);
+      await refreshCacheInfo();
+    } catch (err) {
+      setExportStatus(`Could not clear cache: ${err.message.slice(0, 200)}`, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('btn-cache-reveal').addEventListener('click', () => window.aesth.cacheReveal());
+
+  attachTip($('intensity').previousElementSibling, () => ({
+    title: 'Intensity',
+    desc: 'Master strength for everything the preset does to the picture and sound — damage, warping, glow, colour treatment. 0 leaves the clip almost untouched, 2 doubles the authored amounts.',
+    facts: ['range 0 – 2', 'applies to the whole chain'],
+  }));
+  attachTip($('texture').previousElementSibling, () => ({
+    title: 'Texture',
+    desc: 'Master amount for grain, tape noise, RF snow, dust and speckle only. Drag to 0 for a perfectly clean version of the look; decay content like mould or water staining is left alone.',
+    facts: ['range 0 – 2', 'grain and noise only'],
+  }));
+  attachTip($('cache-row'), () => ({
+    title: 'Preview cache',
+    desc: 'Every preview render is kept on disk, keyed by its exact parameters, so returning to earlier settings is instant. It is safe to clear at any time — you only pay the re-render.',
+    facts: [G.cacheDir || 'location unavailable'],
+  }));
 }
 
 async function doExport() {
@@ -579,8 +886,8 @@ async function doExport() {
   const suggestion = `${base}.${state.presetId.replace('/', '-')}${variantTag}.mp4`;
   const out = await window.aesth.pickExportPath(suggestion);
   if (!out) return;
-  const jobId = `job${++state.jobCounter}`;
-  state.exportJob = jobId;
+  const jobId = `job${++G.jobCounter}`;
+  G.exportJob = jobId;
   $('btn-export').disabled = true;
   setExportStatus('Exporting…');
   try {
@@ -604,7 +911,7 @@ async function doExport() {
   } catch (err) {
     setExportStatus(`Export failed: ${err.message.slice(0, 300)}`, true);
   } finally {
-    state.exportJob = null;
+    G.exportJob = null;
     $('btn-export').disabled = false;
     $('btn-export').textContent = 'Export Full Video';
   }
