@@ -21,7 +21,9 @@ class PlateOverlay(Effect):
     desc = "Blends organic overlay plates (dust, leaks, burns, grime, paper, tape damage) with era-correct motion: cycling, jitter, drift and flicker."
     PARAMS = (
         Param("pack", "Plate Pack", "enum", "film_dust",
-              choices=("film_dust", "light_leaks", "film_burns", "grime", "paper_textures", "tape_creases"),
+              choices=("film_dust", "light_leaks", "film_burns", "grime", "paper_textures", "tape_creases",
+                       "water_stains", "mold", "emulsion_decay", "copier_streaks", "glass_glare",
+                       "lens_dirt", "screen_textures", "static_discharge"),
               desc="Which asset pack to draw from."),
         Param("opacity", "Opacity", "float", 0.5, 0.0, 1.0, iscale=True, group="Blend"),
         Param("blend", "Blend Mode", "enum", "screen", choices=("screen", "add", "multiply", "overlay"),

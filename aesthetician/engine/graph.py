@@ -10,7 +10,7 @@ import numpy as np
 
 from .rng import TemporalNoise, stream
 
-ParamKind = Literal["float", "int", "bool", "enum"]
+ParamKind = Literal["float", "int", "bool", "enum", "str"]
 
 # Effect kinds:
 #   frame          — pure per-frame video transform (streamed)
@@ -51,6 +51,8 @@ class Param:
             if v not in self.choices:
                 raise ValueError(f"invalid choice {v!r} for {self.name}; options: {', '.join(self.choices)}")
             return v
+        if self.kind == "str":
+            return str(value)
         raise ValueError(f"unknown param kind {self.kind}")
 
 

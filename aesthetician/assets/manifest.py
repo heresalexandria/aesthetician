@@ -95,6 +95,94 @@ PACKS: dict[str, Pack] = {
             "VHS dropout overlay plate: pure black background with sparse bright horizontal dashes and comet-tail streaks of white static at varying lengths, photoreal analog video damage",
         ),
     ),
+    "water_stains": Pack(
+        name="water_stains",
+        desc="Water damage tide marks on white — multiply-blended",
+        count=6,
+        size="1024x1536",
+        mode="multiply",
+        prompts=(
+            "Pure white background with large light-brown water stain tide marks: irregular organic rings with darker edges, like water-damaged archival paper or film, photoreal scan, no text",
+            "White background, faint sepia water damage blotches with pronounced darker rim lines and pale centers, organic irregular shapes reaching in from one corner, archival damage scan",
+        ),
+    ),
+    "mold": Pack(
+        name="mold",
+        desc="Mold and fungus growth on white — multiply-blended",
+        count=6,
+        size="1024x1536",
+        mode="multiply",
+        prompts=(
+            "Pure white background with scattered dark olive-brown mold spots: clustered organic dots with fuzzy halos, some joining into patches, like mold on archival film, photoreal, no text",
+            "White background with delicate branching gray-green mildew colonies radiating from the edges, fine organic filament texture, archival decay reference, no text",
+        ),
+    ),
+    "emulsion_decay": Pack(
+        name="emulsion_decay",
+        desc="Bubbling emulsion / nitrate decay cellular texture on black",
+        count=6,
+        size="1536x1024",
+        mode="screen",
+        prompts=(
+            "Pure black background with amber-honey colored bubbling cellular texture patches: organic rounded blisters with glowing rims, like decaying nitrate film emulsion, photoreal macro, no text",
+            "Black background with mottled golden-brown chemical decay islands: crackled dried-liquid texture with bright edges and dark centers, film decomposition macro, no text",
+        ),
+    ),
+    "copier_streaks": Pack(
+        name="copier_streaks",
+        desc="Photocopier toner streaks on white — multiply-blended",
+        count=4,
+        size="1024x1536",
+        mode="multiply",
+        prompts=(
+            "Pure white background with faint vertical gray toner streaks and bands of photocopier roller marks, sparse speckles of toner dust, subtle, photoreal xerox artifact scan, no text",
+            "White background with light vertical banding and scattered toner specks like a tired photocopier, very subtle grays, no text",
+        ),
+    ),
+    "glass_glare": Pack(
+        name="glass_glare",
+        desc="Window/room reflections on black — screen-blended over CRT glass",
+        count=6,
+        size="1536x1024",
+        mode="screen",
+        prompts=(
+            "Pure black background with a faint soft gray window reflection: a subtle bright parallelogram with dimmer pane divisions, very low contrast, like a room reflected in a turned-on CRT television screen, no text",
+            "Black background with soft dim reflections of a living room lamp glow and a curtained window, extremely subtle gray shapes, glass reflection plate, no text",
+        ),
+    ),
+    "lens_dirt": Pack(
+        name="lens_dirt",
+        desc="Lens dust, smudges and fingerprints on black — screen-blended",
+        count=6,
+        size="1536x1024",
+        mode="screen",
+        prompts=(
+            "Pure black background with faint gray fingerprint smudges and scattered soft dust bokeh circles of varying sizes, subtle lens contamination plate, photoreal, no text",
+            "Black background with dim greasy smear arcs and a few soft out-of-focus dust discs, projector lens dirt overlay, low contrast, no text",
+        ),
+    ),
+    "screen_textures": Pack(
+        name="screen_textures",
+        desc="Projection screen / glass-bead surface macro (neutral gray) — overlay-blended",
+        count=4,
+        size="1024x1536",
+        mode="gray",
+        prompts=(
+            "Flat even macro scan of a glass-beaded projection screen surface: neutral mid-gray with fine sparkling bead texture, uniform illumination, no vignette, no text",
+            "Neutral gray macro of woven matte projection screen fabric, extremely fine regular weave texture, flat even lighting, no text",
+        ),
+    ),
+    "static_discharge": Pack(
+        name="static_discharge",
+        desc="Static electricity discharge branches on black — screen-blended",
+        count=6,
+        size="1024x1536",
+        mode="screen",
+        prompts=(
+            "Pure black background with thin white branching electrostatic discharge streaks: delicate lightning-like tendrils radiating from one edge, sharp fine lines with slight glow, photoreal film static discharge, no text",
+            "Black background, a few fine white jagged electric discharge branches with tiny side twigs, like static marks on undeveloped film, high contrast, no text",
+        ),
+    ),
 }
 
 

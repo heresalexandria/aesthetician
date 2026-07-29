@@ -254,6 +254,13 @@ function paramRow(path, prm, baseVal, curVal) {
     }
     sel.onchange = () => commit(sel.value);
     row.appendChild(sel);
+  } else if (prm.kind === 'str') {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = String(curVal);
+    inp.spellcheck = false;
+    inp.onchange = () => commit(inp.value);
+    row.appendChild(inp);
   }
 
   const reset = document.createElement('button');
