@@ -107,7 +107,7 @@ register_preset(Preset(
         ("tone", {"contrast": 1.09, "lift": 0.045, "knee": 0.82}),
         ("balance", {"warmth": 0.18, "shadow_tint": "brown", "shadow_amt": 0.3}),
         ("optics", {"soft_focus": 0.2, "corner_softness": 0.2}),
-        ("grain", {"amount": 0.33, "size": 2.6, "chroma_grain": 0.4, "stock": "doc_16"}),
+        ("grain", {"amount": 0.33, "size": 2.6, "chroma_grain": 0.18, "stock": "doc_16"}),
         ("halation", {"strength": 0.22, "tint": "orange"}),
         ("gate_weave", {"amount": 1.4}),
         ("flicker", {"amount": 0.16}),
