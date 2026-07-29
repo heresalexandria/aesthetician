@@ -10,8 +10,9 @@ from typing import Iterator, Optional
 
 import numpy as np
 
-FFMPEG = "ffmpeg"
-FFPROBE = "ffprobe"
+# Packaged builds ship their own static binaries and point these at them.
+FFMPEG = os.environ.get("AESTHETICIAN_FFMPEG") or "ffmpeg"
+FFPROBE = os.environ.get("AESTHETICIAN_FFPROBE") or "ffprobe"
 
 
 class MediaError(RuntimeError):

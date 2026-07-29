@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('aesth', {
   cancelExport: (jobId) => ipcRenderer.invoke('aesth:cancel-export', jobId),
   reveal: (file) => ipcRenderer.invoke('aesth:reveal', file),
   thumbs: () => ipcRenderer.invoke('aesth:thumbs'),
+  cacheInfo: () => ipcRenderer.invoke('aesth:cache-info'),
+  cacheClear: () => ipcRenderer.invoke('aesth:cache-clear'),
+  cacheReveal: () => ipcRenderer.invoke('aesth:cache-reveal'),
   onProgress: (cb) => {
     const listener = (_e, msg) => cb(msg);
     ipcRenderer.on('aesth:progress', listener);

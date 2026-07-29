@@ -7,9 +7,45 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const PYTHON = process.env.AESTHETICIAN_PYTHON || path.join(REPO_ROOT, '.venv', 'bin', 'python');
+
+/* ── runtime resolution ──────────────────────────────────────────────────
+   Dev runs against the repo's .venv and whatever ffmpeg is on PATH. A packaged
+   build ships a relocatable Python runtime, static ffmpeg binaries and the
+   asset packs under Resources/, so every path is resolved relative to that.
+   Either can be overridden by environment variable.                        */
+const PACKAGED = app.isPackaged;
+const RES = PACKAGED ? process.resourcesPath : REPO_ROOT;
+const EXE = process.platform === 'win32' ? '.exe' : '';
+
+function bundled(...parts) {
+  return path.join(RES, ...parts);
+}
+
+const PYTHON = process.env.AESTHETICIAN_PYTHON || (PACKAGED
+  ? bundled('pyruntime', process.platform === 'win32' ? 'python.exe' : path.join('bin', 'python3'))
+  : path.join(REPO_ROOT, '.venv', 'bin', 'python'));
+
+const ASSETS_DIR = process.env.AESTHETICIAN_ASSETS || bundled('assets');
+const THUMBS_DIR = path.join(ASSETS_DIR, 'thumbs');
+const FFMPEG = process.env.AESTHETICIAN_FFMPEG
+  || (PACKAGED ? bundled('bin', `ffmpeg${EXE}`) : 'ffmpeg');
+const FFPROBE = process.env.AESTHETICIAN_FFPROBE
+  || (PACKAGED ? bundled('bin', `ffprobe${EXE}`) : 'ffprobe');
+
+/* The engine reads these; child processes inherit them. */
+function childEnv() {
+  const env = { ...process.env, AESTHETICIAN_ASSETS: ASSETS_DIR };
+  if (FFMPEG !== 'ffmpeg') env.AESTHETICIAN_FFMPEG = FFMPEG;
+  if (FFPROBE !== 'ffprobe') env.AESTHETICIAN_FFPROBE = FFPROBE;
+  if (PACKAGED) {
+    const dir = path.dirname(FFMPEG);
+    env.PATH = `${dir}${path.delimiter}${env.PATH || ''}`;
+  }
+  return env;
+}
+
+const CHILD_OPTS = () => ({ cwd: PACKAGED ? RES : REPO_ROOT, env: childEnv() });
 const CACHE_DIR = path.join(app.getPath('userData'), 'preview-cache');
-const THUMBS_DIR = path.join(REPO_ROOT, 'assets', 'thumbs');
 
 let win = null;
 let previewProc = null; // superseded previews get killed
@@ -21,7 +57,7 @@ function ensureCacheDir() {
 
 function runCapture(args, { timeoutMs = 60000 } = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, ['-m', 'aesthetician.cli', ...args], { cwd: REPO_ROOT });
+    const p = spawn(PYTHON, ['-m', 'aesthetician.cli', ...args], CHILD_OPTS());
     let out = '';
     let err = '';
     const t = setTimeout(() => { p.kill('SIGKILL'); reject(new Error('timed out')); }, timeoutMs);
@@ -63,7 +99,7 @@ function cacheKey(req) {
 
 function spawnRender(args, jobId, sender, kind) {
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, args, { cwd: REPO_ROOT });
+    const p = spawn(PYTHON, args, CHILD_OPTS());
     if (kind === 'preview') previewProc = p;
     if (kind === 'export') exportProcs.set(jobId, p);
     let err = '';
@@ -199,6 +235,49 @@ ipcMain.handle('aesth:cancel-export', async (_e, jobId) => {
 });
 
 ipcMain.handle('aesth:reveal', (_e, file) => shell.showItemInFolder(file));
+
+/* ── preview cache ───────────────────────────────────────────────────────
+   Every preview render is kept on disk keyed by its full parameter set, which
+   is what makes flipping back to earlier settings instant. It is disposable:
+   deleting it only costs re-render time.                                    */
+function cacheEntries() {
+  let files = [];
+  try { files = fs.readdirSync(CACHE_DIR); } catch (_) { return []; }
+  const out = [];
+  for (const f of files) {
+    const full = path.join(CACHE_DIR, f);
+    try {
+      const st = fs.statSync(full);
+      if (st.isFile()) out.push({ path: full, bytes: st.size, mtime: st.mtimeMs });
+    } catch (_) { /* vanished mid-scan */ }
+  }
+  return out;
+}
+
+ipcMain.handle('aesth:cache-info', () => {
+  const entries = cacheEntries();
+  return {
+    dir: CACHE_DIR,
+    count: entries.length,
+    bytes: entries.reduce((n, e) => n + e.bytes, 0),
+    newest: entries.reduce((t, e) => Math.max(t, e.mtime), 0) || null,
+  };
+});
+
+ipcMain.handle('aesth:cache-clear', () => {
+  let removed = 0;
+  let bytes = 0;
+  for (const e of cacheEntries()) {
+    try { fs.unlinkSync(e.path); removed++; bytes += e.bytes; } catch (_) { /* in use */ }
+  }
+  return { removed, bytes };
+});
+
+ipcMain.handle('aesth:cache-reveal', () => {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  shell.openPath(CACHE_DIR);
+  return { dir: CACHE_DIR };
+});
 
 // Preset thumbnails (scripts/make_thumbs.py). Returns absolute paths the
 // renderer loads over file://; presets without a rendered thumb are omitted.

@@ -300,5 +300,13 @@ def _render_video(
 
 
 def default_asset_root() -> str:
+    """Where overlay plates and audio beds live.
+
+    Packaged builds install the package into a bundled runtime, so the
+    repo-relative guess is wrong there — they set AESTHETICIAN_ASSETS instead.
+    """
+    env = os.environ.get("AESTHETICIAN_ASSETS")
+    if env:
+        return env
     pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(os.path.dirname(pkg_dir), "assets")
