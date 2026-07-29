@@ -174,7 +174,7 @@ register_preset(Preset(
         ("optics", {"distortion": 0.18, "corner_softness": 0.35}),
         ("cadence", {"pattern": "threes"}),
         ("phosphor_decay", {"decay": 0.35}),
-        ("vhs", {"mode": "ep", "luma_noise": 0.5, "chroma_noise": 0.4, "head_switch": 0.4,
+        ("vhs", {"mode": "ep", "luma_noise": 0.22, "chroma_noise": 0.16, "head_switch": 0.4,
                  "time_base_error": 0.3, "dropouts": 0.5, "sharpen": 0.3}),
         ("interlace", {"combing": 0.5}),
         ("timestamp", {"style": "security_white", "corner": "tl",

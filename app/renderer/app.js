@@ -47,6 +47,7 @@ const videoB = $('video-b'); // original
   window.aesth.onProgress(onProgress);
   wireDrop();
   wireControls();
+  if (state.schema) console.log('aesth:renderer-ready');
 })();
 
 // ── drag & drop ─────────────────────────────────────────────────────

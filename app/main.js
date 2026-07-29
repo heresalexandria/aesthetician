@@ -91,8 +91,11 @@ function spawnRender(args, jobId, sender, kind) {
   });
 }
 
+const SMOKE = process.argv.includes('--smoke');
+
 app.whenReady().then(() => {
   ensureCacheDir();
+  if (SMOKE) runSmoke();
   win = new BrowserWindow({
     width: 1480,
     height: 940,
@@ -115,6 +118,38 @@ app.on('window-all-closed', () => {
   for (const p of exportProcs.values()) p.kill('SIGKILL');
   app.quit();
 });
+
+async function runSmoke() {
+  // `npm start -- --smoke`: boot renderer, check engine wiring, exit 0/1.
+  const deadline = setTimeout(() => { console.error('[smoke] TIMEOUT'); app.exit(1); }, 45000);
+  let rendererReady = false;
+  let rendererErrors = [];
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('console-message', (_ev, level, message) => {
+      if (message.includes('aesth:renderer-ready')) rendererReady = true;
+      if (level >= 3) rendererErrors.push(message);
+    });
+  });
+  try {
+    const schema = JSON.parse(await runCapture(['schema']));
+    const nP = Object.keys(schema.presets).length;
+    const nE = Object.keys(schema.effects).length;
+    console.log(`[smoke] schema ok: ${nE} effects, ${nP} presets`);
+    const waitUntil = Date.now() + 30000;
+    while (!rendererReady && Date.now() < waitUntil) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    clearTimeout(deadline);
+    if (!rendererReady) { console.error('[smoke] renderer never signaled ready'); app.exit(1); return; }
+    if (rendererErrors.length) { console.error('[smoke] renderer errors:', rendererErrors.join(' | ')); app.exit(1); return; }
+    console.log('[smoke] renderer ready, no errors — PASS');
+    app.exit(0);
+  } catch (err) {
+    clearTimeout(deadline);
+    console.error('[smoke] FAIL:', err.message);
+    app.exit(1);
+  }
+}
 
 ipcMain.handle('aesth:schema', async () => JSON.parse(await runCapture(['schema'])));
 ipcMain.handle('aesth:probe', async (_e, file) => JSON.parse(await runCapture(['probe', file])));

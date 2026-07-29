@@ -53,7 +53,7 @@ register_preset(Preset(
         ("tone", {"contrast": 1.04, "lift": 0.035, "knee": 0.82}),
         ("stock", {"profile": "tube_80s", "strength": 0.6}),
         ("ntsc", {"strength": 0.9, "dot_crawl": 0.3, "rainbow": 0.35, "phase_noise": 2.8}),
-        ("vhs", {"mode": "ep", "luma_noise": 0.65, "chroma_noise": 0.7, "head_switch": 0.7,
+        ("vhs", {"mode": "ep", "luma_noise": 0.3, "chroma_noise": 0.28, "head_switch": 0.7,
                  "time_base_error": 0.55, "flagging": 0.35, "dropouts": 0.8, "sharpen": 0.65}),
         ("interlace", {"combing": 0.5}),
         ("crt", {"bloom": 0.3}),
@@ -67,7 +67,7 @@ register_preset(Preset(
     ],
     variants=[
         Variant("slp", "SLP Nightmare", "The 8-hour mode nobody admits to using.",
-                video={"vhs.luma_noise": 0.85, "vhs.chroma_noise": 0.9, "vhs.tracking_error": 0.3},
+                video={"vhs.luma_noise": 0.38, "vhs.chroma_noise": 0.36, "vhs.tracking_error": 0.3},
                 audio={"a_tape_hiss.level_db": -36.0}),
     ],
 ))
@@ -190,7 +190,7 @@ register_preset(Preset(
         ("tone", {"contrast": 1.08, "lift": 0.045, "knee": 0.8}),
         ("stock", {"profile": "tube_80s", "strength": 0.55}),
         ("ntsc", {"strength": 0.9, "phase_noise": 3.2, "rainbow": 0.35, "dot_crawl": 0.3}),
-        ("vhs", {"mode": "sp", "generation": 3, "luma_noise": 0.55, "chroma_noise": 0.65,
+        ("vhs", {"mode": "sp", "generation": 3, "luma_noise": 0.45, "chroma_noise": 0.45,
                  "head_switch": 0.6, "time_base_error": 0.6, "flagging": 0.5, "dropouts": 1.0,
                  "sharpen": 0.7}),
         ("interlace", {"combing": 0.5}),
