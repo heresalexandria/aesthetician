@@ -9,6 +9,7 @@ const path = require('path');
 const REPO_ROOT = path.resolve(__dirname, '..');
 const PYTHON = process.env.AESTHETICIAN_PYTHON || path.join(REPO_ROOT, '.venv', 'bin', 'python');
 const CACHE_DIR = path.join(app.getPath('userData'), 'preview-cache');
+const THUMBS_DIR = path.join(REPO_ROOT, 'assets', 'thumbs');
 
 let win = null;
 let previewProc = null; // superseded previews get killed
@@ -38,7 +39,8 @@ function runCapture(args, { timeoutMs = 60000 } = {}) {
 function renderArgs(req, outputPath) {
   const args = ['-m', 'aesthetician.cli', 'apply', req.input, '-o', outputPath,
     '-p', req.presetId, '--json-progress', '--seed', String(req.seed ?? 1),
-    '--intensity', String(req.intensity ?? 1.0)];
+    '--intensity', String(req.intensity ?? 1.0),
+    '--texture', String(req.texture ?? 1.0)];
   if (req.variant) args.push('--variant', req.variant);
   if (req.videoOnly) args.push('--video-only');
   if (req.audioOnly) args.push('--audio-only');
@@ -197,6 +199,27 @@ ipcMain.handle('aesth:cancel-export', async (_e, jobId) => {
 });
 
 ipcMain.handle('aesth:reveal', (_e, file) => shell.showItemInFolder(file));
+
+// Preset thumbnails (scripts/make_thumbs.py). Returns absolute paths the
+// renderer loads over file://; presets without a rendered thumb are omitted.
+ipcMain.handle('aesth:thumbs', () => {
+  const result = { dir: THUMBS_DIR, thumbs: {} };
+  let files;
+  try { files = fs.readdirSync(THUMBS_DIR); } catch (_) { return result; }
+  const posters = new Map();
+  const anims = new Map();
+  for (const f of files) {
+    const ext = path.extname(f).toLowerCase();
+    const id = f.slice(0, f.length - ext.length);
+    if (!id) continue;
+    if (ext === '.png') posters.set(id, path.join(THUMBS_DIR, f));
+    else if (ext === '.webp' || ext === '.gif') anims.set(id, path.join(THUMBS_DIR, f));
+  }
+  for (const [id, poster] of posters) {
+    result.thumbs[id] = { poster, anim: anims.get(id) || null };
+  }
+  return result;
+});
 
 ipcMain.handle('aesth:check-env', async () => {
   const problems = [];

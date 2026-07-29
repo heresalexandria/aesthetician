@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('aesth', {
   exportRender: (req) => ipcRenderer.invoke('aesth:export', req),
   cancelExport: (jobId) => ipcRenderer.invoke('aesth:cancel-export', jobId),
   reveal: (file) => ipcRenderer.invoke('aesth:reveal', file),
+  thumbs: () => ipcRenderer.invoke('aesth:thumbs'),
   onProgress: (cb) => {
     const listener = (_e, msg) => cb(msg);
     ipcRenderer.on('aesth:progress', listener);

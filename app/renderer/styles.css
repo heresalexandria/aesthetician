@@ -52,7 +52,7 @@ body {
 /* ── workspace layout ─────────────────────── */
 #workspace {
   position: absolute; inset: 38px 0 0 0;
-  display: grid; grid-template-columns: 264px 1fr 316px;
+  display: grid; grid-template-columns: 320px 1fr 316px;
 }
 aside { background: var(--bg2); overflow-y: auto; }
 #preset-pane { border-right: 1px solid var(--line); display: flex; flex-direction: column; }
@@ -82,13 +82,49 @@ aside { background: var(--bg2); overflow-y: auto; }
   font-variant-numeric: tabular-nums;
 }
 .preset-card {
-  padding: 8px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
-  display: flex; flex-direction: column; gap: 1px; margin-bottom: 2px;
+  height: 66px; padding: 7px 9px; border-radius: 9px; cursor: pointer;
+  border: 1px solid transparent; display: flex; align-items: center; gap: 10px;
+  margin-bottom: 3px; contain: layout paint;
 }
 .preset-card:hover { background: var(--bg3); }
 .preset-card.sel { background: var(--bg3); border-color: var(--accent-dim); }
-.preset-card .p-name { font-weight: 600; font-size: 12.5px; }
-.preset-card .p-meta { font-size: 10.5px; color: var(--dim); }
+
+/* thumbnail — 50×50 CSS box fed by a 100px asset (retina-crisp) */
+.p-thumb {
+  position: relative; flex: 0 0 50px; width: 50px; height: 50px;
+  border-radius: 5px; overflow: hidden; background: var(--bg);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.055);
+}
+.p-thumb img {
+  position: absolute; inset: 0; width: 50px; height: 50px;
+  object-fit: cover; display: block; image-rendering: auto;
+}
+.p-thumb .t-anim { z-index: 1; }
+.p-thumb.empty {
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,.028) 0 3px, transparent 3px 6px),
+    var(--bg);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.075);
+}
+.p-thumb.audio img { opacity: .45; filter: saturate(.35); }
+.p-thumb.audio { background: #0a0b0d; }
+.t-badge {
+  position: absolute; z-index: 2; right: 2px; bottom: 2px;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: rgba(8,9,11,.9); color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(224,164,88,.4);
+  font-size: 10.5px; line-height: 15px; text-align: center;
+}
+.preset-card.sel .p-thumb { box-shadow: inset 0 0 0 1px var(--accent-dim); }
+
+.p-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.p-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-card .p-name { font-weight: 600; font-size: 12.5px; line-height: 1.25; }
+.preset-card .p-meta { font-size: 10.5px; color: var(--dim); line-height: 1.25; }
+.preset-card .p-tag {
+  font-size: 10.5px; line-height: 1.3; font-style: italic;
+  color: rgba(232,230,225,.5);
+}
 
 /* ── center ───────────────────────────────── */
 #center-pane { display: flex; flex-direction: column; min-width: 0; }

@@ -41,6 +41,7 @@ renders/
 gallery/
 assets/packs/
 assets/cache/
+assets/thumbs/
 
 # ── Python ──────────────────────────────────────────────
 __pycache__/

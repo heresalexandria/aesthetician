@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file:; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file:; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:;" />
   <title>Aesthetician</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -67,8 +67,10 @@
       </div>
       <div id="variant-row"></div>
       <div class="master-row">
-        <label>Intensity <span id="intensity-val">1.00</span></label>
+        <label title="Overall strength of damage, warping, glow and color treatment">Intensity <span id="intensity-val">1.00</span></label>
         <input id="intensity" type="range" min="0" max="2" step="0.05" value="1"/>
+        <label title="Grain, tape noise, snow, dust and speckle only. 0 renders the look perfectly clean.">Texture <span id="texture-val">1.00</span></label>
+        <input id="texture" type="range" min="0" max="2" step="0.05" value="1"/>
         <div class="seed-row">
           <label>Seed</label>
           <input id="seed" type="number" min="1" max="999999" value="1"/>

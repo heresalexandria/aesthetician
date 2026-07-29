@@ -12,6 +12,7 @@ const state = {
   sets: {},            // "effectKey.param" -> value (user overrides)
   seed: 1,
   intensity: 1.0,
+  texture: 1.0,
   previewT: 0,
   duration: 3.0,
   scale: 0.5,
@@ -22,6 +23,7 @@ const state = {
   exportJob: null,
   originalSrc: null,
   treatedSrc: null,
+  thumbs: {},          // presetId -> {poster, anim|null}  (absolute paths)
 };
 
 const videoA = $('video-a'); // treated
@@ -36,6 +38,11 @@ const videoB = $('video-b'); // original
     w.textContent = env.problems.join('\n\n');
   }
   state.seed = 1 + Math.floor(Math.random() * 99999);
+  try {
+    state.thumbs = (await window.aesth.thumbs()).thumbs || {};
+  } catch (_) {
+    state.thumbs = {}; // thumbs are optional: rows fall back to a placeholder
+  }
   try {
     state.schema = await window.aesth.schema();
     buildPresetList();
@@ -88,17 +95,155 @@ async function loadFile(p) {
 }
 
 // ── preset list ─────────────────────────────────────────────────────
+const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/* Families lead with the looks people reach for most; audio-only sits last
+   because those rows leave the picture untouched (their thumbnails are all the
+   same untreated frame, so alphabetical order opened the app on 29 of them). */
+const FAMILY_ORDER = ['vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
+  'decay', 'exhibition', 'print', 'transmission', 'stylized', 'audio'];
+
+function famRank(f) {
+  const i = FAMILY_ORDER.indexOf(f);
+  return i < 0 ? FAMILY_ORDER.length : i;   // unknown families sort before audio
+}
+
+function fileUrl(p) {
+  return 'file://' + encodeURI(p).replace(/#/g, '%23').replace(/\?/g, '%3F');
+}
+
+function isAudioOnly(p) {
+  return p.family === 'audio' || !(p.video && p.video.length);
+}
+
+/* Tagline: preset.tagline when the schema has one, else a tidy ~45-char
+   truncation of the long description (cut on a word boundary). */
+function taglineFor(p) {
+  const t = (p.tagline || '').trim();
+  if (t) return t;
+  let d = (p.desc || '').replace(/\s+/g, ' ').trim();
+  if (!d || d.length <= 45) return d;
+  d = d.slice(0, 44);
+  const sp = d.lastIndexOf(' ');
+  if (sp > 28) d = d.slice(0, sp);
+  return d.replace(/[\s,;:.\-–—]+$/, '') + '…';
+}
+
+/* Exactly one animated image exists in the document at any time: it is moved
+   into whichever row the pointer is over. 191 rows never animate at once. */
+const hoverAnim = document.createElement('img');
+hoverAnim.className = 't-anim';
+hoverAnim.alt = '';
+hoverAnim.decoding = 'async';
+hoverAnim.draggable = false;
+let hoverTimer = null;
+let hoverHost = null;
+
+function stopHoverAnim() {
+  clearTimeout(hoverTimer);
+  if (hoverHost) {
+    hoverAnim.remove();
+    hoverAnim.src = BLANK_PX; // detach + blank: the webp stops decoding
+    hoverHost = null;
+  }
+}
+
+function armHoverAnim(card, holder, animPath) {
+  const url = fileUrl(animPath);
+  card.addEventListener('mouseenter', () => {
+    clearTimeout(hoverTimer);
+    // small delay so sweeping the pointer down the list costs nothing
+    hoverTimer = setTimeout(() => {
+      if (hoverHost && hoverHost !== holder) hoverAnim.remove();
+      hoverAnim.src = url; // re-setting restarts the loop at frame 0
+      holder.appendChild(hoverAnim);
+      hoverHost = holder;
+    }, 90);
+  });
+  card.addEventListener('mouseleave', () => {
+    clearTimeout(hoverTimer);
+    if (hoverHost === holder) stopHoverAnim();
+  });
+}
+
+function thumbFor(p) {
+  const holder = document.createElement('div');
+  holder.className = 'p-thumb';
+  const t = state.thumbs[p.id];
+  if (t && t.poster) {
+    const img = document.createElement('img');
+    img.className = 't-poster';
+    img.src = fileUrl(t.poster);
+    img.width = 50;
+    img.height = 50;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.alt = '';
+    img.onerror = () => { img.remove(); holder.classList.add('empty'); };
+    holder.appendChild(img);
+  } else {
+    holder.classList.add('empty');
+  }
+  if (isAudioOnly(p)) {
+    holder.classList.add('audio');
+    const badge = document.createElement('span');
+    badge.className = 't-badge';
+    badge.textContent = '♪';
+    badge.title = 'Audio-only preset — the picture is untouched';
+    holder.appendChild(badge);
+  } else if (t && t.anim) {
+    holder.classList.add('animable');
+  }
+  return holder;
+}
+
+function presetCard(p) {
+  const card = document.createElement('div');
+  card.className = 'preset-card' + (p.id === state.presetId ? ' sel' : '');
+  card.title = p.desc || p.name;
+
+  const holder = thumbFor(p);
+  card.appendChild(holder);
+
+  const text = document.createElement('div');
+  text.className = 'p-text';
+  const name = document.createElement('span');
+  name.className = 'p-name';
+  name.textContent = p.name;
+  const meta = document.createElement('span');
+  meta.className = 'p-meta';
+  const nv = p.variants.length;
+  meta.textContent = `${p.era}${nv ? ` · ${nv} variant${nv === 1 ? '' : 's'}` : ''}`;
+  text.appendChild(name);
+  text.appendChild(meta);
+  const tag = taglineFor(p);
+  if (tag) {
+    const tl = document.createElement('span');
+    tl.className = 'p-tag';
+    tl.textContent = tag;
+    text.appendChild(tl);
+  }
+  card.appendChild(text);
+
+  const t = state.thumbs[p.id];
+  if (t && t.anim && !isAudioOnly(p)) armHoverAnim(card, holder, t.anim);
+  card.onclick = () => selectPreset(p.id);
+  return card;
+}
+
 function buildPresetList() {
   const list = $('preset-list');
+  stopHoverAnim(); // the row that owned it is about to be discarded
   list.innerHTML = '';
   const presets = Object.values(state.schema.presets)
-    .sort((a, b) => (a.family + a.id).localeCompare(b.family + b.id));
+    .sort((a, b) => (famRank(a.family) - famRank(b.family)) || a.id.localeCompare(b.id));
   const q = ($('preset-search').value || '').toLowerCase();
   state.collapsed = state.collapsed || new Set();
   let family = null;
   let familyBody = null;
   for (const p of presets) {
-    const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${(p.tags || []).join(' ')}`.toLowerCase();
+    const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${p.tagline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
     if (q && !hay.includes(q)) continue;
     if (p.family !== family) {
       family = p.family;
@@ -119,12 +264,7 @@ function buildPresetList() {
       if (isCollapsed) familyBody.style.display = 'none';
       list.appendChild(familyBody);
     }
-    const card = document.createElement('div');
-    card.className = 'preset-card' + (p.id === state.presetId ? ' sel' : '');
-    card.innerHTML = `<span class="p-name">${p.name}</span><span class="p-meta">${p.era}${p.variants.length ? ` · ${p.variants.length} variants` : ''}</span>`;
-    card.title = p.desc;
-    card.onclick = () => selectPreset(p.id);
-    (familyBody || list).appendChild(card);
+    (familyBody || list).appendChild(presetCard(p));
   }
 }
 
@@ -314,6 +454,7 @@ async function runPreview() {
     sets: state.sets,
     seed: state.seed,
     intensity: state.intensity,
+    texture: state.texture,
     start: state.previewT,
     duration: state.duration,
     scale: state.scale,
@@ -405,6 +546,12 @@ function wireControls() {
   });
   $('intensity').addEventListener('change', () => schedulePreview());
 
+  $('texture').addEventListener('input', (e) => {
+    state.texture = parseFloat(e.target.value);
+    $('texture-val').textContent = state.texture.toFixed(2);
+  });
+  $('texture').addEventListener('change', () => schedulePreview());
+
   $('seed').value = state.seed;
   $('seed').addEventListener('change', (e) => { state.seed = parseInt(e.target.value || '1', 10); schedulePreview(); });
   $('btn-dice').addEventListener('click', () => {
@@ -446,6 +593,8 @@ async function doExport() {
       sets: state.sets,
       seed: state.seed,
       intensity: state.intensity,
+      texture: state.texture,
+    texture: state.texture,
       crf: 17,
       videoOnly: $('exp-video-only').checked,
       audioOnly: $('exp-audio-only').checked,
