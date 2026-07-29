@@ -42,11 +42,16 @@ NOISE_PARAMS: frozenset[tuple[str, str]] = frozenset(
         ("paper_texture", "amount"),
         ("photocopy", "toner"),
         ("riso_print", "grain_ink"),
-        ("microfilm", "scratches_scan"),
-        # overlay plates used as noise beds
-        ("plate", "opacity"),
     }
 )
+
+# Deliberately NOT here, though they are also "texture" in a loose sense:
+#   plate.opacity        — the packs in use carry decay CONTENT (mold, water
+#                          stains, nitrate blistering, burns). Erasing a preset's
+#                          water damage because the user asked for less grain
+#                          would be a nasty surprise.
+#   scratches.*, dust size, frame_damage.*, sticky_shed.severity — physical
+#                          damage events, not noise; they belong to --intensity.
 
 
 def is_noise_param(eid: str, param: str) -> bool:
