@@ -57,6 +57,17 @@ Drop a clip → pick an aesthetic → tweak knobs (the preview re-renders throug
 real engine, so what you see is what exports) → hold **A/B** for the original →
 **Export Full Video**.
 
+Each row in the browse list carries a thumbnail of that treatment (hover to see it
+move) and a one-line summary of its artifacts. Two master dials sit above the
+parameter stack: **Intensity** (damage, warping, glow) and **Texture** (grain,
+tape noise, dust, speckle — drag to 0 for a perfectly clean version of the look).
+
+Thumbnails are generated once:
+
+```bash
+.venv/bin/python scripts/make_thumbs.py
+```
+
 ## Documentation
 
 - [docs/usage.md](docs/usage.md) — setup and workflows
