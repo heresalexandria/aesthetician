@@ -9,9 +9,10 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Film** gets living multi-scale grain with luminance response, red halation, gate weave, hand-crank flicker, tramline scratches, splice jumps, dye-fade profiles (Eastman pink and friends), and projector presentation.
 - **Digital-era looks run the real codecs** — MPEG-1/2, MSMPEG4, FLV, H.263, MJPEG at era bitrates, with true bitstream-corruption datamosh decoded through error concealment.
 - **Audio** is treated with the same seriousness: wow/flutter from an integrated speed curve, tape saturation with head bump, vinyl crackle/pops/wear, optical-track noise, synthesized projector clatter, AM/FM/TV sound, era telephones with real μ-law, real low-bitrate MP3/AMR/G.726 round-trips, and eleven period speaker recipes.
-- **AI-generated overlay plates** (dust, light leaks, burns, grime, paper, tape creases) blend in with era-correct motion; everything degrades gracefully to procedural fallbacks when the packs aren't generated.
+- **Archive-grade extremes**: five-stage nitrate decomposition, vinegar-syndrome warp, water tide marks, sticky-shed tape, reel-change cue dots, rear-projection TV, CMYK halftone with true rosettes, photocopy generations, DX television that breathes with the ionosphere, PXL2000, LaserDisc, analog horror.
+- **AI-generated overlay plates** (86 across 14 packs: dust, leaks, burns, grime, paper, tape creases, water stains, mold, emulsion decay, copier streaks, CRT glare, lens dirt, screen weaves, static discharge) blend with era-correct motion; 10 synthesized loopable ambience beds (projectors, TV-shop wall, CRT whine…) sit under the audio. Everything degrades gracefully to procedural fallbacks.
 
-63 presets across six families (vhs / broadcast / film / cartoon / digital / audio-only), 48 variants, and hundreds of exposed parameters. Deterministic per seed.
+**191 presets across twelve families** (vhs / broadcast / film / cartoon / digital / audio-only / world / decay / exhibition / print / transmission / stylized), **238 variants**, 103 effects, and well over a thousand exposed parameters. Deterministic per seed.
 
 ## Setup (macOS)
 
