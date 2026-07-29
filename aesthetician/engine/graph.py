@@ -8,6 +8,7 @@ from typing import Any, Callable, Literal, Optional
 
 import numpy as np
 
+from . import texture as texture_mod
 from .rng import TemporalNoise, stream
 
 ParamKind = Literal["float", "int", "bool", "enum", "str"]
@@ -72,6 +73,9 @@ class Context:
         scratch_dir: str = "",
         asset_root: str = "",
         is_preview: bool = False,
+        out_width: Optional[int] = None,
+        out_height: Optional[int] = None,
+        texture: float = 1.0,
     ):
         self.width = width
         self.height = height
@@ -84,11 +88,27 @@ class Context:
         self.scratch_dir = scratch_dir
         self.asset_root = asset_root
         self.is_preview = is_preview
+        # Final delivery geometry. Presets often simulate at an era resolution
+        # (`proc_height`) and are upscaled afterwards, which magnifies every
+        # texture generated here — effects that care can compensate via
+        # `upscale`.
+        self.out_width = out_width if out_width is not None else width
+        self.out_height = out_height if out_height is not None else height
+        self.texture = texture
         self.noise = TemporalNoise(seed, fps, n_frames)
         # Indices for the frame currently being processed (set by the runner).
         self.fi_out = 0   # index on the output timeline
         self.fi_src = 0   # index on the source timeline (differs under time remaps)
         self.extra: dict[str, Any] = {}
+
+    @property
+    def upscale(self) -> float:
+        """Output height / processing height (1.0 when simulating at full size).
+
+        A texture generated `n` px wide here lands `n * upscale` px wide in the
+        delivered file.
+        """
+        return self.out_height / max(self.height, 1)
 
     def rng(self, key: str) -> np.random.Generator:
         return stream(self.seed, key)
@@ -125,13 +145,19 @@ class Effect:
         for name, value in merged.items():
             if name not in byname:
                 raise ValueError(f"effect '{self.eid}' has no parameter '{name}'")
+        explicit = set(merged)
         for p in self.PARAMS:
             raw = merged.get(p.name, p.default)
             val = p.coerce(raw)
             if p.iscale and p.kind in ("float", "int") and ctx.intensity != 1.0:
                 val = p.coerce(float(val) * ctx.intensity)
+            if ctx.texture != 1.0 and p.kind in ("float", "int"):
+                scaled = texture_mod.scaled(self.eid, p.name, float(val), ctx.texture)
+                if scaled != float(val):
+                    val = p.coerce(scaled)
             values[p.name] = val
         self.v = values
+        self.explicit = explicit
 
     # ── hooks ──────────────────────────────────────────────────────────
     def prepare(self, ctx: Context) -> None:

@@ -39,7 +39,30 @@ aesthetician apply clip.mp4 -p vhs-ep-longplay --video-only
 
 # reproducibility & strength
 aesthetician apply clip.mp4 -p super8-1974 --seed 42 --intensity 1.4
+
+# grain/noise taste: 0 = clean, 1 = as authored, 2 = heavy
+aesthetician apply clip.mp4 -p news-film-1975 --texture 0.4
 ```
+
+## Controlling grain and noise
+
+Film and tape noise is **regenerated every frame** — that liveliness is the point;
+a frozen noise pattern reads as a dirty lens, not as film. What you can control:
+
+| control | what it does |
+|---|---|
+| `--texture 0…2` | one dial for every grain/noise/speckle *amount* in the chain (grain, tape noise, snow, dust, cel dirt, toner…). `0` renders the look completely clean. |
+| `--set grain.size=N` | clump diameter. Lower = finer, tighter grain. |
+| `--set grain.size_ref=output` | make `grain.size` mean pixels **in the delivered file** instead of at the era simulation resolution. |
+| `--intensity 0…2` | the broader strength dial (damage, warping, glow — everything flagged as an amount). |
+
+**Why grain can look chunkier than the number suggests:** most presets simulate at
+an era resolution (`proc_height`, e.g. 520 lines for Super 8) and upscale to your
+delivery size afterwards, which magnifies every texture generated inside — a 2.0 px
+clump lands at ~5 px in a 1280-tall export. That magnification is physically right
+(small-gauge film really is grainy relative to its frame), but it means the `size`
+parameter is measured *before* the upscale. Use `grain.size_ref=output` when you
+want to pin the delivered clump size instead.
 
 Every parameter printed by `info` can be overridden with `--set
 effect.param=value`; audio effects start with `a_`. Repeated effects get `#2`

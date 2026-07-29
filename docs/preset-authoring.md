@@ -55,6 +55,24 @@ digital: none (codec_era's res ladder handles it) · pixel eras: none (pixel_era
 Audio: `*_db` params are dBFS (hiss −55…−36 typical; beds −34…−24). a_tape_sat.drive
 1..8 (1 = clean). a_wow_flutter depths are cents (3–10 subtle, 10–25 seasick).
 
+### Grain size is measured BEFORE the final upscale
+
+`grain.size` is in *processing* pixels. A preset with `proc_height=520` delivering
+1280 lines magnifies its grain 2.46×, so `size=2.9` lands as ~7 px clumps — blobby,
+not filmic. Keep the **effective** size (`size × out_h / proc_height`) at or under:
+
+- **≤ 5.0 px** for small gauge (8 mm / Super 8 / 9.5 mm, `proc_height ≤ 560`)
+- **≤ 4.2 px** for 16 mm and broadcast-res film (`proc_height` 600–640)
+- no limit at native resolution (35 mm) — there is no upscale to magnify it
+
+So at `proc_height=520` targeting 1280, `size` should be ≈2.0, not 2.9. Alternatively
+set `grain.size_ref="output"` and specify the delivered clump size directly — but note
+that processing-referred sizing keeps grain a constant *fraction of the frame*, which
+is what makes half-resolution GUI previews match the full export.
+
+Every noise *amount* in your chain is also scaled by the user's master `--texture`
+knob (see `engine/texture.py` for the registry) — author at texture 1.0.
+
 ## Tone of names/descriptions
 
 Concrete nouns + period texture + a wink. Study these (existing library):

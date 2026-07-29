@@ -23,6 +23,7 @@ ProgressCb = Callable[[str, float], None]  # (phase, fraction 0..1)
 class RenderOptions:
     seed: int = 1
     intensity: float = 1.0
+    texture: float = 1.0          # master multiplier for grain/noise amounts
     variant: Optional[str] = None
     video_overrides: dict[str, Any] = field(default_factory=dict)
     audio_overrides: dict[str, Any] = field(default_factory=dict)
@@ -119,6 +120,9 @@ def render(
             intensity=opts.intensity,
             scratch_dir=tmp_root,
             asset_root=default_asset_root(),
+            out_width=out_w,
+            out_height=out_h,
+            texture=opts.texture,
         )
 
         video_chain: list[Effect] = []

@@ -93,7 +93,12 @@ class Grain(Effect):
         Param("amount", "Amount", "float", 0.35, 0.0, 1.5, iscale=True, group="Grain",
               desc="Overall grain strength (noise level at midtones)."),
         Param("size", "Grain Size", "float", 2.0, 0.8, 6.0, unit="px", group="Grain",
-              desc="Grain clump diameter in pixels at processing resolution."),
+              desc="Grain clump diameter in pixels, measured at whichever resolution Size Reference selects."),
+        Param("size_ref", "Size Reference", "enum", "processing",
+              choices=("processing", "output"), group="Grain",
+              desc="Whether Grain Size means pixels at the era simulation resolution (processing) or in the "
+                   "delivered file (output). Presets that simulate at a low era resolution magnify their grain "
+                   "on the final upscale; 'output' compensates so the clumps stay the size you asked for."),
         Param("roughness", "Roughness", "float", 0.5, 0.0, 1.0, group="Grain",
               desc="Mix of a finer, sharper grain octave over the soft clumps."),
         Param("chroma_grain", "Color Grain", "float", 0.25, 0.0, 1.0, group="Grain",
@@ -318,7 +323,11 @@ class Grain(Effect):
             return frame
         H, W = frame.shape[:2]
         if amount > 0:
-            size = float(np.clip(self.v["size"] * szm, 0.8, 9.0))
+            size = self.v["size"] * szm
+            if self.v["size_ref"] == "output":
+                # generated here, but magnified by the final upscale — pre-shrink
+                size /= max(ctx.upscale, 1e-3)
+            size = float(np.clip(size, 0.8, 9.0))
             rough = float(np.clip(self.v["roughness"] * rgm, 0.0, 1.0))
             chroma = float(np.clip(self.v["chroma_grain"] * chm, 0.0, 1.0))
             if self.v["layers"] == "mono":

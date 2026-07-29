@@ -55,6 +55,48 @@ def test_intensity_scaling():
     assert eff2.v["gamma"] == 1.2, "non-iscale params unaffected"
 
 
+def test_texture_scaling():
+    """The master Texture knob scales noise amounts and nothing else."""
+    for tex, expect in ((0.0, 0.0), (0.5, 0.25), (1.0, 0.5), (1.5, 0.75)):
+        ctx = Context(64, 64, 30, 30, seed=1, texture=tex)
+        g = get_effect("grain")(amount=0.5, size=2.5)
+        g.resolve(ctx)
+        assert abs(g.v["amount"] - expect) < 1e-6, (tex, g.v["amount"])
+        assert g.v["size"] == 2.5, "sizes must not be scaled by texture"
+    # a non-noise param is untouched even at texture 0
+    ctx = Context(64, 64, 30, 30, seed=1, texture=0.0)
+    t = get_effect("tone")(contrast=1.2)
+    t.resolve(ctx)
+    assert t.v["contrast"] == 1.2
+
+
+def test_upscale_reporting():
+    """Effects can learn how much the final upscale will magnify their texture."""
+    assert Context(704, 520, 30, 30, out_height=1280).upscale > 2.4
+    assert Context(704, 1280, 30, 30).upscale == 1.0  # no proc_height → no magnification
+
+
+def test_grain_size_ref():
+    """size_ref='output' pre-shrinks grain so it lands at the requested size."""
+    import numpy as np
+
+    frame = np.full((520, 704, 3), 0.5, np.float32)
+    sizes = {}
+    for ref in ("processing", "output"):
+        ctx = Context(704, 520, 30, 30, seed=4, out_height=1280)
+        g = get_effect("grain")(amount=0.6, size=2.9, size_ref=ref)
+        g.resolve(ctx)
+        g.prepare(ctx)
+        out = g.process(frame.copy(), ctx)
+        resid = out[..., 1] - 0.5
+        # correlation length: lag where horizontal autocorrelation halves
+        ac = [float((resid[:, : resid.shape[1] - l] * resid[:, l:]).mean()) for l in range(12)]
+        ac = np.array(ac) / ac[0]
+        below = np.where(ac < 0.5)[0]
+        sizes[ref] = below[0] if len(below) else 12
+    assert sizes["output"] < sizes["processing"], sizes
+
+
 def test_overrides_and_chain_keys():
     o = parse_override_paths({"vhs.tracking": 0.7, "grain#2.amount": 0.2})
     assert o == {"vhs": {"tracking": 0.7}, "grain#2": {"amount": 0.2}}
