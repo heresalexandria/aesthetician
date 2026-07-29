@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file:; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>Aesthetician</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="titlebar"><span class="brand">AESTHETICIAN</span><span id="file-chip" class="hidden"></span></div>
+
+  <div id="drop-screen">
+    <div class="drop-inner" id="drop-zone">
+      <svg width="88" height="88" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M2 8h3M2 12h3M2 16h3M19 8h3M19 12h3M19 16h3"/>
+        <path d="M7 4v16M17 4v16" opacity="0.5"/>
+      </svg>
+      <h1>Drop a clip</h1>
+      <p>Drag a video here to start applying archival aesthetics<br/><span class="dim">MP4 · MOV · anything ffmpeg reads</span></p>
+      <div id="env-warning" class="hidden"></div>
+    </div>
+  </div>
+
+  <div id="workspace" class="hidden">
+    <aside id="preset-pane">
+      <div class="pane-head">
+        <input id="preset-search" type="text" placeholder="Search aesthetics…" spellcheck="false"/>
+      </div>
+      <div id="preset-list"></div>
+    </aside>
+
+    <main id="center-pane">
+      <div id="player-wrap">
+        <video id="video-b" loop muted playsinline></video>
+        <video id="video-a" loop muted playsinline></video>
+        <div id="player-empty">Pick an aesthetic to render a preview</div>
+        <div id="render-overlay" class="hidden">
+          <div class="spinner"></div>
+          <div id="render-phase">rendering…</div>
+          <div class="mini-bar"><div id="render-bar"></div></div>
+        </div>
+        <div id="ab-badge" class="hidden">ORIGINAL</div>
+      </div>
+      <div id="player-controls">
+        <button id="btn-ab" title="Hold to see the original">A/B</button>
+        <button id="btn-mute" title="Toggle audio">🔇</button>
+        <div id="scrub-wrap">
+          <span class="dim" id="scrub-label">preview at 0.0s</span>
+          <input id="scrub" type="range" min="0" max="10" step="0.1" value="0"/>
+        </div>
+        <label class="check"><input type="checkbox" id="auto-preview" checked/> auto</label>
+        <button id="btn-render" class="accent">Preview</button>
+      </div>
+      <div id="export-bar">
+        <div id="export-status" class="dim">Ready.</div>
+        <div class="grow"></div>
+        <label class="check dim"><input type="checkbox" id="exp-video-only"/> video only</label>
+        <label class="check dim"><input type="checkbox" id="exp-audio-only"/> audio only</label>
+        <button id="btn-export" class="accent big">Export Full Video</button>
+      </div>
+    </main>
+
+    <aside id="param-pane">
+      <div class="pane-head row">
+        <div id="preset-title">—</div>
+      </div>
+      <div id="variant-row"></div>
+      <div class="master-row">
+        <label>Intensity <span id="intensity-val">1.00</span></label>
+        <input id="intensity" type="range" min="0" max="2" step="0.05" value="1"/>
+        <div class="seed-row">
+          <label>Seed</label>
+          <input id="seed" type="number" min="1" max="999999" value="1"/>
+          <button id="btn-dice" title="New random seed">🎲</button>
+        </div>
+      </div>
+      <div id="param-list"><div class="hint">Pick an aesthetic on the left.</div></div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

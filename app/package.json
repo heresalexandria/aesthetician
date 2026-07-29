@@ -1,0 +1,12 @@
+{
+  "name": "aesthetician-app",
+  "version": "0.1.0",
+  "description": "Aesthetician — drag-and-drop archival aesthetics with live previews",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.3.0"
+  }
+}
