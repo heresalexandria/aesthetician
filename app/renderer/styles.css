@@ -69,6 +69,18 @@ aside { background: var(--bg2); overflow-y: auto; }
 .family-label {
   margin: 14px 6px 6px; font-size: 10px; letter-spacing: 2px; color: var(--dim); font-weight: 600;
 }
+.family-label.clickable { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 5px; }
+.family-label.clickable:hover { color: var(--accent); }
+.family-label .chev { font-size: 9px; }
+.family-label .count {
+  margin-left: auto; background: var(--bg3); border-radius: 10px; padding: 1px 7px;
+  font-size: 9px; letter-spacing: 0; color: var(--dim);
+}
+.prow input[type="text"] {
+  flex: 1; background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 6px; font-size: 11.5px; outline: none;
+  font-variant-numeric: tabular-nums;
+}
 .preset-card {
   padding: 8px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
   display: flex; flex-direction: column; gap: 1px; margin-bottom: 2px;

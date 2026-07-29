@@ -94,23 +94,37 @@ function buildPresetList() {
   const presets = Object.values(state.schema.presets)
     .sort((a, b) => (a.family + a.id).localeCompare(b.family + b.id));
   const q = ($('preset-search').value || '').toLowerCase();
+  state.collapsed = state.collapsed || new Set();
   let family = null;
+  let familyBody = null;
   for (const p of presets) {
     const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${(p.tags || []).join(' ')}`.toLowerCase();
     if (q && !hay.includes(q)) continue;
     if (p.family !== family) {
       family = p.family;
+      const count = presets.filter((x) => x.family === family).length;
       const fl = document.createElement('div');
-      fl.className = 'family-label';
-      fl.textContent = family.toUpperCase();
+      fl.className = 'family-label clickable';
+      const isCollapsed = !q && state.collapsed.has(family);
+      fl.innerHTML = `<span class="chev">${isCollapsed ? '▸' : '▾'}</span> ${family.toUpperCase()} <span class="count">${count}</span>`;
+      const fam = family;
+      fl.onclick = () => {
+        if (state.collapsed.has(fam)) state.collapsed.delete(fam);
+        else state.collapsed.add(fam);
+        buildPresetList();
+      };
       list.appendChild(fl);
+      familyBody = document.createElement('div');
+      familyBody.className = 'family-body';
+      if (isCollapsed) familyBody.style.display = 'none';
+      list.appendChild(familyBody);
     }
     const card = document.createElement('div');
     card.className = 'preset-card' + (p.id === state.presetId ? ' sel' : '');
     card.innerHTML = `<span class="p-name">${p.name}</span><span class="p-meta">${p.era}${p.variants.length ? ` · ${p.variants.length} variants` : ''}</span>`;
     card.title = p.desc;
     card.onclick = () => selectPreset(p.id);
-    list.appendChild(card);
+    (familyBody || list).appendChild(card);
   }
 }
 

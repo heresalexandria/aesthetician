@@ -36,6 +36,8 @@ def test_param_coercion():
     assert b.coerce("true") is True and b.coerce(0) is False
     e = Param("m", "M", "enum", "a", choices=("a", "b"))
     assert e.coerce("b") == "b"
+    s = Param("t", "T", "str", "1990-01-01")
+    assert s.coerce(1990) == "1990"
     try:
         e.coerce("zzz")
         assert False, "invalid enum must raise"
