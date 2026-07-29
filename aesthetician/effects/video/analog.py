@@ -228,6 +228,24 @@ class CompositeColor(Effect):
               desc="Random per-scanline hue wobble — the classic NTSC tint shimmer (ignored for PAL)."),
         Param("fringing", "Chroma Fringing", "float", 1.0, -8.0, 8.0, unit="px", group="Phase",
               desc="Color delayed against brightness so hues smear off edges to the right (negative = left)."),
+        Param("comb_mode", "Comb Mode", "enum", "legacy_notch",
+              choices=("legacy_notch", "comb_1line", "comb_2d_adaptive"), group="Decoder",
+              desc="Y/C separator model: the legacy notch/comb blend (driven by the Comb Filter slider), "
+                   "a forced 1-line comb, or a late-80s 2D adaptive comb that combs only where adjacent "
+                   "lines agree — far fewer hanging dots."),
+        Param("diff_phase", "Differential Phase", "float", 0.0, 0.0, 8.0, unit="°", group="Phase", iscale=True,
+              desc="Hue tied to brightness: highlights rotate the subcarrier so bright faces drift "
+                   "orange-red, the classic overdriven-transmitter error."),
+        Param("chroma_agc", "Chroma AGC Breathing", "float", 0.0, 0.0, 1.0, group="Decoder", iscale=True,
+              desc="The receiver's color AGC hunting: saturation slowly pumps up and down over seconds."),
+        Param("setup_level", "Setup Pedestal", "float", 0.0, 0.0, 0.1, group="Levels",
+              desc="NTSC 7.5-IRE setup: black rides a gray pedestal and everything above compresses to fit."),
+        Param("cc_line", "Line-21 Captions", "bool", False, group="Levels",
+              desc="Line-21 closed-caption data on the top visible line: a run-in burst and two white "
+                   "dash clusters flickering with the data, as overscan would reveal."),
+        Param("sync_jitter", "Sync Jitter", "float", 0.0, 0.0, 1.0, group="Timing", iscale=True,
+              desc="Sync separator pulled by picture content: lines under bright content trigger late, "
+                   "so bright pictures bend to the right."),
         Param("strength", "Strength", "float", 1.0, 0.0, 1.0, group="Mix", iscale=True,
               desc="Master blend of the composite look against the clean image."),
     )
@@ -305,7 +323,10 @@ class CompositeColor(Effect):
         # rainbow: the bandpassed composite still contains HF luma → feeding
         # more of it to the demodulator turns fine detail into false color
         din = chroma_sig + v["rainbow"] * (bp - chroma_sig)
-        if c > 0.0:
+        mode = v["comb_mode"]
+        if mode == "comb_1line" or (mode == "legacy_notch" and c > 0.0):
+            if mode == "comb_1line":
+                c = 1.0
             prev = np.empty_like(comp)
             prev[1:] = comp[:-1]
             prev[0] = comp[1]
@@ -313,10 +334,31 @@ class CompositeColor(Effect):
             y_comb = comp - _filt_x(din_comb, k_bp)  # hanging dots at color edges
             y_dec = y_notch * (1.0 - c) + y_comb * c
             din = din * (1.0 - c) + din_comb * c
+        elif mode == "comb_2d_adaptive":
+            # 2-line comb where the picture is vertically correlated, notch
+            # elsewhere — the late-80s "digital comb" that killed hanging dots
+            prev = np.empty_like(comp)
+            prev[1:] = comp[:-1]
+            prev[0] = comp[1]
+            nxt = np.empty_like(comp)
+            nxt[:-1] = comp[1:]
+            nxt[-1] = comp[-2]
+            din_2d = 0.5 * comp - 0.25 * (prev + nxt)
+            y_comb = comp - _filt_x(din_2d, k_bp)
+            # lines one above/below share subcarrier phase, so their difference
+            # is pure vertical picture change: comb only where it is small
+            verr = _filt_x(np.abs(prev - nxt), _lp_kernel(0.10))
+            wmap = 1.0 - np.clip((verr - 0.035) / 0.11, 0.0, 1.0)
+            wmap *= wmap
+            y_dec = y_notch * (1.0 - wmap) + y_comb * wmap
+            din = din * (1.0 - wmap) + din_2d * wmap
         else:
             y_dec = y_notch
         if v["dot_crawl"] > 0.0:
             y_dec = y_dec + (0.55 * v["dot_crawl"]) * chroma_sig
+        if v["setup_level"] > 0.0:
+            # pedestal: black lifted to setup, white pinned — headroom compresses
+            y_dec = v["setup_level"] + y_dec * (1.0 - v["setup_level"])
 
         # ── chroma demodulation ────────────────────────────────────────
         dem = np.empty((H, W, 2), np.float32)
@@ -347,6 +389,23 @@ class CompositeColor(Effect):
             ci, si = np.cos(th)[:, None], np.sin(th)[:, None]
             i_r, q_r = i_r * ci - q_r * si, i_r * si + q_r * ci
 
+        if v["diff_phase"] > 0.0:
+            # differential phase: subcarrier phase advances with beam current,
+            # so the hue of a color depends on how bright it sits
+            ylv = np.clip(_filt_x_narrow(y_dec, _cut(0.6, W)), 0.0, 1.0)
+            th_dp = np.deg2rad(v["diff_phase"] * 3.2) * ylv * ylv
+            ci, si = np.cos(th_dp), np.sin(th_dp)
+            i_r, q_r = i_r * ci - q_r * si, i_r * si + q_r * ci
+
+        if v["chroma_agc"] > 0.0:
+            fi_n = min(fi, ctx.noise.n - 1)
+            pump = 1.0 + 0.32 * v["chroma_agc"] * ctx.noise.smooth(f"{self.key}:cagc", 0.3)[fi_n]
+            i_r = i_r * pump
+            q_r = q_r * pump
+
+        if v["cc_line"]:
+            self._draw_cc_line(y_dec, i_r, q_r, ctx)
+
         if abs(v["fringing"]) > 1e-3:
             px = v["fringing"] * (W / BASE_W)
             i_r = _shift_x(i_r, px)
@@ -357,12 +416,58 @@ class CompositeColor(Effect):
         out[..., 1] = i_r
         out[..., 2] = q_r
         rgb = _to_rgb(out)
+
+        if v["sync_jitter"] > 0.0:
+            # the sync separator's slice level rides on line energy: a bright
+            # line delays the next H-sync, pulling that line to the right
+            rowy = y_dec.mean(axis=1)
+            drive = np.empty_like(rowy)
+            drive[1:] = rowy[:-1]
+            drive[0] = rowy[0]
+            drive = np.convolve(drive, np.array([0.5, 0.3, 0.2], np.float32), mode="same")
+            pull = np.clip(drive - 0.18, 0.0, None) ** 1.4
+            g = ctx.frame_rng(f"{self.key}:sync")
+            wob = np.abs(g.standard_normal(H).astype(np.float32))
+            offj = v["sync_jitter"] * (W / BASE_W) * pull * (6.5 + 1.2 * wob)
+            if float(np.max(offj)) > 0.05:
+                rgb = _remap_x(rgb, offj)
+
         if W != W0:
             rgb = cv2.resize(rgb, (W0, H), interpolation=cv2.INTER_AREA)
         s = v["strength"]
         if s < 1.0:
             rgb = frame * (1.0 - s) + rgb * s
         return np.clip(rgb, 0.0, 1.0, out=rgb)
+
+    def _draw_cc_line(self, y_dec: np.ndarray, i_r: np.ndarray, q_r: np.ndarray,
+                      ctx: Context) -> None:
+        """Line-21 caption data on the first visible line: run-in clock burst
+        plus two data-byte dash clusters whose bits flicker frame to frame."""
+        H, W = y_dec.shape
+        sy = H / BASE_H
+        r0 = max(int(round(1.0 * sy)), 1)
+        hh = max(int(round(1.3 * sy)), 1)
+        r1 = min(r0 + hh, H)
+        g = ctx.frame_rng(f"{self.key}:cc21")
+        row = np.full(W, 0.03, np.float32)
+
+        def dash(c0: float, c1: float, val: float) -> None:
+            row[int(c0 * W):max(int(c1 * W), int(c0 * W) + 1)] = val
+
+        for k in range(7):                     # run-in clock burst
+            x = 0.085 + 0.047 * k
+            dash(x, x + 0.020, 0.66)
+        bits = g.random(16) < 0.5              # two data bytes, live bits
+        for k in range(8):
+            if bits[k]:
+                dash(0.455 + 0.0295 * k, 0.455 + 0.0295 * k + 0.018, 0.78)
+        for k in range(8):
+            if bits[8 + k]:
+                dash(0.715 + 0.0295 * k, 0.715 + 0.0295 * k + 0.018, 0.78)
+        row = np.convolve(row, np.array([0.18, 0.64, 0.18], np.float32), mode="same")
+        y_dec[r0:r1] = y_dec[r0:r1] * 0.10 + row[None, :] * 0.90
+        i_r[r0:r1] *= 0.12                     # data line carries no chroma
+        q_r[r0:r1] *= 0.12
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -408,6 +513,25 @@ class VHS(Effect):
               desc="Rolling bands of shredded, noisy lines; 0 is a locked tape, 1 a constant storm."),
         Param("generation", "Generation", "int", 1, 1, 5, group="Tape",
               desc="Copy-of-a-copy count; each dub adds softness, noise and level drift."),
+        Param("azimuth_error", "Azimuth Error", "float", 0.0, 0.0, 1.0, group="Tracking", iscale=True,
+              desc="Head tilted against the recording: HF detail dies and a faint woven herringbone "
+                   "shimmer rides wherever the picture is detailed."),
+        Param("head_beat", "Head Beat", "float", 0.0, 0.0, 1.0, group="Playback", iscale=True,
+              desc="The two video heads disagreeing on chroma phase: color saturation and hue pulse "
+                   "on a ~2-frame beat, most visible on flat saturated areas."),
+        Param("fm_sparkle", "FM Sparkle", "float", 0.0, 0.0, 1.0, group="Noise", iscale=True,
+              desc="FM demodulator click noise: tiny bright/dark ticks clustered on hard bright edges "
+                   "instead of spread evenly over the frame."),
+        Param("white_clip", "White Clip", "float", 1.0, 0.85, 1.0, group="Levels",
+              desc="VHS record white clip: highlights shoulder off softly into a ceiling below full white."),
+        Param("black_crush", "Black Crush", "float", 0.0, 0.0, 0.1, group="Levels", iscale=True,
+              desc="Record black level set low: shadow detail crushes into the floor with a soft knee."),
+        Param("skew_tear", "Skew Tear", "float", 0.0, 0.0, 1.0, group="Timing", iscale=True,
+              desc="Worn transport tension: occasional tear bands near the top where a handful of "
+                   "lines shear hard sideways for a frame or two."),
+        Param("interchange", "Interchange Error", "float", 0.0, 0.0, 1.0, group="Tracking", iscale=True,
+              desc="Recorded on someone else's deck: chroma sits a couple of lines low, the head-switch "
+                   "point rides up into the picture and the whole frame carries a slight static skew."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -444,9 +568,18 @@ class VHS(Effect):
                 wgt = tail if dr == 0 else tail * 0.5
                 seg = y[rr, x0:x0 + L]
                 if dark:
+                    # oxide gone, no compensator: the FM carrier just dies
                     seg -= seg * (0.92 * wgt)
                 else:
-                    seg += (0.98 - seg) * wgt
+                    # dropout compensator: holds the LINE ABOVE for the span,
+                    # with a hot switch fringe at the leading edge — so the
+                    # streak is a displaced copy of the picture, not flat white
+                    above = y[rr - 1, x0:x0 + L] if rr > 0 else np.full(L, 0.82, np.float32)
+                    fill = above + (0.20 + 0.42 * tail) * (1.0 - above)
+                    seg += (fill - seg) * wgt
+                    if dr == 0:
+                        hp = min(max(2, L // 24), L)
+                        seg[:hp] = np.maximum(seg[:hp], 0.94)
 
     def _geometry_offsets(self, H: int, W: int, ctx: Context) -> tuple[np.ndarray, tuple]:
         """Per-row x displacement for TBE + flagging + head switch + tracking."""
@@ -455,6 +588,11 @@ class VHS(Effect):
         sx, sy = W / BASE_W, H / BASE_H
         off = np.zeros(H, np.float32)
         rows = np.arange(H, dtype=np.float32)
+
+        ic = v["interchange"]
+        if ic > 0.0:
+            # someone else's deck: a constant mild skew across the whole frame
+            off += ic * 4.0 * sx * (rows / max(H - 1, 1) - 0.5)
 
         tbe = v["time_base_error"]
         if tbe > 0.0:
@@ -473,16 +611,42 @@ class VHS(Effect):
             prof = np.clip(1.0 - rows[:n_fl] / n_fl, 0.0, 1.0) ** 2.1
             off[:n_fl] += flag * 16.0 * sx * wob * prof
 
+        st = v["skew_tear"]
+        if st > 0.0:
+            ev = ctx.noise.events(f"{self.key}:skewev", per_second=0.12 + 0.55 * st, min_gap_s=1.2)
+            e = float(ev[fi])
+            fe = fi
+            if e <= 0.0 and fi > 0 and ev[fi - 1] > 0.0:
+                e, fe = 0.5, fi - 1               # second frame, relaxing back
+            if e > 0.0:
+                ge = ctx.frame_rng(f"{self.key}:skew", fe)   # tear keeps its place
+                y0 = int(H * (0.03 + 0.11 * ge.random()))
+                bh = max(int((5.0 + 12.0 * ge.random()) * sy), 3)
+                y1 = min(y0 + bh, H)
+                u = (rows[y0:y1] - y0) / max(y1 - y0 - 1, 1)
+                dirn = 1.0 if ge.random() < 0.72 else -1.0
+                amp = (0.045 + 0.05 * ge.random()) * W
+                gj = ctx.frame_rng(f"{self.key}:skewjit")
+                jag = gj.standard_normal(y1 - y0).astype(np.float32)
+                # hard shear at the top edge of the band, decaying downward
+                off[y0:y1] += e * st * dirn * amp * (1.0 - u) ** 1.35
+                off[y0:y1] += e * st * 1.6 * sx * jag
+
         hs_strip = None
         hs = v["head_switch"]
         if hs > 0.0:
             jit = int(round(1.4 * ctx.noise.white(f"{self.key}:hsjit")[fi]))
             bend = max(int(round(9 * sy)), 4)
             sw = int(np.clip(H - bend + jit, H - int(H * 0.06) - 1, H - 2))
+            rise = 0
+            if ic > 0.0:
+                # interchange: the switch point lands inside the picture
+                rise = int(ic * 0.030 * H)
+                sw = max(sw - rise, 2)
             ramp = (rows[sw:] - sw) / max(H - sw - 1, 1)
             wob = 0.75 + 0.25 * ctx.noise.smooth(f"{self.key}:hswob", 0.8)[fi]
             off[sw:] += hs * 30.0 * sx * wob * (0.2 + 0.8 * ramp ** 1.7)
-            hs_strip = (sw, max(int(round(1.6 * sy)), 2))
+            hs_strip = (sw, max(int(round(1.6 * sy)), 2), rise)
 
         band = None
         tr = v["tracking_error"]
@@ -506,18 +670,20 @@ class VHS(Effect):
                     band = (y0, y1, prof, act)
         return off, (hs_strip, band)
 
-    def _paint_head_strip(self, frame: np.ndarray, ctx: Context, sw: int, strip_h: int) -> None:
+    def _paint_head_strip(self, frame: np.ndarray, ctx: Context, sw: int, strip_h: int,
+                          rise: int = 0) -> None:
         H, W = frame.shape[:2]
         hs = self.v["head_switch"]
         g = ctx.frame_rng(f"{self.key}:hstrip")
-        y0 = H - strip_h
+        y0 = max(H - strip_h - rise, 0)
+        y1 = min(y0 + strip_h, H)
         nz = _streak_noise(g, strip_h, W, coarse_x=10)
         dash = _resize(g.random((strip_h, max(W // 64, 6)), dtype=np.float32),
                        W, strip_h, cv2.INTER_NEAREST)
         val = 0.12 + 0.55 * nz
         val = np.where(dash > 0.72, 0.85 + 0.15 * nz, val).astype(np.float32)
         a = float(np.clip(hs * 1.3, 0.0, 1.0)) * 0.9
-        frame[y0:] = frame[y0:] * (1.0 - a) + val[..., None] * a
+        frame[y0:y1] = frame[y0:y1] * (1.0 - a) + val[: y1 - y0, ..., None] * a
         # thin darker disturbance right above the noise line
         if sw < y0:
             frame[sw:y0] *= (1.0 - 0.22 * hs)
@@ -552,6 +718,35 @@ class VHS(Effect):
         if abs(v["chroma_delay"]) > 1e-3:
             iq = _shift_x(iq, v["chroma_delay"] * sx)
 
+        # record levels: soft-knee white clip and black crush
+        wc = v["white_clip"]
+        if wc < 0.9995:
+            knee = 0.10
+            t = y - (wc - knee)
+            y = np.where(t > 0.0, (wc - knee) + knee * np.tanh(t / knee), y)
+        bc = v["black_crush"]
+        if bc > 0.0:
+            kb = max(bc * 0.6, 0.015)
+            yb = y - bc
+            y = 0.5 * (yb + np.sqrt(yb * yb + kb * kb)) - 0.5 * kb
+
+        # mistracked azimuth: the FM carrier reads back low, so HF luma dies;
+        # keep the detail map — the crosstalk pattern lives where detail was
+        az = v["azimuth_error"]
+        az_detail = None
+        if az > 0.0:
+            y_soft = _filt_x(y, _lp_kernel(_cut(1.5, W)))
+            az_detail = np.abs(y - y_soft)
+            y += (y_soft - y) * (0.85 * min(az, 1.0))
+            iq *= 1.0 - 0.18 * az
+
+        ic = v["interchange"]
+        if ic > 0.0:
+            # different deck's chroma timing: color rides a couple lines low
+            dvy = max(int(round((1.0 + 3.0 * ic) * (H / BASE_H))), 1)
+            iq = np.roll(iq, dvy, axis=0)
+            iq[:dvy] = iq[dvy:dvy + 1]
+
         # dubbing generations: each extra copy re-degrades mildly
         for gen in range(v["generation"] - 1):
             g = ctx.frame_rng(f"{self.key}:gen{gen}")
@@ -579,6 +774,46 @@ class VHS(Effect):
             cn = _resize(cn, W, H, cv2.INTER_LINEAR)
             iq += cn * (v["chroma_noise"] * 0.055 * nz_m)
 
+        # azimuth crosstalk: a fine woven herringbone riding on detailed areas
+        if az > 0.0 and az_detail is not None:
+            dwgt = np.clip(_filt_x(az_detail, _lp_kernel(0.09)) * 9.0, 0.0, 1.0)
+            lam = 4.2 * sx
+            rr = np.arange(H, dtype=np.float32)
+            zig = np.abs((rr * 0.5) % 2.0 - 1.0)          # slope flips every 2 lines
+            dr_t = ctx.noise.drift(f"{self.key}:azph", 0.25)[fi] * 2.4 + fi * 0.61
+            ph = (2.0 * np.pi / lam) * _xgrid(H, W) + (2.9 * zig + dr_t)[:, None]
+            y += np.sin(ph) * dwgt * (az * 0.075)
+
+        # FM sparkle: demodulator ticks pile up on hard, hot transitions
+        fs = v["fm_sparkle"]
+        if fs > 0.0:
+            g = ctx.frame_rng(f"{self.key}:sparkle")
+            gx = np.abs(np.diff(y, axis=1, prepend=y[:, :1]))
+            # threshold well above the tape-noise gradient floor: only real
+            # picture transitions collect ticks, not the grain
+            edge = np.clip((gx - 0.10) * 9.0, 0.0, 1.0)
+            hot = np.clip((y - 0.42) * 1.9, 0.0, 1.0)
+            hot += np.clip((np.abs(iq[..., 0]) + np.abs(iq[..., 1])) * 2.2 - 0.25, 0.0, 1.0)
+            w8 = edge * np.clip(hot, 0.0, 1.0)
+            u = g.random((H, W), dtype=np.float32)
+            p = fs * 0.30 * w8
+            m = u < p
+            if np.any(m):
+                tick = np.where(u < p * 0.62, np.float32(0.55), np.float32(-0.45))
+                tick = np.where(m, tick, np.float32(0.0))
+                y += tick + 0.55 * _shift_int_x(tick, 1)
+
+        # 2-head chroma beat: saturation and hue pulse on a ~2-frame period
+        hb = v["head_beat"]
+        if hb > 0.0:
+            phb = np.pi * ctx.fi_out / 1.024 + 2.1 * ctx.noise.drift(f"{self.key}:hbph", 0.07)[fi]
+            satm = 1.0 + hb * 0.16 * np.cos(phb)
+            hue = hb * np.deg2rad(5.0) * np.sin(phb)
+            chb, shb = np.cos(hue) * satm, np.sin(hue) * satm
+            i2 = iq[..., 0] * chb - iq[..., 1] * shb
+            iq[..., 1] = iq[..., 0] * shb + iq[..., 1] * chb
+            iq[..., 0] = i2
+
         # oxide dropouts (on the FM luma signal, so they ride the geometry)
         self._apply_dropouts(y, ctx, sx)
 
@@ -594,7 +829,7 @@ class VHS(Effect):
         if band is not None:
             self._paint_tracking_band(frame, ctx, band)
         if hs_strip is not None:
-            self._paint_head_strip(frame, ctx, hs_strip[0], hs_strip[1])
+            self._paint_head_strip(frame, ctx, hs_strip[0], hs_strip[1], hs_strip[2])
 
         if v["jitter_v"] > 0.0:
             ev = ctx.noise.events(f"{self.key}:vjit", per_second=2.5 * v["jitter_v"])[fi]
