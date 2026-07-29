@@ -27,6 +27,12 @@ class AWowFlutter(Effect):
               desc="Constant transport speed error (positive = fast and high).", group="Pitch"),
         Param("start_wobble", "Start-up Wobble", "bool", False,
               desc="First ~0.7 s starts about 4% slow and rises as the motor gets up to speed.", group="Pitch"),
+        Param("cogging", "Motor Cogging", "float", 0.0, 0.0, 1.0,
+              desc="Pole-cogging flutter: additive narrowband pitch ripple at a fixed motor rate with harmonics — the power-supply whine in the pitch of cheap decks.", group="Pitch", iscale=True),
+        Param("cogging_hz", "Cogging Rate", "float", 30.0, 10.0, 120.0, unit="Hz",
+              desc="Pole-passing rate of the cogging ripple (only audible when Motor Cogging > 0).", group="Pitch"),
+        Param("drift_long", "Long Drift", "float", 0.0, 0.0, 1.0,
+              desc="Very slow transport speed wander, up to ±0.5% over 10+ second stretches.", group="Pitch", iscale=True),
     )
 
     def process_audio(self, audio: np.ndarray, ctx: Context) -> np.ndarray:
@@ -44,7 +50,21 @@ class AWowFlutter(Effect):
         if self.v["scrape"] > 0:
             cents += 2.5 * self.v["scrape"] * U.control_noise(
                 stream(ctx.seed, f"{self.key}:scrape"), n, sr, 50.0, 200.0, ctrl_sr=1000.0)
+        if self.v["cogging"] > 0:
+            # very narrowband: a stable motor rate with slight supply jitter
+            g = stream(ctx.seed, f"{self.key}:cog")
+            f0 = self.v["cogging_hz"]
+            jit = 1.0 + 0.006 * U.control_noise(g, n, sr, 0.1, 0.8, ctrl_sr=100.0)
+            ph = 2 * np.pi * np.cumsum(f0 * jit) / sr
+            p0 = g.uniform(0, 2 * np.pi)
+            ripple = (np.sin(ph + p0) + 0.35 * np.sin(2 * ph + 1.7 * p0)
+                      + 0.12 * np.sin(3 * ph + 2.9 * p0))
+            cents += 3.5 * self.v["cogging"] * ripple
         speed = (1.0 + self.v["speed_pct"] / 100.0) * np.exp2(cents / 1200.0)
+        if self.v["drift_long"] > 0:
+            wander = U.control_noise(
+                stream(ctx.seed, f"{self.key}:dlong"), n, sr, 0.02, 0.09, ctrl_sr=50.0)
+            speed = speed * (1.0 + 0.005 * self.v["drift_long"] * wander)
         if self.v["start_wobble"]:
             t = np.arange(n) / sr
             settle = 1.0 - 0.04 * np.exp(-t / 0.22) + 0.006 * np.exp(-t / 0.35) * np.sin(2 * np.pi * 2.2 * t)
@@ -102,6 +122,10 @@ class ATapeSat(Effect):
               desc="Low-frequency head-bump resonance around 90 Hz.", group="Bandwidth"),
         Param("hf_loss", "HF Loss", "float", 0.4, 0.0, 1.0,
               desc="Self-erasure top-end rolloff, scaled further by drive.", group="Bandwidth", iscale=True),
+        Param("eq_era", "Playback EQ", "enum", "modern", choices=("modern", "nab_mismatch", "iec_mismatch"),
+              desc="Replay-EQ mismatch: NAB-recorded tape on an IEC deck plays dull with bumpy lows; IEC tape on a NAB deck plays bright and thin.", group="Bandwidth"),
+        Param("dolby_mistrack", "Dolby Mistrack", "float", 0.0, 0.0, 1.0,
+              desc="Dolby-B-encoded tape played without decoding: HF brightness that breathes with program level (quiet passages pump up to +8 dB airy).", group="Dynamics", iscale=True),
     )
 
     _EMPH_DB = 8.0
@@ -119,6 +143,27 @@ class ATapeSat(Effect):
         if loss > 0.01:
             cutoff = 18000.0 * (6500.0 / 18000.0) ** loss
             x = U.lowpass(x, cutoff, sr, order=2)
+        era = self.v["eq_era"]
+        if era == "nab_mismatch":
+            # NAB tape replayed with the IEC curve: dull top, humped low end
+            x = U.apply_sos(x, U.shelf(sr, 3200.0, -3.5, high=True, s=0.7))
+            x = U.apply_sos(x, U.shelf(sr, 250.0, 2.5, high=False, s=0.8))
+            x = U.apply_sos(x, U.peaking(sr, 70.0, 2.0, q=1.1))
+        elif era == "iec_mismatch":
+            # IEC tape replayed with the NAB curve: bright, thin lows
+            x = U.apply_sos(x, U.shelf(sr, 3200.0, 3.5, high=True, s=0.7))
+            x = U.apply_sos(x, U.shelf(sr, 250.0, -2.0, high=False, s=0.8))
+        mist = self.v["dolby_mistrack"]
+        if mist > 0.001:
+            # undecoded Dolby B ≈ a level-tracking HF shelf: quiet HF rides
+            # up to +8 dB and sags back on loud passages — audible breathing
+            low = U.lowpass(x, 1800.0, sr, order=2)
+            hf = (x - low).astype(np.float32)
+            env = U.envelope(hf, sr, attack_ms=8.0, release_ms=140.0, mode="rms")
+            ref = np.percentile(env, 90) + 1e-9
+            quiet = np.clip(1.0 - env / ref, -0.25, 1.0)  # loud HF dips slightly below unity
+            gain = np.power(10.0, (mist * 8.0 * quiet) / 20.0).astype(np.float32)
+            x = (low + hf * gain[:, None]).astype(np.float32)
         x = U.match_rms(x, audio, max_db=9.0)
         return U.peak_guard(x)
 

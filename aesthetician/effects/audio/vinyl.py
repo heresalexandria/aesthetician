@@ -23,6 +23,24 @@ def _impulse_train(rng: np.random.Generator, n: int, per_second: float, sr: int,
     return out
 
 
+def _pan_spread(rng: np.random.Generator, imp: np.ndarray, ch: int, width: float) -> np.ndarray:
+    """Place each impulse at a random equal-power pan position (±width).
+
+    Gains are scaled so a center impulse matches the coherent mono path
+    exactly (1.0 in both channels)."""
+    out = np.zeros((len(imp), ch), np.float32)
+    nz = np.nonzero(imp)[0]
+    if len(nz) == 0:
+        return out
+    a = (rng.uniform(-width, width, len(nz)) + 1.0) * (np.pi / 4.0)
+    out[nz, 0] = imp[nz] * (np.sqrt(2.0) * np.cos(a))
+    if ch >= 2:
+        out[nz, 1] = imp[nz] * (np.sqrt(2.0) * np.sin(a))
+    for c in range(2, ch):
+        out[:, c] = out[:, c % 2]
+    return out
+
+
 def _groove_noise(rng: np.random.Generator, n: int, sr: int, heavy: float = 1.0) -> np.ndarray:
     """A short bed of 'needle in the groove' noise: crackle + frying + hiss."""
     bed = _impulse_train(rng, n, 30.0 * heavy, sr, amp=0.8)
@@ -55,6 +73,12 @@ class AVinylNoise(Effect):
               desc="Turntable bearing rumble below 35 Hz.", group="Noise"),
         Param("wear", "Groove Wear", "float", 0.2, 0.0, 1.0,
               desc="Master wear: raises all noise and adds 3–8 kHz worn-groove hiss.", group="Damage", iscale=True),
+        Param("stereo_width", "Stereo Width", "float", 0.0, 0.0, 1.0,
+              desc="Spreads crackle, pops and frying across the stereo field; 0 keeps them coherent in the center like a mono cartridge (original behavior).", group="Noise"),
+        Param("warp_thump", "Warp Thump", "float", 0.0, 0.0, 1.0,
+              desc="Warped record: soft once-per-revolution low thump with a slight level dip as the stylus rides the warp.", group="Damage", iscale=True),
+        Param("warp_rpm", "Warp Speed", "enum", "33", choices=("33", "45", "78"),
+              desc="Rotation speed setting the warp-thump rate (same convention as a_vinyl_wow).", group="Damage"),
     )
 
     def process_audio(self, audio: np.ndarray, ctx: Context) -> np.ndarray:
@@ -62,21 +86,29 @@ class AVinylNoise(Effect):
         sr = ctx.sr
         wear = self.v["wear"]
         wear_gain = U.db_to_lin(8.0 * wear)  # up to +8 dB with wear
+        width = self.v["stereo_width"] if ch >= 2 else 0.0
         bed = np.zeros((n, ch), np.float32)
 
         if self.v["crackle"] > 0:
             g = stream(ctx.seed, f"{self.key}:crackle")
             lvl = U.db_to_lin(self.v["crackle_db"]) * wear_gain
             # two click flavors: short/bright and mid/duller
-            t1 = _impulse_train(g, n, self.v["crackle"] * 0.6, sr, amp=lvl)
-            t1 = U.bandpass(t1[:, None], 2500.0, 9000.0, sr, order=2)[:, 0]
-            t2 = _impulse_train(g, n, self.v["crackle"] * 0.4, sr, amp=lvl * 1.3)
-            t2 = U.bandpass(t2[:, None], 900.0, 4000.0, sr, order=2)[:, 0]
-            c = (t1 + t2) * 3.0  # bandpass eats impulse energy; restore
-            bed += c[:, None]
+            i1 = _impulse_train(g, n, self.v["crackle"] * 0.6, sr, amp=lvl)
+            i2 = _impulse_train(g, n, self.v["crackle"] * 0.4, sr, amp=lvl * 1.3)
+            if width <= 0:
+                t1 = U.bandpass(i1[:, None], 2500.0, 9000.0, sr, order=2)[:, 0]
+                t2 = U.bandpass(i2[:, None], 900.0, 4000.0, sr, order=2)[:, 0]
+                c = (t1 + t2) * 3.0  # bandpass eats impulse energy; restore
+                bed += c[:, None]
+            else:
+                gp = stream(ctx.seed, f"{self.key}:cpan")
+                t1 = U.bandpass(_pan_spread(gp, i1, ch, width), 2500.0, 9000.0, sr, order=2)
+                t2 = U.bandpass(_pan_spread(gp, i2, ch, width), 900.0, 4000.0, sr, order=2)
+                bed += (t1 + t2) * 3.0
 
         if self.v["pops"] > 0:
             g = stream(ctx.seed, f"{self.key}:pops")
+            gp = stream(ctx.seed, f"{self.key}:poppan") if width > 0 else None
             lvl = U.db_to_lin(self.v["pops_db"]) * wear_gain
             times = U.event_times(g, self.v["pops"], n / sr, min_gap_s=0.4)
             for t0 in times:
@@ -87,15 +119,26 @@ class AVinylNoise(Effect):
                 click = np.zeros(length)
                 click[: max(int(sr * 0.0006), 4)] = g.uniform(0.7, 1.0)
                 pop = (click + 0.8 * ring) * lvl * g.uniform(0.5, 1.0)
-                U.add_at(bed, pop.astype(np.float32), int(t0 * sr))
+                if gp is None:
+                    U.add_at(bed, pop.astype(np.float32), int(t0 * sr))
+                else:
+                    a = (gp.uniform(-width, width) + 1.0) * (np.pi / 4.0)
+                    w2 = np.sqrt(2.0) * np.array([np.cos(a), np.sin(a)], np.float32)[:ch]
+                    U.add_at(bed, pop.astype(np.float32)[:, None] * w2[None, :], int(t0 * sr))
 
         fry_lvl = U.db_to_lin(self.v["frying_db"]) * wear_gain
         if fry_lvl > 1e-6:
             g = stream(ctx.seed, f"{self.key}:fry")
-            fry = _impulse_train(g, n, 500.0, sr, amp=1.0)
-            fry = U.bandpass(fry[:, None], 2000.0, 10000.0, sr, order=2)[:, 0]
-            fry *= fry_lvl / (U.rms(fry) + 1e-12) * 0.15
-            bed += fry[:, None]
+            fry_imp = _impulse_train(g, n, 500.0, sr, amp=1.0)
+            if width <= 0:
+                fry = U.bandpass(fry_imp[:, None], 2000.0, 10000.0, sr, order=2)[:, 0]
+                fry *= fry_lvl / (U.rms(fry) + 1e-12) * 0.15
+                bed += fry[:, None]
+            else:
+                gp = stream(ctx.seed, f"{self.key}:frypan")
+                fry = U.bandpass(_pan_spread(gp, fry_imp, ch, width), 2000.0, 10000.0, sr, order=2)
+                fry *= fry_lvl / (U.rms(fry) + 1e-12) * 0.15
+                bed += fry
 
         rum_lvl = U.db_to_lin(self.v["rumble_db"]) * wear_gain
         if rum_lvl > 1e-6:
@@ -113,7 +156,39 @@ class AVinylNoise(Effect):
             h *= U.db_to_lin(-58.0 + 14.0 * wear) / (U.rms(h) + 1e-12)
             bed += h
 
-        return U.peak_guard(audio + bed)
+        out = audio + bed
+
+        warp = self.v["warp_thump"]
+        if warp > 0 and n > 16:
+            g = stream(ctx.seed, f"{self.key}:warp")
+            f0 = {"33": 0.555, "45": 0.75, "78": 1.3}[self.v["warp_rpm"]]
+            period = 1.0 / f0
+            off = g.uniform(0.0, period)
+            t = np.arange(n) / sr
+            # slight level dip once per rev as the stylus climbs the warp
+            ph = ((t + off) * f0) % 1.0
+            dip_w = 0.10 + 0.06 * g.uniform()
+            dip = np.exp(-0.5 * ((ph - 0.5) / dip_w) ** 2)
+            out = out * (1.0 - 0.20 * warp * dip)[:, None].astype(np.float32)
+            # soft low 'whomp' at the crest of each revolution
+            k = 0
+            while True:
+                tk = (k + 0.5) * period - off
+                k += 1
+                if tk >= n / sr:
+                    break
+                L = int(0.11 * sr)
+                tt = np.arange(L) / sr
+                fk = g.uniform(38.0, 55.0)
+                th = np.sin(2 * np.pi * fk * tt + g.uniform(0, 2 * np.pi)) * np.exp(-tt / 0.045)
+                th += 0.4 * np.sin(2 * np.pi * 2.1 * fk * tt) * np.exp(-tt / 0.02)
+                th = U.lowpass(th[:, None].astype(np.float32), 150.0, sr, order=2)[:, 0]
+                amp = warp * U.db_to_lin(-22.0) * g.uniform(0.8, 1.15)
+                if tk >= 0:
+                    U.add_at(out, (th * amp / (np.max(np.abs(th)) + 1e-9)).astype(np.float32),
+                             int(tk * sr))
+
+        return U.peak_guard(out)
 
 
 @register

@@ -25,6 +25,8 @@ class ATelephone(Effect):
               desc="Hum + hiss of the line.", group="Noise"),
         Param("sidetone_click", "Switch Clicks", "bool", False,
               desc="Tiny connect/disconnect clicks at start and end.", group="Damage"),
+        Param("exchange_noise", "Exchange Noise", "float", 0.0, 0.0, 1.0,
+              desc="Central-office bed: distant switching clicks and a faint crosstalk murmur of other calls bleeding onto the line.", group="Noise", iscale=True),
     )
 
     def _mulaw_8k(self, x: np.ndarray, sr: int) -> np.ndarray:
@@ -112,6 +114,25 @@ class ATelephone(Effect):
             noise = 0.4 * hum.astype(np.float32) + hiss / (U.rms(hiss) + 1e-12) * 0.6
             noise *= lvl / (U.rms(noise) + 1e-12)
             x = x + noise[:, None]
+
+        ex = self.v["exchange_noise"]
+        if ex > 0.001:
+            g = stream(ctx.seed, f"{self.key}:exchange")
+            bed = np.zeros(n, np.float32)
+            # crosstalk murmur of other conversations, band-limited to the line
+            mur = U.speech_murmur(g, n, sr)
+            mur = U.bandpass(mur[:, None], 300.0, 3000.0, sr, order=2)[:, 0]
+            mur *= U.db_to_lin(-54.0 + 12.0 * ex) / (U.rms(mur) + 1e-12)
+            bed += mur
+            # distant relay/switch clicks somewhere in the office
+            for t0 in U.event_times(g, 6.0 + 10.0 * ex, n / sr, min_gap_s=0.5):
+                L = max(int(0.004 * sr), 16)
+                ck = g.standard_normal(L).astype(np.float32) * np.exp(-np.arange(L) / (L / 5.0))
+                ck = U.bandpass(ck[:, None], 600.0, 2800.0, sr, order=2)[:, 0]
+                amp = U.db_to_lin(-36.0 + 8.0 * ex) * g.uniform(0.4, 1.0)
+                U.add_at(bed, (ck * amp / (np.max(np.abs(ck)) + 1e-9)).astype(np.float32),
+                         int(t0 * sr))
+            x = x + bed[:, None]
 
         if self.v["sidetone_click"]:
             g = stream(ctx.seed, f"{self.key}:click")

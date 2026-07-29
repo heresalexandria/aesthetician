@@ -289,6 +289,39 @@ def add_at(dst: np.ndarray, src: np.ndarray, start: int) -> None:
     dst[a:b] += s
 
 
+# ── speech-shaped murmur ────────────────────────────────────────────────
+
+def speech_murmur(rng: np.random.Generator, n: int, sr: int,
+                  syllable_hz: tuple = (2.5, 6.5)) -> np.ndarray:
+    """Unintelligible 'other program / voices through the wall' murmur.
+
+    Speech-shaped noise only — no real speech: formant-band filtered noise
+    with slowly wandering band weights, amplitude-modulated at syllabic
+    (3–6 Hz) rates with phrase-length swells and pauses.
+    Returns (n,) float32 normalized to RMS ≈ 1 (caller sets level/band).
+    """
+    if n < 16:
+        return np.zeros(n, np.float32)
+    w = rng.standard_normal(n).astype(np.float32)
+    base = lowpass(w[:, None], 3400.0, sr, order=2)[:, 0]
+    bands = (
+        (bandpass(base[:, None], 120.0, 400.0, sr, order=2)[:, 0], 1.0),   # voicing
+        (bandpass(base[:, None], 350.0, 900.0, sr, order=2)[:, 0], 0.9),   # F1
+        (bandpass(base[:, None], 900.0, 2000.0, sr, order=2)[:, 0], 0.65), # F2
+        (bandpass(base[:, None], 2000.0, 3400.0, sr, order=2)[:, 0], 0.3), # F3/sibilant
+    )
+    out = np.zeros(n, np.float32)
+    for b, g0 in bands:  # vowel-ish spectral movement
+        drift = 0.55 + 0.45 * control_noise(rng, n, sr, 0.4, 1.6, ctrl_sr=100.0)
+        out += b * (g0 * np.clip(drift, 0.05, 1.2)).astype(np.float32)
+    syl = control_noise(rng, n, sr, syllable_hz[0], syllable_hz[1], ctrl_sr=200.0)
+    syl = np.clip(0.25 + 0.75 * syl, 0.0, None) ** 1.4          # syllable pulses + gaps
+    phrase = control_noise(rng, n, sr, 0.08, 0.35, ctrl_sr=50.0)
+    phrase = np.clip(0.65 + 0.6 * phrase, 0.0, 1.0)             # sentence swells/pauses
+    out *= (syl * phrase).astype(np.float32)
+    return (out / (rms(out) + 1e-12)).astype(np.float32)
+
+
 # ── companding ──────────────────────────────────────────────────────────
 
 def mulaw_roundtrip(x: np.ndarray, mu: float = 255.0, bits: int = 8) -> np.ndarray:

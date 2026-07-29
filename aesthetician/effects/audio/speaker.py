@@ -31,6 +31,18 @@ class ASpeaker(Effect):
         "jukebox_1955": ((70, 2), (9000, 3), [("pk", 120, 4.0, 1.0), ("pk", 2500, 3.0, 1.5), ("pk", 5000, -2.0, 2.0)]),
         "car_dash_1978": ((120, 2), (7500, 3), [("pk", 250, 3.0, 1.0), ("pk", 1400, 4.0, 1.5), ("pk", 4500, -3.0, 2.0)]),
         "studio_monitor": ((None, 0), (None, 0), []),
+        # paging horn on a workshop wall: hard midrange honk, nothing below 400
+        "intercom_horn_1950": ((400, 3), (3500, 4), [("pk", 1000, 7.0, 1.2), ("pk", 2000, 5.0, 2.5), ("pk", 550, -3.0, 1.5)]),
+        # little metal box hanging on the car window: boxy, peaky, no lows
+        "drive_in_speaker_1958": ((250, 3), (4200, 3), [("pk", 1200, 6.0, 1.6), ("pk", 3000, 3.5, 2.2), ("pk", 700, -2.5, 1.4), ("pk", 450, 2.0, 1.2)]),
+        # big wooden console TV: warm cabinet boom, polite rolled-off top
+        "tv_console_1972": ((70, 2), (8000, 3), [("pk", 130, 3.5, 1.1), ("pk", 900, 2.5, 1.3), ("hs", 5500, -3.5, 0)]),
+        # ghetto-blaster with 'loudness' on: bumped bass, scooped low-mids, sizzle
+        "boombox_1985": ((65, 2), (12000, 3), [("pk", 90, 5.0, 1.1), ("pk", 400, -2.5, 1.0), ("pk", 2800, 3.0, 1.6), ("hs", 9000, 2.0, 0)]),
+        # beige-box PC speaker behind a plastic grille: brutally tinny
+        "pc_speaker_1992": ((500, 4), (6000, 4), [("pk", 1900, 8.0, 2.0), ("pk", 3800, 4.0, 2.5), ("pk", 800, -3.0, 1.2)]),
+        # early stock mp3-player earbud: no sub, forward presence, thin plasticky top
+        "earbud_2005": ((120, 2), (15000, 2), [("ls", 90, -3.0, 0), ("pk", 250, -2.0, 0.9), ("pk", 3200, 4.0, 1.8), ("pk", 6500, 2.5, 2.2)]),
     }
     PARAMS = (
         Param("device", "Device", "enum", "tv_mono_1985", choices=tuple(_DEVICES),

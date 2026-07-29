@@ -28,6 +28,10 @@ class AAmRadio(Effect):
               desc="Faint drifting 1–3 kHz carrier-beat whistle.", group="Noise"),
         Param("tune_drift", "Tuning Drift", "float", 0.0, 0.0, 10.0, unit="/min",
               desc="Brief detune dips per minute (muffled, distorted, quieter).", group="Damage", iscale=True),
+        Param("adjacent_channel", "Adjacent Channel", "float", 0.0, 0.0, 1.0,
+              desc="Adjacent-station interference: the 10 kHz carrier-spacing heterodyne whistle plus a ghostly band-limited other-program murmur that fades in and out.", group="Noise", iscale=True),
+        Param("power_line", "Power Line", "float", 0.0, 0.0, 1.0,
+              desc="Buzzy 120 Hz mains-harmonic bed the receiver picks up from house wiring.", group="Noise", iscale=True),
     )
 
     def process_audio(self, audio: np.ndarray, ctx: Context) -> np.ndarray:
@@ -102,6 +106,36 @@ class AAmRadio(Effect):
             drift = 1.0 + 0.12 * U.control_noise(g, n, sr, 0.02, 0.15, ctrl_sr=50.0)
             phase = 2 * np.pi * np.cumsum(f0 * drift) / sr
             bed += (wh_lvl * np.sqrt(2.0) * np.sin(phase)).astype(np.float32)[:, None]
+
+        adj = self.v["adjacent_channel"]
+        if adj > 0.001:
+            g = stream(ctx.seed, f"{self.key}:adj")
+            # 10 kHz channel-spacing het: thin, slightly unstable, near the edge
+            f10 = min(10000.0, sr * 0.45)
+            wob = 1.0 + 0.0004 * U.control_noise(g, n, sr, 0.05, 0.3, ctrl_sr=50.0)
+            het = np.sin(2 * np.pi * np.cumsum(f10 * wob) / sr).astype(np.float32)
+            het *= U.db_to_lin(-52.0 + 10.0 * adj) * np.sqrt(2.0)
+            # the other program: speech-shaped murmur under its own skywave fade
+            mur = U.speech_murmur(g, n, sr)
+            mur = U.bandpass(mur[:, None], 250.0, 2800.0, sr, order=2)[:, 0]
+            f2 = 0.5 + 0.5 * U.control_noise(g, n, sr, 0.05, 0.22, ctrl_sr=50.0)
+            mur *= np.clip(f2, 0.0, 1.0).astype(np.float32) ** 1.5
+            mur *= U.db_to_lin(-47.0 + 12.0 * adj) / (U.rms(mur) + 1e-12)
+            bed += (het + mur)[:, None]
+
+        pl = self.v["power_line"]
+        if pl > 0.001:
+            g = stream(ctx.seed, f"{self.key}:pline")
+            wand = 1.0 + 0.0008 * U.control_noise(g, n, sr, 0.02, 0.1, ctrl_sr=50.0)
+            phb = 2 * np.pi * np.cumsum(120.0 * wand) / sr
+            buzz = np.zeros(n, np.float64)
+            for k in range(1, 14):  # gritty rectified-supply stack up to ~1.6 kHz
+                a = 1.0 / (k ** 1.15)
+                buzz += a * np.sin(k * phb + g.uniform(0, 2 * np.pi) * (0 if k == 1 else 1))
+            b = U.highpass(buzz.astype(np.float32)[:, None], 70.0, sr, order=1)[:, 0]
+            b *= (1.0 + 0.12 * U.control_noise(g, n, sr, 0.2, 1.2, ctrl_sr=100.0)).astype(np.float32)
+            b *= U.db_to_lin(-52.0 + 14.0 * pl) / (U.rms(b) + 1e-12)
+            bed += b[:, None]
 
         return U.peak_guard(x + bed)
 
