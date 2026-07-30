@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -186,6 +187,14 @@ def _cross_pip_args(target: Target) -> list[str]:
     return args
 
 
+def _project_version() -> str:
+    txt = (REPO_ROOT / "pyproject.toml").read_text()
+    for line in txt.splitlines():
+        if line.startswith("version = "):
+            return line.split("=", 1)[1].strip().strip('"')
+    raise RuntimeError("could not read version from pyproject.toml")
+
+
 def _install(target: Target, root: Path, native: bool, builder_python: str) -> None:
     site = root / target.site_rel
     py = root / target.python_rel
@@ -208,6 +217,37 @@ def _install(target: Target, root: Path, native: bool, builder_python: str) -> N
              *_cross_pip_args(target), *DEPS])
         run([builder_python, "-m", "pip", "install", "--no-warn-script-location",
              "--no-cache-dir", "--upgrade", "--no-deps", "--target", site, wheel])
+
+
+
+def _install_project_only(target: Target, root: Path, native: bool, builder_python: str) -> None:
+    """Reinstall just this project into an otherwise-cached runtime.
+
+    The cache stamp deliberately tracks only the expensive, slow-moving pieces
+    (CPython, the third-party wheels). Our own package changes on nearly every
+    build, so it is always reinstalled: a cache hit that kept a stale
+    aesthetician/ shipped an app whose Info.plist said one version while its
+    engine was an older one, which is very hard to spot from the outside.
+    """
+    site = root / target.site_rel
+    py = root / target.python_rel
+    wheel = _project_wheel(builder_python)
+    log("pip install (project only, cache refresh)")
+    if native:
+        run([py, "-m", "pip", "install", "--no-warn-script-location", "--no-cache-dir",
+             "--force-reinstall", "--no-deps", wheel])
+    else:
+        run([builder_python, "-m", "pip", "install", "--no-warn-script-location",
+             "--no-cache-dir", "--force-reinstall", "--no-deps", "--target", site,
+             *_cross_pip_args(target), wheel])
+    # Fresh sources need fresh hash-based caches, or the app writes .pyc into its
+    # own signed bundle at runtime and macOS then refuses to launch it.
+    pkg = site / "aesthetician"
+    if pkg.is_dir():
+        compiler = str(py) if native else builder_python
+        subprocess.run([compiler, "-m", "compileall", "-q", "-j", "0", "-f",
+                        "--invalidation-mode", "unchecked-hash", str(pkg)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _compile_bytecode(root: Path, target: Target, native: bool, builder_python: str) -> None:
@@ -239,12 +279,40 @@ def _compile_bytecode(root: Path, target: Target, native: bool, builder_python: 
 def engine_counts(python: str | Path, root_env: dict[str, str],
                   launcher: list[str] | None = None) -> tuple[int, int]:
     """Ask an interpreter for its effect/preset counts via the real CLI path."""
+    # cwd MUST be outside the repo: python puts the working directory on sys.path,
+    # so running this from the checkout imports the dev tree and the bundle's own
+    # site-packages is never exercised. That mistake once shipped an app whose
+    # engine was a version behind while every check passed.
     cmd = (launcher or []) + [str(python), "-m", "aesthetician.cli", "schema"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, env=root_env, timeout=300)
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=root_env,
+                          cwd=tempfile.gettempdir(), timeout=300)
     if proc.returncode != 0:
         raise RuntimeError(f"schema failed: {proc.stderr[-2000:]}")
     data = json.loads(proc.stdout)
     return len(data["effects"]), len(data["presets"])
+
+
+def assert_bundled_engine(python: str | Path, root: Path, root_env: dict[str, str],
+                          launcher: list[str] | None = None) -> str:
+    """Confirm the interpreter imports the engine FROM THE BUNDLE, at our version."""
+    code = ("import aesthetician,sys;"
+            "sys.stdout.write(aesthetician.__file__+'|'+aesthetician.__version__)")
+    proc = subprocess.run((launcher or []) + [str(python), "-c", code],
+                          capture_output=True, text=True, env=root_env,
+                          cwd=tempfile.gettempdir(), timeout=120)
+    if proc.returncode != 0:
+        raise RuntimeError(f"engine import failed: {proc.stderr[-2000:]}")
+    path, version = proc.stdout.strip().split("|")
+    if str(root.resolve()) not in str(Path(path).resolve()):
+        raise RuntimeError(
+            f"bundled engine resolved OUTSIDE the runtime: {path}\n"
+            "the check was not exercising the bundle")
+    expected = _project_version()
+    if version != expected:
+        raise RuntimeError(
+            f"bundled engine is version {version}, expected {expected} - "
+            "the cached runtime kept a stale copy of the project")
+    return version
 
 
 def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | None,
@@ -276,6 +344,7 @@ def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | N
         env["AESTHETICIAN_FFPROBE"] = str(ffmpeg_dir / f"ffprobe{target.exe_suffix}")
     if assets:
         env["AESTHETICIAN_ASSETS"] = str(assets)
+    version = assert_bundled_engine(root / target.python_rel, root, env, launcher)
     n_eff, n_pre = engine_counts(root / target.python_rel, env, launcher)
     if (n_eff, n_pre) != expect:
         raise SystemExit(
@@ -283,7 +352,7 @@ def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | N
             f"expected {expect[0]}/{expect[1]} - dynamic module discovery is broken"
         )
     how = "native" if native else "under Rosetta"
-    return f"{n_eff} effects, {n_pre} presets ({how})"
+    return f"v{version}, {n_eff} effects, {n_pre} presets ({how})"
 
 
 # ── entry point ──────────────────────────────────────────────────────────
@@ -302,6 +371,11 @@ def build(target: Target, *, force: bool = False, bytecode: bool = True,
         try:
             if json.loads(stamp_path.read_text()) == want:
                 log(f"runtime cached: {target.key} ({human(size_of(root))})")
+                native = is_native(target)
+                _install_project_only(
+                    target, root, native,
+                    builder_python or (str(root / target.python_rel) if native else sys.executable),
+                )
                 return root
         except Exception:
             pass
