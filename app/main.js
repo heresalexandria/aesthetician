@@ -103,7 +103,7 @@ function cacheKey(req) {
   return h.digest('hex');
 }
 
-function spawnRender(args, jobId, sender, kind) {
+function spawnRender(args, jobId, sender, kind, output = null) {
   return new Promise((resolve, reject) => {
     const p = spawn(PYTHON, args, CHILD_OPTS());
     if (kind === 'preview') previewProc = p;
@@ -128,26 +128,44 @@ function spawnRender(args, jobId, sender, kind) {
       if (kind === 'preview' && previewProc === p) previewProc = null;
       if (kind === 'export') exportProcs.delete(jobId);
       if (code === 0) resolve();
-      else if (p.killed) reject(new Error('superseded'));
-      else reject(new Error(err.slice(-2000) || `exit ${code}`));
+      else if (p.killed) {
+        // A canceled export leaves a truncated file at the destination the user
+        // chose; nobody wants that, so sweep it up.
+        if (output) { try { fs.unlinkSync(output); } catch (_) { /* never written */ } }
+        reject(new Error('superseded'));
+      } else reject(new Error(err.slice(-2000) || `exit ${code}`));
     });
     p.on('error', reject);
   });
 }
 
 const SMOKE = process.argv.includes('--smoke');
+const SHOT = argValue('--shot');           // dev utility: write a screenshot and exit
+
+function argValue(flag) {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 ? process.argv[i + 1] : null;
+}
 
 app.whenReady().then(() => {
   ensureCacheDir();
   if (SMOKE) runSmoke();
+  if (SHOT) runShot();
+  const iconPng = path.join(__dirname, 'renderer', 'icon.png');
+  // Packaged builds carry a proper .icns/.ico; this covers the window icon on
+  // Windows/Linux and the Dock while running from a dev checkout on macOS.
+  if (process.platform === 'darwin' && app.dock) {
+    try { app.dock.setIcon(iconPng); } catch (_) { /* cosmetic */ }
+  }
   win = new BrowserWindow({
     width: 1480,
     height: 940,
     minWidth: 1120,
     minHeight: 700,
     title: 'Aesthetician',
-    backgroundColor: '#0d0e11',
+    backgroundColor: '#0a0b10',
     titleBarStyle: 'hiddenInset',
+    icon: iconPng,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -195,6 +213,66 @@ async function runSmoke() {
   }
 }
 
+/* `npx electron . --shot out.png [--shot-file clip.mp4] [--shot-preset id]
+    [--shot-js steps.js]`
+   Boots the app, optionally opens a clip and applies a preset, waits for its
+   preview to finish rendering, runs any extra scripted steps, captures the
+   window and exits. Used to keep the README screenshot honest without a hand
+   on the camera. */
+async function runShot() {
+  const file = argValue('--shot-file');
+  const preset = argValue('--shot-preset');
+  const jsFile = argValue('--shot-js');
+  // Without this, macOS App Nap freezes the unfocused window's timers and the
+  // shot never finishes.
+  const { powerSaveBlocker } = require('electron');
+  powerSaveBlocker.start('prevent-app-suspension');
+  const deadline = setTimeout(() => { console.error('[shot] TIMEOUT'); app.exit(1); }, 180000);
+  const js = (code) => win.webContents.executeJavaScript(code, true);
+  const settle = (ms) => new Promise((r) => setTimeout(r, ms));
+  try {
+    await new Promise((resolve) => {
+      app.on('web-contents-created', (_e, wc) => {
+        wc.on('console-message', (_ev, level, message) => {
+          if (message.includes('aesth:renderer-ready')) resolve();
+          if (level >= 3) console.error('[shot] renderer:', message);
+        });
+      });
+    });
+    await settle(600);
+    if (file) {
+      await js(`loadFile(${JSON.stringify(path.resolve(file))})`);
+      await settle(400);
+      if (preset) {
+        await js(`selectPreset(${JSON.stringify(preset)})`);
+        // wait for the preview render to complete and the players to load
+        for (let i = 0; i < 600; i++) {
+          const done = await js(`(!!document.querySelector('#video-a[src]')
+            && $('render-overlay').classList.contains('hidden'))`);
+          if (done) break;
+          await settle(250);
+        }
+        await settle(1200);   // give the <video> a frame to paint
+      }
+    }
+    if (jsFile) {
+      await js(fs.readFileSync(path.resolve(jsFile), 'utf8'));
+      await settle(500);
+    }
+    const image = await win.webContents.capturePage();
+    const out = path.resolve(SHOT);
+    if (/\.jpe?g$/i.test(out)) fs.writeFileSync(out, image.toJPEG(92));
+    else fs.writeFileSync(out, image.toPNG());
+    console.log(`[shot] wrote ${out}`);
+    clearTimeout(deadline);
+    app.exit(0);
+  } catch (err) {
+    clearTimeout(deadline);
+    console.error('[shot] FAIL:', err.message);
+    app.exit(1);
+  }
+}
+
 ipcMain.handle('aesth:schema', async () => JSON.parse(await runCapture(['schema'])));
 ipcMain.handle('aesth:probe', async (_e, file) => JSON.parse(await runCapture(['probe', file])));
 
@@ -221,6 +299,19 @@ ipcMain.handle('aesth:snippet', async (_e, req) => {
   return { output };
 });
 
+ipcMain.handle('aesth:pick-input', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    title: 'Open a video or audio file',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Media', extensions: ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v', 'mpg', 'mpeg', 'ts',
+        'wav', 'mp3', 'm4a', 'aac', 'flac', 'aiff', 'ogg'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  return r.canceled || !r.filePaths.length ? null : r.filePaths[0];
+});
+
 ipcMain.handle('aesth:pick-export-path', async (_e, suggestion, audioOnly = false) => {
   const r = await dialog.showSaveDialog(win, {
     title: audioOnly ? 'Export treated audio' : 'Export treated video',
@@ -234,7 +325,7 @@ ipcMain.handle('aesth:pick-export-path', async (_e, suggestion, audioOnly = fals
 
 ipcMain.handle('aesth:export', async (e, req) => {
   const args = renderArgs(req, req.output);
-  await spawnRender(args, req.jobId, e.sender, 'export');
+  await spawnRender(args, req.jobId, e.sender, 'export', req.output);
   return { output: req.output };
 });
 

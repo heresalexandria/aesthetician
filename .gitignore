@@ -70,8 +70,9 @@ npm-debug.log*
 # Staged Contents/Resources payload, and the download/runtime cache.
 app/build-resources/
 .cache/
-# Generated app icon (regenerate: see docs/packaging.md) - also matched by *.png.
+# Generated app icons (regenerate: see docs/packaging.md) - also matched by *.png.
 !app/build/icon.png
+!app/renderer/icon.png
 
 # ── OS / editor ─────────────────────────────────────────
 .DS_Store

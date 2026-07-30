@@ -1,6 +1,12 @@
-# Aesthetician
+<p align="center">
+  <img src="app/renderer/icon.png" width="128" alt="Aesthetician icon"/>
+</p>
 
-![Aesthetician](preview.jpg)
+<h1 align="center">Aesthetician</h1>
+
+<p align="center">
+  <img src="preview.jpg" alt="Aesthetician screenshot"/>
+</p>
 
 **A premium archival-media aesthetic engine.** Aesthetician applies era-authentic looks, and sounds, to modern video and audio: VHS in a dozen states of decay, three-strip Technicolor, 16mm news film, Saturday-morning cartoons, dying broadcast signals, early web video, and much more.
 
@@ -21,6 +27,9 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Session tabs.** Open as many clips as you like, each with its own aesthetic and knob positions. Try one clip several ways side by side; switching back is instant.
 - **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
 - **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
+- **Search, filters and favorites.** Family chips and an era dropdown narrow the 191 looks; star the keepers and they float to the top, across launches.
+- **Preview, tuned to your patience.** Pick the preview's length (2 to 8 s) and resolution (25 to 100%); exports always render full quality. A running export can be canceled cleanly.
+- **Keyboard-friendly.** ⌘O open, ⌘E export, Space play/pause, hold B for the original, / to search.
 - **Hover tooltips on every knob.** What the parameter physically models, its range, and the `--set` path to reach it from the CLI.
 - **Two master dials.** **Intensity** for damage, warping and glow; **Texture** for grain and noise alone, so a look can go completely clean without losing its colour and character.
 - **Deterministic.** Same seed, same render, every time. Roll the dice for a different take on the same aesthetic.

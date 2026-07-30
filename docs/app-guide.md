@@ -4,6 +4,31 @@
 cd app && npm start
 ```
 
+## Finding a look: search, filters, favorites
+
+The browse pane is built for 191 presets:
+
+- **Search** matches name, id, era, family, tagline and tags. Press **/**
+  (or **⌘F**) to jump to it from anywhere.
+- **Family chips** under the search box narrow the list to one or more
+  families; click a chip again to release it, or **All** to reset.
+- The **era dropdown** narrows to a single decade, and combines with the
+  family chips and search.
+- **Favorites**: hover a preset row and click the star (or star the current
+  preset from the panel header on the right). Favorites float to the top of
+  the list in their own group, and the **★** chip shows only them. Favorites
+  persist across launches.
+
+## Keyboard shortcuts
+
+| key | does |
+|---|---|
+| **⌘O** | open a video or audio file (same as the Browse button) |
+| **⌘E** | export the current clip |
+| **Space** | play / pause the preview |
+| **B** (hold) | show the untreated original, like holding A/B |
+| **/** or **⌘F** | focus the preset search |
+
 ## Working with clips: sessions and tabs
 
 Each video you open is a **session** with its own aesthetic, parameter overrides,
@@ -62,7 +87,8 @@ Preview cache   184.0 MB · 37 previews   Clear   Reveal
   `%APPDATA%\aesthetician-app\preview-cache` on Windows.
 
 Exports never go through the cache - those are written wherever you point the
-save dialog.
+save dialog. A running export can be stopped with **Cancel** next to the
+export button; the partial file is deleted.
 
 ## Understanding the knobs
 
@@ -81,13 +107,21 @@ The two master dials sit above the effect stack:
   staining, nitrate) is deliberately left alone.
 
 Any override you make is highlighted, and the **↺** beside it restores the
-preset's value.
+preset's value. While any overrides exist, a strip above the effect stack
+counts them and offers **Reset all**; effects carrying a tweak show a dot on
+their header.
 
 ## Preview fidelity
 
-Previews are rendered by the same engine that does the export, at half
-resolution and three seconds long - so what you see is what you get, with two
-caveats worth knowing:
+Previews are rendered by the same engine that does the export - so what you
+see is what you get. Two dropdowns beside the scrub bar control the trade
+between speed and fidelity, and both settings persist across launches:
+
+- **length** (2s / 3s / 5s / 8s) - how much of the clip each preview renders;
+- **scale** (25% / 50% / 75% / 100%) - the preview's render resolution.
+  Exports always render at full resolution regardless.
+
+Two caveats worth knowing at reduced scale:
 
 - Real-codec presets (`codec_era`, `codec_glitch`) encode at the preview's
   smaller frame size, so blocking is proportionally coarser than the export.
