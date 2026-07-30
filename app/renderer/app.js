@@ -20,7 +20,41 @@ const G = {
   scale: 0.5,          // preview scale
   autoPreview: true,
   muted: true,
+  favs: new Set(),     // favorited preset ids (persisted)
+  filterFamilies: new Set(),  // family chips currently selected (empty = all)
+  filterEra: '',       // decade string like "1980s" (empty = any)
+  favOnly: false,      // the ★ chip: show favorites only
 };
+
+/* ── small persistence layer (localStorage) ─────────────────────────
+   Favorites, collapsed families and the preview knobs survive restarts.
+   Everything degrades to defaults if storage is unavailable or stale. */
+const STORE_KEY = 'aesthetician.ui.v1';
+
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    if (Array.isArray(s.favs)) G.favs = new Set(s.favs);
+    if (Array.isArray(s.collapsed)) G.collapsed = new Set(s.collapsed);
+    if (typeof s.duration === 'number' && s.duration >= 1 && s.duration <= 10) G.duration = s.duration;
+    if (typeof s.scale === 'number' && s.scale >= 0.2 && s.scale <= 1) G.scale = s.scale;
+    if (typeof s.autoPreview === 'boolean') G.autoPreview = s.autoPreview;
+    if (typeof s.muted === 'boolean') G.muted = s.muted;
+  } catch (_) { /* first run, or corrupted store: defaults are fine */ }
+}
+
+function saveStore() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      favs: [...G.favs],
+      collapsed: [...G.collapsed],
+      duration: G.duration,
+      scale: G.scale,
+      autoPreview: G.autoPreview,
+      muted: G.muted,
+    }));
+  } catch (_) { /* storage full or unavailable: cosmetic only */ }
+}
 
 function newSession(info) {
   return {
@@ -50,6 +84,7 @@ const videoB = $('video-b'); // original
 
 // ── boot ────────────────────────────────────────────────────────────
 (async function boot() {
+  loadStore();
   const env = await window.aesth.checkEnv();
   if (!env.ok) {
     const w = $('env-warning');
@@ -63,6 +98,7 @@ const videoB = $('video-b'); // original
   }
   try {
     G.schema = await window.aesth.schema();
+    buildFilterBar();
     buildPresetList();
   } catch (err) {
     const w = $('env-warning');
@@ -72,6 +108,7 @@ const videoB = $('video-b'); // original
   window.aesth.onProgress(onProgress);
   wireDrop();
   wireControls();
+  wireShortcuts();
   renderTabs();
   refreshCacheInfo();
   if (G.schema) console.log('aesth:renderer-ready');
@@ -92,6 +129,12 @@ function wireDrop() {
     const p = window.aesth.pathForFile(f);
     await loadFile(p);
   });
+  $('btn-browse').addEventListener('click', browseForFile);
+}
+
+async function browseForFile() {
+  const p = await window.aesth.pickInput();
+  if (p) await loadFile(p);
 }
 
 async function loadFile(p) {
@@ -127,12 +170,15 @@ function activateSession(id) {
   const scrub = $('scrub');
   scrub.max = Math.max(sess.file.duration - G.duration, 0).toFixed(1);
   scrub.value = sess.previewT.toFixed(1);
+  paintRange(scrub);
   $('scrub-label').textContent = `preview at ${sess.previewT.toFixed(1)}s`;
   $('seed').value = sess.seed;
   $('intensity').value = sess.intensity;
   $('intensity-val').textContent = sess.intensity.toFixed(2);
+  paintRange($('intensity'));
   $('texture').value = sess.texture;
   $('texture-val').textContent = sess.texture.toFixed(2);
+  paintRange($('texture'));
 
   // Splitting picture from sound is meaningless when there is no picture.
   $('exp-video-only').closest('label').classList.toggle('hidden', sess.audioSource);
@@ -142,10 +188,14 @@ function activateSession(id) {
   $('btn-export').textContent = sess.audioSource ? 'Export Full Audio' : 'Export Full Video';
 
   renderTabs();
+  buildFilterBar();   // chip order follows famRank, which flips for audio sources
   buildPresetList();
   if (sess.presetId) buildParamPane();
   else {
     $('preset-title').textContent = '-';
+    $('preset-sub').textContent = '';
+    $('btn-fav').classList.add('hidden');
+    $('override-row').classList.add('hidden');
     $('variant-row').innerHTML = '';
     $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
   }
@@ -361,6 +411,115 @@ const NOISE_HINT = new Set(['amount', 'luma_noise', 'chroma_noise', 'fm_sparkle'
   'retrace_lines', 'moire_cam', 'agc_gain_noise', 'density', 'toner', 'grain_ink',
   'intermittent', 'mottle']);
 
+// ── range fill ──────────────────────────────────────────────────────
+/* Sliders paint their track with the accent gradient up to the thumb; the CSS
+   reads the percentage from a custom property this keeps in sync. */
+function paintRange(el) {
+  const lo = parseFloat(el.min) || 0;
+  const hi = parseFloat(el.max) || 1;
+  const v = parseFloat(el.value) || 0;
+  const p = hi > lo ? ((v - lo) / (hi - lo)) * 100 : 0;
+  el.style.setProperty('--p', `${Math.max(0, Math.min(100, p))}%`);
+}
+
+// ── favorites ───────────────────────────────────────────────────────
+const STAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.7 5.8 6.3.7-4.7 4.3 1.3 6.2-5.6-3.2L6.4 20l1.3-6.2L3 9.5l6.3-.7z"/></svg>';
+
+function toggleFav(pid) {
+  if (G.favs.has(pid)) G.favs.delete(pid);
+  else G.favs.add(pid);
+  if (!G.favs.size && G.favOnly) G.favOnly = false;
+  saveStore();
+  buildFilterBar();
+  buildPresetList();
+  if (state.presetId) syncFavButton();
+}
+
+function syncFavButton() {
+  const btn = $('btn-fav');
+  btn.classList.toggle('hidden', !state.presetId);
+  btn.classList.toggle('faved', G.favs.has(state.presetId));
+  btn.title = G.favs.has(state.presetId) ? 'Remove from favorites' : 'Favorite this aesthetic';
+}
+
+// ── filter bar (family chips + era decades) ─────────────────────────
+function decadeOf(p) {
+  const y = parseInt(p.era, 10);
+  return Number.isFinite(y) ? `${Math.floor(y / 10) * 10}s` : null;
+}
+
+function buildFilterBar() {
+  const presets = Object.values(G.schema.presets);
+
+  const chips = $('family-chips');
+  chips.innerHTML = '';
+  if (G.favs.size) {
+    const star = document.createElement('span');
+    star.className = 'chip star-chip' + (G.favOnly ? ' sel' : '');
+    star.textContent = `★ ${G.favs.size}`;
+    star.title = 'Show favorites only';
+    star.onclick = () => { G.favOnly = !G.favOnly; buildFilterBar(); buildPresetList(); };
+    chips.appendChild(star);
+  }
+  const all = document.createElement('span');
+  all.className = 'chip' + (G.filterFamilies.size || G.favOnly ? '' : ' sel');
+  all.textContent = 'All';
+  all.onclick = () => { G.filterFamilies.clear(); G.favOnly = false; buildFilterBar(); buildPresetList(); };
+  chips.appendChild(all);
+  const fams = [...new Set(presets.map((p) => p.family))]
+    .sort((a, b) => famRank(a) - famRank(b));
+  for (const f of fams) {
+    const n = presets.filter((p) => p.family === f).length;
+    const c = document.createElement('span');
+    c.className = 'chip' + (G.filterFamilies.has(f) ? ' sel' : '');
+    c.textContent = f;
+    c.title = `${n} preset${n === 1 ? '' : 's'}`;
+    c.onclick = () => {
+      if (G.filterFamilies.has(f)) G.filterFamilies.delete(f);
+      else G.filterFamilies.add(f);
+      buildFilterBar();
+      buildPresetList();
+    };
+    chips.appendChild(c);
+  }
+
+  const era = $('era-filter');
+  const current = G.filterEra;
+  era.innerHTML = '<option value="">Any era</option>';
+  const decades = [...new Set(presets.map(decadeOf).filter(Boolean))]
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  for (const d of decades) {
+    const o = document.createElement('option');
+    o.value = d;
+    o.textContent = d;
+    if (d === current) o.selected = true;
+    era.appendChild(o);
+  }
+  era.classList.toggle('active', !!current);
+
+  $('preset-search').placeholder = `Search ${presets.length} aesthetics…`;
+}
+
+function passesFilters(p) {
+  if (G.favOnly && !G.favs.has(p.id)) return false;
+  if (G.filterFamilies.size && !G.filterFamilies.has(p.family)) return false;
+  if (G.filterEra && decadeOf(p) !== G.filterEra) return false;
+  return true;
+}
+
+function anyFilterActive() {
+  return G.favOnly || G.filterFamilies.size > 0 || !!G.filterEra || !!$('preset-search').value;
+}
+
+function clearFilters() {
+  G.favOnly = false;
+  G.filterFamilies.clear();
+  G.filterEra = '';
+  $('preset-search').value = '';
+  buildFilterBar();
+  buildPresetList();
+}
+
 // ── preset list ─────────────────────────────────────────────────────
 const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -500,6 +659,13 @@ function presetCard(p) {
   }
   card.appendChild(text);
 
+  const star = document.createElement('button');
+  star.className = 'card-star' + (G.favs.has(p.id) ? ' faved' : '');
+  star.innerHTML = STAR_SVG;
+  star.title = G.favs.has(p.id) ? 'Remove from favorites' : 'Favorite this aesthetic';
+  star.onclick = (e) => { e.stopPropagation(); toggleFav(p.id); };
+  card.appendChild(star);
+
   const t = G.thumbs[p.id];
   if (t && t.anim && !isAudioOnly(p)) armHoverAnim(card, holder, t.anim);
   card.onclick = () => selectPreset(p.id);
@@ -513,14 +679,33 @@ function buildPresetList() {
   const presets = Object.values(G.schema.presets)
     .sort((a, b) => (famRank(a.family) - famRank(b.family)) || a.id.localeCompare(b.id));
   const q = ($('preset-search').value || '').toLowerCase();
+  const matches = (p) => {
+    if (!passesFilters(p)) return false;
+    if (!q) return true;
+    const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${p.tagline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+    return hay.includes(q);
+  };
+
+  // Favorites lead the list (unless the ★ chip already narrows to them, which
+  // would render every row twice).
+  const favRows = G.favOnly ? [] : presets.filter((p) => G.favs.has(p.id) && matches(p));
+  if (favRows.length) {
+    const fl = document.createElement('div');
+    fl.className = 'family-label favorites';
+    fl.innerHTML = `★ FAVORITES <span class="count">${favRows.length}</span>`;
+    list.appendChild(fl);
+    for (const p of favRows) list.appendChild(presetCard(p));
+  }
+
   let family = null;
   let familyBody = null;
+  let shown = favRows.length;
   for (const p of presets) {
-    const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${p.tagline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
-    if (q && !hay.includes(q)) continue;
+    if (!matches(p)) continue;
+    shown++;
     if (p.family !== family) {
       family = p.family;
-      const count = presets.filter((x) => x.family === family).length;
+      const count = presets.filter((x) => x.family === family && matches(x)).length;
       const fl = document.createElement('div');
       fl.className = 'family-label clickable';
       const isCollapsed = !q && G.collapsed.has(family);
@@ -529,6 +714,7 @@ function buildPresetList() {
       fl.onclick = () => {
         if (G.collapsed.has(fam)) G.collapsed.delete(fam);
         else G.collapsed.add(fam);
+        saveStore();
         buildPresetList();
       };
       list.appendChild(fl);
@@ -538,6 +724,20 @@ function buildPresetList() {
       list.appendChild(familyBody);
     }
     (familyBody || list).appendChild(presetCard(p));
+  }
+
+  if (!shown) {
+    const empty = document.createElement('div');
+    empty.className = 'list-empty';
+    empty.textContent = 'No aesthetics match.';
+    if (anyFilterActive()) {
+      const btn = document.createElement('button');
+      btn.textContent = 'Clear filters';
+      btn.onclick = clearFilters;
+      empty.appendChild(document.createElement('br'));
+      empty.appendChild(btn);
+    }
+    list.appendChild(empty);
   }
 }
 
@@ -571,6 +771,9 @@ function buildParamPane() {
   const p = G.schema.presets[state.presetId];
   $('preset-title').textContent = p.name;
   $('preset-title').title = p.desc;
+  $('preset-sub').textContent = `${p.era} · ${p.family}`;
+  syncFavButton();
+  syncOverrideRow();
 
   const vrow = $('variant-row');
   vrow.innerHTML = '';
@@ -614,13 +817,22 @@ function buildParamPane() {
   }
 }
 
+/* The "N tweaks · Reset all" strip under the master dials: visible only while
+   manual --set overrides exist on this session. */
+function syncOverrideRow() {
+  const n = Object.keys(state.sets).length;
+  $('override-row').classList.toggle('hidden', n === 0);
+  if (n) $('override-count').textContent = `${n} manual tweak${n === 1 ? '' : 's'}`;
+}
+
 function effectCard({ eid, key, params }, variantOv) {
   const eff = G.schema.effects[eid];
   const card = document.createElement('div');
   card.className = 'effect-card';
   const head = document.createElement('div');
   head.className = 'effect-head';
-  head.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`;
+  const tweaked = Object.keys(state.sets).some((s) => s.startsWith(`${key}.`));
+  head.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>${tweaked ? '<span class="e-tweaks" title="Has manual tweaks"></span>' : ''}`;
   attachTip(head, () => ({
     title: eff.label,
     desc: eff.desc || '',
@@ -663,19 +875,22 @@ function paramRow(path, prm, baseVal, curVal) {
     if (val === baseVal || String(val) === String(baseVal)) delete state.sets[path];
     else state.sets[path] = val;
     row.classList.toggle('overridden', path in state.sets);
+    syncOverrideRow();
     schedulePreview();
   };
 
   if (prm.kind === 'float' || prm.kind === 'int') {
     const slider = document.createElement('input');
     slider.type = 'range';
+    slider.className = 'range-fill';
     slider.min = prm.lo; slider.max = prm.hi;
     slider.step = prm.kind === 'int' ? 1 : (prm.step || (prm.hi - prm.lo) / 200);
     slider.value = curVal;
+    paintRange(slider);
     const val = document.createElement('span');
     val.className = 'pval';
     val.textContent = fmtVal(curVal, prm);
-    slider.oninput = () => { val.textContent = fmtVal(parseFloat(slider.value), prm); };
+    slider.oninput = () => { val.textContent = fmtVal(parseFloat(slider.value), prm); paintRange(slider); };
     slider.onchange = () => commit(prm.kind === 'int' ? parseInt(slider.value, 10) : parseFloat(slider.value));
     row.appendChild(slider);
     row.appendChild(val);
@@ -803,23 +1018,98 @@ function onProgress(msg) {
   }
 }
 
+// ── keyboard shortcuts ──────────────────────────────────────────────
+function typingTarget(e) {
+  const t = e.target;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+}
+
+function wireShortcuts() {
+  window.addEventListener('keydown', (e) => {
+    const meta = e.metaKey || e.ctrlKey;
+    if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
+    if (typingTarget(e)) return;
+    if (meta && e.code === 'KeyE') {
+      e.preventDefault();
+      if (G.activeId && state.presetId && !G.exportJob) doExport();
+      return;
+    }
+    if (!G.activeId) return;
+    if (e.code === 'Slash' || (meta && e.code === 'KeyF')) {
+      e.preventDefault();
+      $('preset-search').focus();
+      $('preset-search').select();
+      return;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!videoA.src) return;
+      const play = videoA.paused;
+      for (const v of [videoA, videoB]) {
+        if (play) v.play().catch(() => {});
+        else v.pause();
+      }
+      return;
+    }
+    if (e.code === 'KeyB' && !e.repeat && videoA.src) G.showOriginal(true);
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'KeyB' && G.activeId) G.showOriginal(false);
+  });
+}
+
 // ── controls ────────────────────────────────────────────────────────
 function wireControls() {
+  document.querySelectorAll('input.range-fill').forEach(paintRange);
   $('preset-search').addEventListener('input', buildPresetList);
+  $('era-filter').addEventListener('change', (e) => {
+    G.filterEra = e.target.value;
+    e.target.classList.toggle('active', !!G.filterEra);
+    buildPresetList();
+  });
 
   const scrub = $('scrub');
   scrub.addEventListener('input', () => {
     state.previewT = parseFloat(scrub.value);
+    paintRange(scrub);
     $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
   });
   scrub.addEventListener('change', () => schedulePreview());
 
-  $('auto-preview').addEventListener('change', (e) => { G.autoPreview = e.target.checked; });
+  $('auto-preview').checked = G.autoPreview;
+  $('auto-preview').addEventListener('change', (e) => { G.autoPreview = e.target.checked; saveStore(); });
   $('btn-render').addEventListener('click', () => { clearTimeout(previewTimer); runPreview(); });
+
+  /* Preview window length and render scale. Changing either re-keys the cache,
+     so the next Preview is a fresh render at the new setting. */
+  const lenSel = $('preview-len');
+  lenSel.value = String(G.duration);
+  lenSel.addEventListener('change', () => {
+    G.duration = parseFloat(lenSel.value);
+    saveStore();
+    if (state.file && state.file.duration) {
+      scrub.max = Math.max(state.file.duration - G.duration, 0).toFixed(1);
+      if (state.previewT > parseFloat(scrub.max)) {
+        state.previewT = parseFloat(scrub.max);
+        scrub.value = state.previewT.toFixed(1);
+        $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+      }
+      paintRange(scrub);
+    }
+    schedulePreview();
+  });
+  const scaleSel = $('preview-scale');
+  scaleSel.value = String(G.scale);
+  scaleSel.addEventListener('change', () => {
+    G.scale = parseFloat(scaleSel.value);
+    saveStore();
+    schedulePreview();
+  });
 
   const ab = $('btn-ab');
   const showOriginal = (on) => {
     videoA.style.opacity = on ? '0' : '1';
+    ab.classList.toggle('held', on);
     $('ab-badge').classList.toggle('hidden', !on);
     if (on) { videoB.currentTime = videoA.currentTime; videoB.muted = G.muted; videoA.muted = true; }
     else { videoA.muted = G.muted; videoB.muted = true; }
@@ -827,30 +1117,50 @@ function wireControls() {
   ab.addEventListener('mousedown', () => showOriginal(true));
   ab.addEventListener('mouseup', () => showOriginal(false));
   ab.addEventListener('mouseleave', () => showOriginal(false));
+  G.showOriginal = showOriginal;   // the B-key shortcut shares this
 
-  $('btn-mute').addEventListener('click', () => {
+  const muteBtn = $('btn-mute');
+  muteBtn.classList.toggle('on', !G.muted);
+  videoA.muted = G.muted;
+  muteBtn.addEventListener('click', () => {
     G.muted = !G.muted;
     videoA.muted = G.muted;
-    $('btn-mute').textContent = G.muted ? '🔇' : '🔊';
+    muteBtn.classList.toggle('on', !G.muted);
+    saveStore();
   });
 
   $('intensity').addEventListener('input', (e) => {
     state.intensity = parseFloat(e.target.value);
     $('intensity-val').textContent = state.intensity.toFixed(2);
+    paintRange(e.target);
   });
   $('intensity').addEventListener('change', () => schedulePreview());
 
   $('texture').addEventListener('input', (e) => {
     state.texture = parseFloat(e.target.value);
     $('texture-val').textContent = state.texture.toFixed(2);
+    paintRange(e.target);
   });
   $('texture').addEventListener('change', () => schedulePreview());
 
   $('seed').value = state.seed;
   $('seed').addEventListener('change', (e) => { state.seed = parseInt(e.target.value || '1', 10); schedulePreview(); });
   $('btn-dice').addEventListener('click', () => {
-      $('seed').value = state.seed;
+    state.seed = 1 + Math.floor(Math.random() * 999998);
+    $('seed').value = state.seed;
     schedulePreview();
+  });
+
+  $('btn-fav').addEventListener('click', () => { if (state.presetId) toggleFav(state.presetId); });
+  $('btn-reset-overrides').addEventListener('click', () => {
+    state.sets = {};
+    buildParamPane();
+    schedulePreview();
+  });
+  $('btn-export-cancel').addEventListener('click', async () => {
+    if (!G.exportJob) return;
+    $('btn-export-cancel').disabled = true;
+    await window.aesth.cancelExport(G.exportJob);
   });
 
   $('exp-video-only').addEventListener('change', (e) => {
@@ -920,6 +1230,8 @@ async function doExport() {
   const jobId = `job${++G.jobCounter}`;
   G.exportJob = jobId;
   $('btn-export').disabled = true;
+  $('btn-export-cancel').disabled = false;
+  $('btn-export-cancel').classList.remove('hidden');
   setExportStatus('Exporting…');
   try {
     const req = {
@@ -932,7 +1244,6 @@ async function doExport() {
       seed: state.seed,
       intensity: state.intensity,
       texture: state.texture,
-    texture: state.texture,
       crf: 17,
       videoOnly: $('exp-video-only').checked,
       audioOnly: $('exp-audio-only').checked,
@@ -940,10 +1251,15 @@ async function doExport() {
     const res = await window.aesth.exportRender(req);
     setExportStatusLink('Exported ', res.output);
   } catch (err) {
-    setExportStatus(`Export failed: ${err.message.slice(0, 300)}`, true);
+    if (String(err.message || '').includes('superseded')) {
+      setExportStatus('Export canceled - the partial file was removed.');
+    } else {
+      setExportStatus(`Export failed: ${err.message.slice(0, 300)}`, true);
+    }
   } finally {
     G.exportJob = null;
     $('btn-export').disabled = false;
+    $('btn-export-cancel').classList.add('hidden');
     $('btn-export').textContent = state.audioSource ? 'Export Full Audio' : 'Export Full Video';
   }
 }
