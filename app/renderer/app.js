@@ -26,6 +26,7 @@ function newSession(info) {
   return {
     id: `s${++G.seq}`,
     file: info,
+    audioOnly: info.has_video === false,   // a WAV/MP3/stem: no picture to treat
     presetId: null,
     variant: null,
     sets: {},
@@ -118,8 +119,9 @@ function activateSession(id) {
 
   $('drop-screen').classList.add('hidden');
   $('workspace').classList.remove('hidden');
-  $('file-chip').textContent =
-    `${basename(sess.file.path)} · ${sess.file.width}×${sess.file.height} · ${sess.file.duration.toFixed(1)}s`;
+  $('file-chip').textContent = sess.audioOnly
+    ? `${basename(sess.file.path)} · audio · ${(sess.file.sr / 1000).toFixed(1)} kHz ${sess.file.channels === 1 ? 'mono' : 'stereo'} · ${sess.file.duration.toFixed(1)}s`
+    : `${basename(sess.file.path)} · ${sess.file.width}×${sess.file.height} · ${sess.file.duration.toFixed(1)}s`;
   $('file-chip').classList.remove('hidden');
 
   const scrub = $('scrub');
@@ -131,6 +133,13 @@ function activateSession(id) {
   $('intensity-val').textContent = sess.intensity.toFixed(2);
   $('texture').value = sess.texture;
   $('texture-val').textContent = sess.texture.toFixed(2);
+
+  // Splitting picture from sound is meaningless when there is no picture.
+  $('exp-video-only').closest('label').classList.toggle('hidden', sess.audioOnly);
+  $('exp-audio-only').closest('label').classList.toggle('hidden', sess.audioOnly);
+  if (sess.audioOnly) { $('exp-video-only').checked = false; $('exp-audio-only').checked = false; }
+  document.body.classList.toggle('audio-session', sess.audioOnly);
+  $('btn-export').textContent = sess.audioOnly ? 'Export Full Audio' : 'Export Full Video';
 
   renderTabs();
   buildPresetList();
@@ -153,7 +162,7 @@ function activateSession(id) {
     $('player-empty').classList.remove('hidden');
     $('player-empty').textContent = sess.presetId
       ? 'Press Preview to render this clip'
-      : 'Pick an aesthetic to render a preview';
+      : (sess.audioOnly ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
     if (sess.presetId) schedulePreview(true);
   }
   setExportStatus('Ready.');
@@ -208,7 +217,7 @@ function renderTabs() {
 
     const name = document.createElement('span');
     name.className = 't-name';
-    name.textContent = basename(sess.file.path);
+    name.textContent = (sess.audioOnly ? '♪ ' : '') + basename(sess.file.path);
     tab.appendChild(name);
 
     if (sess.presetId) {
@@ -362,6 +371,13 @@ const FAMILY_ORDER = ['vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
   'decay', 'exhibition', 'print', 'transmission', 'stylized', 'audio'];
 
 function famRank(f) {
+  // With an audio source, the audio-first presets are the relevant ones, so they
+  // lead instead of trailing. (Every preset has an audio chain, so none are hidden.)
+  if (state.audioOnly) {
+    if (f === 'audio') return -1;
+    const j = FAMILY_ORDER.indexOf(f);
+    return j < 0 ? FAMILY_ORDER.length : j;
+  }
   const i = FAMILY_ORDER.indexOf(f);
   return i < 0 ? FAMILY_ORDER.length : i;   // unknown families sort before audio
 }
@@ -577,7 +593,15 @@ function buildParamPane() {
   const holder = $('param-list');
   holder.innerHTML = '';
   const vo = variantOverrides();
-  const sections = [['PICTURE', p.video], ['SOUND', p.audio]];
+  const sections = state.audioOnly
+    ? [['SOUND', p.audio]]                 // the video chain cannot apply here
+    : [['PICTURE', p.video], ['SOUND', p.audio]];
+  if (state.audioOnly && p.video.length) {
+    const note = document.createElement('div');
+    note.className = 'audio-note';
+    note.textContent = `Audio source — this preset's ${p.video.length} picture effects are not applied.`;
+    holder.appendChild(note);
+  }
   for (const [label, chain] of sections) {
     if (!chain.length) continue;
     const cl = document.createElement('div');
@@ -887,8 +911,10 @@ async function doExport() {
   if (!state.file || !state.presetId) return;
   const base = state.file.path.replace(/\.[^.]+$/, '');
   const variantTag = state.variant ? `-${state.variant}` : '';
-  const suggestion = `${base}.${state.presetId.replace('/', '-')}${variantTag}.mp4`;
-  const out = await window.aesth.pickExportPath(suggestion);
+  const srcExt = (state.file.path.match(/\.[^.\/]+$/) || ['.mp4'])[0];
+  const outExt = state.audioOnly ? srcExt : '.mp4';
+  const suggestion = `${base}.${state.presetId.replace('/', '-')}${variantTag}${outExt}`;
+  const out = await window.aesth.pickExportPath(suggestion, state.audioOnly);
   if (!out) return;
   const jobId = `job${++G.jobCounter}`;
   G.exportJob = jobId;
@@ -917,7 +943,7 @@ async function doExport() {
   } finally {
     G.exportJob = null;
     $('btn-export').disabled = false;
-    $('btn-export').textContent = 'Export Full Video';
+    $('btn-export').textContent = state.audioOnly ? 'Export Full Audio' : 'Export Full Video';
   }
 }
 

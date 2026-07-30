@@ -213,11 +213,13 @@ ipcMain.handle('aesth:snippet', async (_e, req) => {
   return { output };
 });
 
-ipcMain.handle('aesth:pick-export-path', async (_e, suggestion) => {
+ipcMain.handle('aesth:pick-export-path', async (_e, suggestion, audioOnly = false) => {
   const r = await dialog.showSaveDialog(win, {
-    title: 'Export treated video',
+    title: audioOnly ? 'Export treated audio' : 'Export treated video',
     defaultPath: suggestion,
-    filters: [{ name: 'Video', extensions: ['mp4'] }],
+    filters: audioOnly
+      ? [{ name: 'Audio', extensions: ['wav', 'flac', 'm4a', 'aac', 'mp3', 'aiff'] }]
+      : [{ name: 'Video', extensions: ['mp4'] }],
   });
   return r.canceled ? null : r.filePath;
 });

@@ -296,3 +296,21 @@ button:disabled { opacity: .45; cursor: default; }
 .prow.overridden label { color: var(--accent); }
 .reset-mini { border: none; background: none; color: var(--dim); cursor: pointer; padding: 0 2px; font-size: 11px; }
 .reset-mini:hover { color: var(--accent); }
+
+/* ── audio-only sessions ──────────────────── */
+.audio-note {
+  margin: 8px 4px 2px; padding: 8px 10px; border-radius: 8px;
+  background: rgba(224,164,88,.07); border: 1px solid var(--accent-dim);
+  color: var(--dim); font-size: 11px; line-height: 1.4;
+}
+/* Nothing to look at, so let the player read as a listening surface. */
+body.audio-session #player-wrap {
+  background: radial-gradient(ellipse at center, #14161c 0%, #000 72%);
+}
+body.audio-session #player-wrap::before {
+  content: '♪';
+  position: absolute; z-index: 0; color: rgba(224,164,88,.13);
+  font-size: 190px; line-height: 1; pointer-events: none;
+}
+body.audio-session #player-empty { z-index: 1; }
+body.audio-session #btn-ab { position: relative; }

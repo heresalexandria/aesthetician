@@ -37,6 +37,10 @@ aesthetician preview clip.mp4 -p broadcast-news-film-1975
 aesthetician apply clip.mp4 -p audio-am-1948            # audio-only family
 aesthetician apply clip.mp4 -p vhs-ep-longplay --video-only
 
+# an audio FILE as the source — only the preset's sound chain runs
+aesthetician apply song.wav -p audio-cassette-1984
+aesthetician apply stem.mp3 -p vhs-ep-longplay -o stem.tape.mp3
+
 # reproducibility & strength
 aesthetician apply clip.mp4 -p super8-1974 --seed 42 --intensity 1.4
 
@@ -84,3 +88,19 @@ original → **Export Full Video**.
 - `--intensity` scales the "amount-like" parameters chain-wide (0–2).
 - Preview cache lives in the app's user-data dir and is keyed by every
   parameter, so flipping back to previous settings is instant.
+
+
+## Audio files as input
+
+Anything without a video stream — WAV, MP3, FLAC, M4A, AIFF, a bare stem — is
+accepted as a source. Only the preset's **sound** chain runs; its picture effects
+are skipped rather than erroring, so you can point a video-led preset at a stem
+and get exactly that medium's audio character (`vhs-ep-longplay` on a stem gives
+you the long-play tape sound without any picture).
+
+The output format follows the extension you ask for: `.wav`/`.aiff` stay
+lossless (24-bit PCM), `.flac` is lossless compressed, `.mp3`/`.m4a`/`.aac`
+encode at 320k. With no `-o`, the source's own extension is kept.
+
+All 191 presets carry an audio chain, so any of them does something to an audio
+file — but the 29 in the `audio` family are the ones designed sound-first.

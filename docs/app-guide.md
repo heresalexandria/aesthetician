@@ -21,6 +21,27 @@ with the filename and whichever aesthetic that clip is currently wearing.
 Switching tabs never re-renders: the preview files persist in the cache, so
 flipping between tabs is instant.
 
+## Dropping an audio file
+
+Audio files are first-class sources. Drop a WAV, MP3, FLAC or M4A and the app
+switches into an audio session:
+
+- the **picture** half of the parameter panel disappears — only **SOUND** is
+  shown, with a note saying how many picture effects the chosen preset is
+  skipping;
+- the audio-first presets move to the top of the browse list (all 191 still work
+  — every preset has a sound chain — but the `audio` family is the one designed
+  for this);
+- the video/audio-only export toggles are hidden, the export button becomes
+  **Export Full Audio**, and the save dialog offers audio formats;
+- the tab is marked with a **♪**, and the player becomes a listening surface —
+  hold **A/B** to hear the untreated original.
+
+Export format follows the extension: WAV and AIFF stay lossless, FLAC is
+lossless compressed, MP3/M4A/AAC encode at 320k.
+
+Audio and video sessions can be open side by side; each tab keeps its own kind.
+
 ## The preview cache
 
 Every preview render is written to disk, keyed by the **exact** parameter set that

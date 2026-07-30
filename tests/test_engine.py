@@ -97,6 +97,38 @@ def test_grain_size_ref():
     assert sizes["output"] < sizes["processing"], sizes
 
 
+def test_audio_only_source():
+    """An audio file renders through the audio chain only, in its own format."""
+    import subprocess
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.media import probe
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_audio_in.wav")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=440:d=2",
+         "-c:a", "pcm_s16le", src], check=True)
+
+    info = probe(src)
+    assert info.has_video is False and info.has_audio is True
+    assert info.width == 0 and info.duration > 1.5
+
+    preset = Preset(
+        id="t_audio", name="t", family="t", era="", desc="",
+        video=[("tone", {"contrast": 1.4})],        # must be ignored, not crash
+        audio=[("a_bandlimit", {"high_hz": 3000.0}), ("a_tape_hiss", {"level_db": -40.0})],
+    )
+    for ext in (".wav", ".m4a"):
+        out = os.path.join(root, "out", f"_t_audio_out{ext}")
+        render(src, out, preset, RenderOptions(seed=2, duration=1.0))
+        got = probe(out)
+        assert got.has_video is False, ext
+        assert got.has_audio is True, ext
+        assert abs(got.duration - 1.0) < 0.35, (ext, got.duration)
+
+
 def test_overrides_and_chain_keys():
     o = parse_override_paths({"vhs.tracking": 0.7, "grain#2.amount": 0.2})
     assert o == {"vhs": {"tracking": 0.7}, "grain#2": {"amount": 0.2}}

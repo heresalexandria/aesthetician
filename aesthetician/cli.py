@@ -164,9 +164,13 @@ def _run_render(
     video_over, audio_over = _split_overrides(sets)
 
     if not output:
+        from .engine.media import probe as _probe
+
         base, ext = os.path.splitext(input_path)
         vtag = f"-{variant}" if variant else ""
-        output = f"{base}.{preset_id.replace('/', '-')}{vtag}{suffix}{ext or '.mp4'}"
+        if not ext:
+            ext = ".mp4" if _probe(input_path).has_video else ".wav"
+        output = f"{base}.{preset_id.replace('/', '-')}{vtag}{suffix}{ext}"
 
     opts = RenderOptions(
         seed=seed,
@@ -281,6 +285,7 @@ def probe_cmd(input_path: str) -> None:
                 "fps": info.fps,
                 "duration": info.duration,
                 "n_frames": info.n_frames,
+                "has_video": info.has_video,
                 "has_audio": info.has_audio,
                 "sr": info.sr,
                 "channels": info.channels,
@@ -301,6 +306,16 @@ def snippet(input_path: str, output: str, start: float, duration: float, scale: 
     from .engine.render import _even, _plain_video
 
     info = _probe(input_path)
+    if not info.has_video:
+        from .engine.media import encode_audio_only, read_audio, write_wav
+
+        audio = read_audio(input_path, info.sr, min(info.channels, 2), start, duration)
+        tmp = output + ".snip.wav"
+        write_wav(tmp, audio, info.sr)
+        encode_audio_only(tmp, output)
+        os.unlink(tmp)
+        click.echo(json.dumps({"output": output, "audio_only": True}))
+        return
     w, h = _even(int(info.width * scale)), _even(int(info.height * scale))
     _plain_video(input_path, output, w, h, info.fps, start, duration, crf=17)
     if info.has_audio:

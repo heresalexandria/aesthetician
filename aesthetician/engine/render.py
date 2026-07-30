@@ -98,6 +98,9 @@ def render(
     fps = info.fps
     n_frames = max(int(round(duration * fps)), 1)
 
+    if not info.has_video:
+        return _render_audio_only(input_path, output_path, preset, opts, info, duration, report)
+
     out_w, out_h = _even(int(info.width * opts.scale)), _even(int(info.height * opts.scale))
     if preset.proc_height and preset.proc_height < out_h:
         proc_h = _even(preset.proc_height)
@@ -178,6 +181,79 @@ def render(
 
         report("mux", 0.0)
         media.mux(video_out, audio_out, output_path)
+        report("done", 1.0)
+        return output_path
+    finally:
+        if opts.keep_temp:
+            print(f"[aesthetician] temp kept at {tmp_root}")
+        else:
+            shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def _render_audio_only(
+    input_path: str,
+    output_path: str,
+    preset: Preset,
+    opts: RenderOptions,
+    info: "media.MediaInfo",
+    duration: float,
+    report: ProgressCb,
+) -> str:
+    """Treat a source that has no picture: only the preset's audio chain runs.
+
+    Presets whose audio chain is empty are a no-op here rather than an error —
+    the file is simply re-encoded — so a video-led preset can still be pointed at
+    a stem without blowing up.
+    """
+    tmp_root = tempfile.mkdtemp(prefix="aesth_a_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+    try:
+        ctx = Context(
+            width=0,
+            height=0,
+            fps=info.fps,
+            n_frames=max(int(round(duration * info.fps)), 1),
+            sr=info.sr,
+            channels=min(info.channels, 2),
+            seed=opts.seed,
+            intensity=opts.intensity,
+            scratch_dir=tmp_root,
+            asset_root=default_asset_root(),
+            texture=opts.texture,
+        )
+        chain: list[Effect] = []
+        if not opts.video_only and preset.audio:
+            chain = build_chain(preset.audio)
+            over = _merged_overrides(preset.variant(opts.variant), opts.audio_overrides, "audio")
+            for eff in chain:
+                eff.resolve(ctx, over.get(eff.key))
+                eff.prepare(ctx)
+
+        report("audio", 0.0)
+        audio = media.read_audio(input_path, ctx.sr, ctx.channels, opts.t0, duration)
+        for i, eff in enumerate(chain):
+            if eff.kind == "audio_filepass":
+                w_in = os.path.join(tmp_root, f"a_{i}_in.wav")
+                w_out = os.path.join(tmp_root, f"a_{i}_out.wav")
+                media.write_wav(w_in, audio, ctx.sr)
+                eff.file_pass(w_in, w_out, ctx)
+                audio = media.read_audio(w_out, ctx.sr, ctx.channels)
+            else:
+                audio = eff.process_audio(audio, ctx)
+            report("audio", (i + 1) / max(len(chain), 1))
+
+        n_target = int(round(duration * ctx.sr))
+        if audio.shape[0] > n_target:
+            audio = audio[:n_target]
+        elif audio.shape[0] < n_target:
+            audio = np.vstack([audio, np.zeros((n_target - audio.shape[0], audio.shape[1]), np.float32)])
+        peak = float(np.max(np.abs(audio))) if audio.size else 0.0
+        if peak > 0.999:
+            audio = audio * (0.999 / peak)
+
+        report("encode", 0.0)
+        wav = os.path.join(tmp_root, "final.wav")
+        media.write_wav(wav, audio, ctx.sr)
+        media.encode_audio_only(wav, output_path)
         report("done", 1.0)
         return output_path
     finally:

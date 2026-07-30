@@ -27,6 +27,7 @@ class MediaInfo:
     fps: float
     duration: float
     n_frames: int
+    has_video: bool
     has_audio: bool
     sr: int
     channels: int
@@ -53,11 +54,32 @@ def probe(path: str) -> MediaInfo:
     data = json.loads(proc.stdout.decode())
     v = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), None)
     a = next((s for s in data.get("streams", []) if s.get("codec_type") == "audio"), None)
+    if v is None and a is None:
+        raise MediaError(f"no video or audio stream in {path}")
+
+    fmt_duration = float(data.get("format", {}).get("duration") or 0.0)
     if v is None:
-        raise MediaError(f"no video stream in {path}")
+        # Audio-only source (a WAV, MP3, stem…). Geometry is meaningless, but the
+        # engine still needs a nominal frame clock: audio effects draw their
+        # per-frame modulation tracks from ctx.noise, which is indexed in frames.
+        duration = fmt_duration or float(a.get("duration") or 0.0)
+        fps = 30.0
+        return MediaInfo(
+            path=path,
+            width=0,
+            height=0,
+            fps=fps,
+            duration=duration,
+            n_frames=max(int(round(duration * fps)), 1),
+            has_video=False,
+            has_audio=True,
+            sr=int(a["sample_rate"]),
+            channels=int(a.get("channels", 2)),
+        )
+
     num, den = (v.get("r_frame_rate") or "30/1").split("/")
     fps = float(num) / max(float(den), 1.0)
-    duration = float(data.get("format", {}).get("duration") or v.get("duration") or 0.0)
+    duration = fmt_duration or float(v.get("duration") or 0.0)
     n_frames = int(v.get("nb_frames") or 0) or max(int(round(duration * fps)), 1)
     return MediaInfo(
         path=path,
@@ -66,6 +88,7 @@ def probe(path: str) -> MediaInfo:
         fps=fps,
         duration=duration,
         n_frames=n_frames,
+        has_video=True,
         has_audio=a is not None,
         sr=int(a["sample_rate"]) if a else 48000,
         channels=int(a.get("channels", 2)) if a else 2,
@@ -202,6 +225,22 @@ def write_wav(path: str, audio: np.ndarray, sr: int) -> None:
     stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
     if proc.wait() != 0:
         raise MediaError(f"wav write failed: {stderr[-1000:]}")
+
+
+def encode_audio_only(wav_path: str, out_path: str, bitrate: str = "320k") -> None:
+    """Deliver a treated audio-only render. WAV stays lossless; anything else
+    becomes AAC (or MP3/FLAC/ALAC when the extension asks for it)."""
+    ext = os.path.splitext(out_path)[1].lower()
+    codec = {
+        ".wav": ["-c:a", "pcm_s24le"],
+        ".flac": ["-c:a", "flac"],
+        ".mp3": ["-c:a", "libmp3lame", "-b:a", bitrate],
+        ".m4a": ["-c:a", "aac", "-b:a", bitrate],
+        ".aac": ["-c:a", "aac", "-b:a", bitrate],
+        ".aif": ["-c:a", "pcm_s24be"],
+        ".aiff": ["-c:a", "pcm_s24be"],
+    }.get(ext, ["-c:a", "aac", "-b:a", bitrate])
+    _run([FFMPEG, "-v", "error", "-nostdin", "-y", "-i", wav_path, "-vn", *codec, out_path])
 
 
 def mux(video_path: str, audio_path: Optional[str], out_path: str, audio_bitrate: str = "320k") -> None:

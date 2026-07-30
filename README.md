@@ -40,6 +40,7 @@ aesthetician apply clip.mp4 -p vhs-ep-longplay --set vhs.tracking_error=0.6 \
     --set a_wow_flutter.wow_depth=14 --intensity 1.3
 aesthetician preview clip.mp4 -p news-film-1975    # fast 3 s look
 aesthetician apply clip.mp4 -p audio-am-1948       # audio-only family
+aesthetician apply song.wav -p audio-cassette-1984 # an audio FILE as the source
 aesthetician apply clip.mp4 -p grindhouse-1973 --video-only
 ```
 
@@ -53,7 +54,7 @@ Any parameter shown by `info` can be overridden with `--set effect.param=value`
 cd app && npm start
 ```
 
-Drop a clip → pick an aesthetic → tweak knobs (the preview re-renders through the
+Drop a clip (video **or** audio) → pick an aesthetic → tweak knobs (the preview re-renders through the
 real engine, so what you see is what exports) → hold **A/B** for the original →
 **Export Full Video**.
 
