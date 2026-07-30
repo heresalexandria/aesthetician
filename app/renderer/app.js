@@ -707,6 +707,7 @@ function schedulePreview(immediate = false) {
 
 async function runPreview() {
   if (!state.file || !state.presetId) return;
+  const sess = state;                    // this render belongs to THIS tab
   const jobId = `job${++G.jobCounter}`;
   G.activeJob = jobId;
   showRenderOverlay(true, 'rendering preview…', 0);
@@ -733,10 +734,13 @@ async function runPreview() {
         ? Promise.resolve({ output: state.originalSrc })
         : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale }),
     ]);
-    if (G.activeJob !== jobId) return; // superseded
-    state.treatedSrc = treated.output;
-    state.originalSrc = original.output;
-    state.originalT = state.previewT;
+    // Record the result on its own session even if the user has moved on, so
+    // coming back to that tab costs nothing.
+    sess.treatedSrc = treated.output;
+    sess.originalSrc = original.output;
+    sess.originalT = req.start;
+    if (sess.id !== G.activeId) return;  // a different tab is on screen now
+    if (G.activeJob !== jobId) return;   // superseded by a newer render
     $('player-empty').classList.add('hidden');
     setVideo(videoA, treated.output);
     setVideo(videoB, original.output);
