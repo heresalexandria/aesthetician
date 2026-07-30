@@ -200,18 +200,20 @@ ipcMain.handle('aesth:probe', async (_e, file) => JSON.parse(await runCapture(['
 
 ipcMain.handle('aesth:preview', async (e, req) => {
   const key = cacheKey({ ...req, kind: 'preview' });
-  const output = path.join(CACHE_DIR, `${key}.mp4`);
+  // An audio source produces audio: keep the cache honest about that.
+  const ext = req.audioSource ? '.m4a' : '.mp4';
+  const output = path.join(CACHE_DIR, `${key}${ext}`);
   if (fs.existsSync(output)) return { output, cached: true };
   if (previewProc) { try { previewProc.kill('SIGKILL'); } catch (_) {} previewProc = null; }
-  const args = renderArgs(req, output + '.part.mp4');
+  const args = renderArgs(req, output + '.part' + ext);
   await spawnRender(args, req.jobId, e.sender, 'preview');
-  fs.renameSync(output + '.part.mp4', output);
+  fs.renameSync(output + '.part' + ext, output);
   return { output, cached: false };
 });
 
 ipcMain.handle('aesth:snippet', async (_e, req) => {
   const key = cacheKey({ ...req, kind: 'snippet' });
-  const output = path.join(CACHE_DIR, `${key}.mp4`);
+  const output = path.join(CACHE_DIR, `${key}${req.audioSource ? '.m4a' : '.mp4'}`);
   if (fs.existsSync(output)) return { output };
   await runCapture(['snippet', req.input, '-o', output,
     '--start', String(req.start ?? 0), '--duration', String(req.duration ?? 3),

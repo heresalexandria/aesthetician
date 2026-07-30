@@ -26,7 +26,7 @@ function newSession(info) {
   return {
     id: `s${++G.seq}`,
     file: info,
-    audioOnly: info.has_video === false,   // a WAV/MP3/stem: no picture to treat
+    audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
     presetId: null,
     variant: null,
     sets: {},
@@ -119,7 +119,7 @@ function activateSession(id) {
 
   $('drop-screen').classList.add('hidden');
   $('workspace').classList.remove('hidden');
-  $('file-chip').textContent = sess.audioOnly
+  $('file-chip').textContent = sess.audioSource
     ? `${basename(sess.file.path)} · audio · ${(sess.file.sr / 1000).toFixed(1)} kHz ${sess.file.channels === 1 ? 'mono' : 'stereo'} · ${sess.file.duration.toFixed(1)}s`
     : `${basename(sess.file.path)} · ${sess.file.width}×${sess.file.height} · ${sess.file.duration.toFixed(1)}s`;
   $('file-chip').classList.remove('hidden');
@@ -135,11 +135,11 @@ function activateSession(id) {
   $('texture-val').textContent = sess.texture.toFixed(2);
 
   // Splitting picture from sound is meaningless when there is no picture.
-  $('exp-video-only').closest('label').classList.toggle('hidden', sess.audioOnly);
-  $('exp-audio-only').closest('label').classList.toggle('hidden', sess.audioOnly);
-  if (sess.audioOnly) { $('exp-video-only').checked = false; $('exp-audio-only').checked = false; }
-  document.body.classList.toggle('audio-session', sess.audioOnly);
-  $('btn-export').textContent = sess.audioOnly ? 'Export Full Audio' : 'Export Full Video';
+  $('exp-video-only').closest('label').classList.toggle('hidden', sess.audioSource);
+  $('exp-audio-only').closest('label').classList.toggle('hidden', sess.audioSource);
+  if (sess.audioSource) { $('exp-video-only').checked = false; $('exp-audio-only').checked = false; }
+  document.body.classList.toggle('audio-session', sess.audioSource);
+  $('btn-export').textContent = sess.audioSource ? 'Export Full Audio' : 'Export Full Video';
 
   renderTabs();
   buildPresetList();
@@ -162,7 +162,7 @@ function activateSession(id) {
     $('player-empty').classList.remove('hidden');
     $('player-empty').textContent = sess.presetId
       ? 'Press Preview to render this clip'
-      : (sess.audioOnly ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
+      : (sess.audioSource ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
     if (sess.presetId) schedulePreview(true);
   }
   setExportStatus('Ready.');
@@ -217,7 +217,7 @@ function renderTabs() {
 
     const name = document.createElement('span');
     name.className = 't-name';
-    name.textContent = (sess.audioOnly ? '♪ ' : '') + basename(sess.file.path);
+    name.textContent = (sess.audioSource ? '♪ ' : '') + basename(sess.file.path);
     tab.appendChild(name);
 
     if (sess.presetId) {
@@ -373,7 +373,7 @@ const FAMILY_ORDER = ['vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
 function famRank(f) {
   // With an audio source, the audio-first presets are the relevant ones, so they
   // lead instead of trailing. (Every preset has an audio chain, so none are hidden.)
-  if (state.audioOnly) {
+  if (state.audioSource) {
     if (f === 'audio') return -1;
     const j = FAMILY_ORDER.indexOf(f);
     return j < 0 ? FAMILY_ORDER.length : j;
@@ -593,10 +593,10 @@ function buildParamPane() {
   const holder = $('param-list');
   holder.innerHTML = '';
   const vo = variantOverrides();
-  const sections = state.audioOnly
+  const sections = state.audioSource
     ? [['SOUND', p.audio]]                 // the video chain cannot apply here
     : [['PICTURE', p.video], ['SOUND', p.audio]];
-  if (state.audioOnly && p.video.length) {
+  if (state.audioSource && p.video.length) {
     const note = document.createElement('div');
     note.className = 'audio-note';
     note.textContent = `Audio source - this preset's ${p.video.length} picture effects are not applied.`;
@@ -748,6 +748,7 @@ async function runPreview() {
     duration: G.duration,
     scale: G.scale,
     crf: 19,
+    audioSource: state.audioSource,
     videoOnly: $('exp-video-only').checked,
     audioOnly: $('exp-audio-only').checked,
   };
@@ -756,7 +757,7 @@ async function runPreview() {
       window.aesth.preview(req),
       state.originalSrc && state.originalT === state.previewT
         ? Promise.resolve({ output: state.originalSrc })
-        : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale }),
+        : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale, audioSource: state.audioSource }),
     ]);
     // Record the result on its own session even if the user has moved on, so
     // coming back to that tab costs nothing.
@@ -912,9 +913,9 @@ async function doExport() {
   const base = state.file.path.replace(/\.[^.]+$/, '');
   const variantTag = state.variant ? `-${state.variant}` : '';
   const srcExt = (state.file.path.match(/\.[^.\/]+$/) || ['.mp4'])[0];
-  const outExt = state.audioOnly ? srcExt : '.mp4';
+  const outExt = state.audioSource ? srcExt : '.mp4';
   const suggestion = `${base}.${state.presetId.replace('/', '-')}${variantTag}${outExt}`;
-  const out = await window.aesth.pickExportPath(suggestion, state.audioOnly);
+  const out = await window.aesth.pickExportPath(suggestion, state.audioSource);
   if (!out) return;
   const jobId = `job${++G.jobCounter}`;
   G.exportJob = jobId;
@@ -943,7 +944,7 @@ async function doExport() {
   } finally {
     G.exportJob = null;
     $('btn-export').disabled = false;
-    $('btn-export').textContent = state.audioOnly ? 'Export Full Audio' : 'Export Full Video';
+    $('btn-export').textContent = state.audioSource ? 'Export Full Audio' : 'Export Full Video';
   }
 }
 

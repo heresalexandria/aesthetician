@@ -129,6 +129,31 @@ def test_audio_only_source():
         assert abs(got.duration - 1.0) < 0.35, (ext, got.duration)
 
 
+def test_cover_art_is_not_video():
+    """A tagged MP3 carries its artwork as a video stream; it must not count."""
+    import subprocess
+
+    from aesthetician.engine.media import probe
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    out = os.path.join(root, "out")
+    os.makedirs(out, exist_ok=True)
+    wav = os.path.join(out, "_t_art.mp3")
+    art = os.path.join(out, "_t_art.jpg")
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=440:d=2",
+                    "-c:a", "libmp3lame", os.path.join(out, "_t_bare.mp3")], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=600x600:d=1",
+                    "-frames:v", "1", art], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", os.path.join(out, "_t_bare.mp3"),
+                    "-i", art, "-map", "0:a", "-map", "1:v", "-c:a", "copy", "-c:v", "mjpeg",
+                    "-disposition:v", "attached_pic", "-id3v2_version", "3", wav], check=True)
+
+    info = probe(wav)
+    assert info.has_video is False, "album art must not be treated as a video stream"
+    assert info.width == 0 and info.height == 0
+    assert info.has_audio is True and info.duration > 1.0
+
+
 def test_overrides_and_chain_keys():
     o = parse_override_paths({"vhs.tracking": 0.7, "grain#2.amount": 0.2})
     assert o == {"vhs": {"tracking": 0.7}, "grain#2": {"amount": 0.2}}

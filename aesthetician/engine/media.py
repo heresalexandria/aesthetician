@@ -52,7 +52,20 @@ def probe(path: str) -> MediaInfo:
         ]
     )
     data = json.loads(proc.stdout.decode())
-    v = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), None)
+    def _is_real_video(st: dict) -> bool:
+        """Cover art is carried as a video stream. A tagged MP3 therefore looks
+        like a 1-frame video file unless attached pictures are excluded."""
+        if st.get("codec_type") != "video":
+            return False
+        if int(st.get("disposition", {}).get("attached_pic", 0)):
+            return False
+        # Some muxers omit the disposition flag; a single frame with no frame rate
+        # is album art either way.
+        if st.get("avg_frame_rate") in ("0/0", "0/1", None) and str(st.get("nb_frames", "")) in ("1", ""):
+            return False
+        return True
+
+    v = next((st for st in data.get("streams", []) if _is_real_video(st)), None)
     a = next((s for s in data.get("streams", []) if s.get("codec_type") == "audio"), None)
     if v is None and a is None:
         raise MediaError(f"no video or audio stream in {path}")
