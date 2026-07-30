@@ -77,10 +77,42 @@ Thumbnails are generated once:
 .venv/bin/python scripts/make_thumbs.py
 ```
 
+## Desktop app (packaged)
+
+To build an installable app that needs no Python, ffmpeg or checkout:
+
+```bash
+python3 scripts/package/build.py --target mac
+```
+
+Artifacts land in `app/dist/` — a DMG on macOS (~495 MB, ~960 MB installed;
+almost all of it NumPy/SciPy/OpenCV), an NSIS installer on Windows. The bundle
+carries a relocatable CPython, static ffmpeg, and the asset packs.
+
+### First run on macOS
+
+The build is **ad-hoc signed** — there is no Apple Developer ID in this project —
+which is enough to run locally but not enough to satisfy Gatekeeper on a
+downloaded or copied DMG. The first launch will be blocked, showing a refusal or
+*"Aesthetician is damaged and can't be opened"*. Either right-click the app and
+choose **Open**, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Aesthetician.app
+```
+
+After that it opens normally. Real distribution needs a Developer ID plus
+notarization — see [docs/packaging.md](docs/packaging.md), which also covers the
+GPL obligations that come with the bundled ffmpeg.
+
+The Windows target is fully scripted but has not been built or tested on Windows.
+
 ## Documentation
 
 - [docs/usage.md](docs/usage.md) — setup and workflows
 - [docs/catalog.md](docs/catalog.md) — the full preset/parameter catalog
+- [docs/app-guide.md](docs/app-guide.md) — using the desktop app
+- [docs/packaging.md](docs/packaging.md) — building installable macOS/Windows apps
 - [docs/architecture.md](docs/architecture.md) — how the engine works
 - [docs/preset-plan.md](docs/preset-plan.md) — the design map of the library
 

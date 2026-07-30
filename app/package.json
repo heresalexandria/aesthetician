@@ -1,13 +1,83 @@
 {
   "name": "aesthetician-app",
-  "version": "0.1.0",
-  "description": "Aesthetician — drag-and-drop archival aesthetics with live previews",
+  "version": "0.2.0",
+  "description": "Aesthetician \u2014 drag-and-drop archival aesthetics with live previews",
+  "author": "Aesthetician",
+  "license": "MIT",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "pack:mac": "python3 ../scripts/package/build.py --target mac",
+    "pack:mac-x64": "python3 ../scripts/package/build.py --target mac-x64",
+    "pack:win": "python3 ../scripts/package/build.py --target win",
+    "eb": "electron-builder --publish never"
   },
   "devDependencies": {
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.aesthetician.app",
+    "productName": "Aesthetician",
+    "copyright": "Aesthetician. Bundles FFmpeg (GPLv3) \u2014 see docs/packaging.md.",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "afterPack": "./build/after-pack.js",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json",
+      "!**/.DS_Store"
+    ],
+    "extraResources": [
+      {
+        "from": "build-resources/pyruntime",
+        "to": "pyruntime"
+      },
+      {
+        "from": "build-resources/bin",
+        "to": "bin"
+      },
+      {
+        "from": "build-resources/assets",
+        "to": "assets"
+      }
+    ],
+    "asar": true,
+    "compression": "normal",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.video",
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png",
+      "darkModeSupport": true,
+      "identity": null,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSHumanReadableCopyright": "Bundles FFmpeg (GPLv3). Source offer: see docs/packaging.md."
+      }
+    },
+    "dmg": {
+      "title": "${productName}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "artifactName": "${productName}-${version}-win-x64-setup.${ext}"
+    }
   }
 }

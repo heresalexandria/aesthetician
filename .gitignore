@@ -49,6 +49,9 @@ __pycache__/
 *.egg-info/
 .eggs/
 build/
+# app/build/ holds build INPUTS (icon, entitlements, afterPack hook), not
+# outputs — re-include it here, since git never descends into an excluded dir.
+!app/build/
 dist/
 .venv/
 venv/
@@ -62,6 +65,13 @@ app/dist/
 app/out/
 npm-debug.log*
 *.tsbuildinfo
+
+# ── Desktop packaging (scripts/package/build.py) ─────────
+# Staged Contents/Resources payload, and the download/runtime cache.
+app/build-resources/
+.cache/
+# Generated app icon (regenerate: see docs/packaging.md) — also matched by *.png.
+!app/build/icon.png
 
 # ── OS / editor ─────────────────────────────────────────
 .DS_Store
