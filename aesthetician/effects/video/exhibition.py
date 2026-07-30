@@ -2,7 +2,7 @@
 rear-projection televisions and the drive-in windshield.
 
 Presentation artifacts happen at playback, so temporal tracks key on
-ctx.fi_out — a held source frame still flickers, shakes and gets its cue dots.
+ctx.fi_out - a held source frame still flickers, shakes and gets its cue dots.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class Changeover(Effect):
               desc="The iconic corner circles: a motor cue ~7 s before the change and a changeover cue just "
                    "ahead of it, each visible for ~4 frames."),
         Param("reel_min", "Reel Length", "float", 8.0, 0.25, 30.0, unit="min", group="Changeover",
-              desc="Minutes between changeovers — at the default 8 you will rarely see one on a short clip; "
+              desc="Minutes between changeovers - at the default 8 you will rarely see one on a short clip; "
                    "use force_at_s to place one deliberately."),
         Param("force_at_s", "Force At", "float", -1.0, -1.0, 1200.0, unit="s", group="Changeover",
               desc="-1 = natural schedule; set a time to place a single changeover exactly there."),
@@ -130,7 +130,7 @@ class ScreenSurface(Effect):
     label = "Projection Surface"
     kind = "frame"
     desc = ("Projected on something: matte screen, glass-beaded screen with its hotspot and sparkle, painted "
-            "wall or a bedsheet — plus vertical keystone, warm room spill and the occasional projector bump.")
+            "wall or a bedsheet - plus vertical keystone, warm room spill and the occasional projector bump.")
     PARAMS = (
         Param("surface", "Surface", "enum", "matte_white",
               choices=("matte_white", "glass_beaded", "wall_paint", "bedsheet"), group="Surface",
@@ -141,7 +141,7 @@ class ScreenSurface(Effect):
         Param("keystone_v", "Keystone", "float", 0.0, -0.2, 0.2, group="Geometry",
               desc="Vertical keystone from a projector below (+, top pinched) or above (−) the screen center."),
         Param("room_spill", "Room Spill", "float", 0.15, 0.0, 1.0, iscale=True, group="Room",
-              desc="Warm ambient light creeping up the bottom half of the screen — exit signs, a door ajar."),
+              desc="Warm ambient light creeping up the bottom half of the screen - exit signs, a door ajar."),
         Param("shake_event", "Bumps", "float", 0.5, 0.0, 10.0, unit="/min", group="Room",
               desc="Somebody nudges the projector cart: a short damped shake."),
     )
@@ -274,10 +274,10 @@ class RearProjectionTV(Effect):
             "hotspot that follows you around the room, and the fine vertical lenticular louvres.")
     PARAMS = (
         Param("convergence", "Misconvergence", "float", 0.35, 0.0, 1.0, iscale=True, group="RPTV",
-              desc="CRT gun misalignment growing toward the corners — vertical red/blue splits, the "
+              desc="CRT gun misalignment growing toward the corners - vertical red/blue splits, the "
                    "signature of a projection set nobody ever converged."),
         Param("hotspot", "Fresnel Hotspot", "float", 0.5, 0.0, 1.0, iscale=True, group="RPTV",
-              desc="Strong center brightness with steep falloff — the fresnel only aims at one couch."),
+              desc="Strong center brightness with steep falloff - the fresnel only aims at one couch."),
         Param("screen_louvre", "Louvres", "float", 0.35, 0.0, 1.0, iscale=True, group="RPTV",
               desc="Fine vertical lenticular line texture of the projection screen."),
     )
@@ -353,7 +353,7 @@ class DriveIn(Effect):
             "of the dashboard rising from the bottom of the view.")
     PARAMS = (
         Param("glass_ghost", "Glass Ghost", "float", 0.35, 0.0, 1.0, iscale=True, group="Windshield",
-              desc="Faint vertically-offset reflection of the screen in the windshield glass — reads on "
+              desc="Faint vertically-offset reflection of the screen in the windshield glass - reads on "
                    "bright picture areas."),
         Param("dashboard_glow", "Dashboard Glow", "float", 0.35, 0.0, 1.0, iscale=True, group="Windshield",
               desc="Warm instrument-panel glow breathing along the bottom edge of the view."),

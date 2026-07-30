@@ -2,7 +2,7 @@
 """Calibration audit: flags preset parameter values outside vetted ranges.
 
 These guardrails encode lessons from side-by-side comparison against real
-archival footage. Violations are warnings, not errors — but every warning
+archival footage. Violations are warnings, not errors - but every warning
 should be a deliberate artistic choice, not an accident.
 
 Run: .venv/bin/python scripts/audit_calibration.py
@@ -49,7 +49,7 @@ def audit() -> int:
                     if key in GUARDRAILS and isinstance(val, (int, float)):
                         lo, hi, why = GUARDRAILS[key]
                         if not (lo <= float(val) <= hi):
-                            print(f"  ⚠ {pid}: {eid}.{pname}={val} outside [{lo},{hi}]" + (f" — {why}" if why else ""))
+                            print(f"  ⚠ {pid}: {eid}.{pname}={val} outside [{lo},{hi}]" + (f" - {why}" if why else ""))
                             warnings += 1
                 if eid == "vhs":
                     mode = str(params.get("mode", "sp"))

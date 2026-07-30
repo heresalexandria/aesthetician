@@ -38,7 +38,7 @@ class AWireRecorder(Effect):
         Param("flutter", "Flutter", "float", 0.7, 0.0, 1.0,
               desc="Transport instability of the spinning wire spool (wow + fast flutter).", group="Pitch", iscale=True),
         Param("watery", "Watery Highs", "float", 0.6, 0.0, 1.0,
-              desc="Rapid micro-detune of the top band via a short modulated delay — the characteristic underwater sheen.", group="Pitch", iscale=True),
+              desc="Rapid micro-detune of the top band via a short modulated delay - the characteristic underwater sheen.", group="Pitch", iscale=True),
         Param("twang", "Wire Twang", "float", 0.5, 0.0, 1.0,
               desc="Resonance of the taut steel wire around 2.8 kHz.", group="Bandwidth", iscale=True),
         Param("dropout_rate", "Dropouts", "float", 25.0, 0.0, 150.0, unit="/min",
@@ -82,7 +82,7 @@ class AWireRecorder(Effect):
                             for c in range(ch)], axis=1)
             x = (low + (1.0 - wat) * hf + wat * wob).astype(np.float32)
 
-        # mild magnetic squash — wire saturates early
+        # mild magnetic squash - wire saturates early
         y = np.tanh(2.2 * x) / 2.2
         x = U.match_rms(y, x, max_db=6.0)
 
@@ -217,7 +217,7 @@ class A8Track(Effect):
         Param("wow", "Wow", "float", 0.5, 0.0, 1.0,
               desc="Cartridge transport wow/flutter (the endless-loop platter drags).", group="Pitch", iscale=True),
         Param("crosstalk_db", "Crosstalk", "float", -28.0, -60.0, -20.0, unit="dB",
-              desc="Bleed of the adjacent program — the same tape a few seconds shifted, muffled, under everything.", group="Noise"),
+              desc="Bleed of the adjacent program - the same tape a few seconds shifted, muffled, under everything.", group="Noise"),
         Param("program_clunk", "Program Clunk", "bool", False,
               desc="Insert the program-change ker-CHUNK: fade, dual solenoid thump, resume.", group="Damage"),
         Param("clunk_at_s", "Clunk Time", "float", 4.0, 0.0, 600.0, unit="s",
@@ -293,7 +293,7 @@ class AMicrocassette(Effect):
     eid = "a_microcassette"
     label = "Microcassette"
     kind = "audio"
-    desc = "1980s memo recorder at 2.4 cm/s: 300–4000 band, heavy flutter, hard AGC pumping and loud hiss — the dictation-tape sound."
+    desc = "1980s memo recorder at 2.4 cm/s: 300–4000 band, heavy flutter, hard AGC pumping and loud hiss - the dictation-tape sound."
     PARAMS = (
         Param("flutter", "Flutter", "float", 0.7, 0.0, 1.0,
               desc="Tiny-capstan transport instability (severe at 2.4 cm/s).", group="Pitch", iscale=True),

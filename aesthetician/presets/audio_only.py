@@ -241,7 +241,7 @@ register_preset(Preset(
     name="Optical Soundtrack",
     family="audio",
     era="1942",
-    desc="Variable-area film sound on its own: academy rolloff, cell-noise crackle, sprocket flutter — the voice of the newsreel.",
+    desc="Variable-area film sound on its own: academy rolloff, cell-noise crackle, sprocket flutter - the voice of the newsreel.",
     tagline="Academy rolloff, cell crackle, flutter",
     tags=("audio-only", "40s", "film"),
     audio=[

@@ -5,7 +5,7 @@ probe, so a packaged app has to carry them: we cannot assume Homebrew.
 
 Licensing: both sources below are built with `--enable-gpl --enable-version3`
 (and *not* `--enable-nonfree`), i.e. GPLv3. Shipping them makes the resulting
-DMG/installer a GPLv3 distribution — see docs/packaging.md.
+DMG/installer a GPLv3 distribution - see docs/packaging.md.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def _fetch_win(target: Target, out: Path) -> None:
         dest = out / tool
         rmtree(dest)
         found.replace(dest)
-    # Ship the GPL text alongside the binaries — required by the licence.
+    # Ship the GPL text alongside the binaries - required by the licence.
     lic = next((p for p in staging.rglob("LICENSE*") if p.is_file()), None)
     if lic is not None:
         (out / "FFMPEG-LICENSE.txt").write_bytes(lic.read_bytes())
@@ -103,4 +103,4 @@ def verify(target: Target, ffmpeg_dir: Path) -> str:
                if e not in names]
     if missing:
         raise SystemExit(f"{exe}: missing encoders required by presets: {missing}")
-    return f"{first} — all {len(REQUIRED_VIDEO_ENCODERS) + len(REQUIRED_AUDIO_ENCODERS)} required encoders present"
+    return f"{first} - all {len(REQUIRED_VIDEO_ENCODERS) + len(REQUIRED_AUDIO_ENCODERS)} required encoders present"

@@ -33,7 +33,7 @@ register_preset(Preset(
         ("a_hum", {"hz": 60, "level_db": -46.0}),
     ],
     variants=[
-        Variant("archive", "Archive Print", "A dupe of a dupe — softer, dirtier, wobblier.",
+        Variant("archive", "Archive Print", "A dupe of a dupe - softer, dirtier, wobblier.",
                 video={"grain.amount": 0.7, "dust.density": 0.9, "gate_weave.amount": 2.0,
                        "tone.contrast": 1.1}),
     ],
@@ -139,7 +139,7 @@ register_preset(Preset(
     name="Daytime Talk Show",
     family="broadcast",
     era="1984",
-    desc="Studio cameras under hot lights: waxy skin, smeared reds, comet trails on the sequins — the exact texture of a 1984 station archive tape.",
+    desc="Studio cameras under hot lights: waxy skin, smeared reds, comet trails on the sequins - the exact texture of a 1984 station archive tape.",
     tagline="Waxy skin, smeared reds, comet trails",
     tags=("80s", "studio", "vhs"),
     proc_height=540,
@@ -250,7 +250,7 @@ register_preset(Preset(
         ("a_hum", {"hz": 60, "level_db": -40.0}),
     ],
     variants=[
-        Variant("storm", "Storm Reception", "Antenna in a thunderstorm — the picture fights to exist.",
+        Variant("storm", "Storm Reception", "Antenna in a thunderstorm - the picture fights to exist.",
                 video={"signal_rf.snow": 0.8, "signal_rf.impulse_noise": 2.0, "signal_rf.hum_bar": 0.4},
                 audio={"a_tv_sound.buzz_db": -35.0}),
     ],

@@ -46,7 +46,7 @@ def _split_overrides(pairs: tuple[str, ...]) -> tuple[dict[str, Any], dict[str, 
     return video, audio
 
 
-@click.group(help="Aesthetician — era-authentic film/tape/broadcast looks and sounds for video.")
+@click.group(help="Aesthetician - era-authentic film/tape/broadcast looks and sounds for video.")
 def main() -> None:
     pass
 
@@ -102,7 +102,7 @@ def info(preset_id: str) -> None:
             counts[eid] = counts.get(eid, 0) + 1
             key = eid if counts[eid] == 1 else f"{eid}#{counts[eid]}"
             cls = get_effect(eid)
-            console.print(f"  [bold]{key}[/bold] — {cls.label}")
+            console.print(f"  [bold]{key}[/bold] - {cls.label}")
             byname = {pp.name: pp for pp in cls.PARAMS}
             for pp in cls.PARAMS:
                 cur = params.get(pp.name, pp.default)
@@ -126,7 +126,7 @@ def effects(as_json: bool) -> None:
         click.echo(json.dumps(effect_schema()))
         return
     for eid, cls in sorted(all_effects().items()):
-        console.print(f"[bold]{eid:<18}[/bold] [{cls.kind}] {cls.label} — [dim]{cls.desc}[/dim]")
+        console.print(f"[bold]{eid:<18}[/bold] [{cls.kind}] {cls.label} - [dim]{cls.desc}[/dim]")
 
 
 @main.command()
@@ -272,7 +272,7 @@ def preview(input_path, output, at, scale, **kw) -> None:
 @main.command("probe")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False))
 def probe_cmd(input_path: str) -> None:
-    """Probe a media file (JSON) — used by the GUI."""
+    """Probe a media file (JSON) - used by the GUI."""
     from .engine.media import probe
 
     info = probe(input_path)
@@ -301,7 +301,7 @@ def probe_cmd(input_path: str) -> None:
 @click.option("--duration", type=float, default=3.0)
 @click.option("--scale", type=float, default=0.5)
 def snippet(input_path: str, output: str, start: float, duration: float, scale: float) -> None:
-    """Extract an untreated segment (the 'before' side of A/B) — used by the GUI."""
+    """Extract an untreated segment (the 'before' side of A/B) - used by the GUI."""
     from .engine.media import probe as _probe
     from .engine.render import _even, _plain_video
 

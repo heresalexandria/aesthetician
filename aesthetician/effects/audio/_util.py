@@ -295,7 +295,7 @@ def speech_murmur(rng: np.random.Generator, n: int, sr: int,
                   syllable_hz: tuple = (2.5, 6.5)) -> np.ndarray:
     """Unintelligible 'other program / voices through the wall' murmur.
 
-    Speech-shaped noise only — no real speech: formant-band filtered noise
+    Speech-shaped noise only - no real speech: formant-band filtered noise
     with slowly wandering band weights, amplitude-modulated at syllabic
     (3–6 Hz) rates with phrase-length swells and pauses.
     Returns (n,) float32 normalized to RMS ≈ 1 (caller sets level/band).

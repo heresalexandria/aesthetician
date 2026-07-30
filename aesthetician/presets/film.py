@@ -276,7 +276,7 @@ register_preset(Preset(
     name="16mm Documentary",
     family="film",
     era="1968",
-    desc="Vérité 16mm: muted Eastman color, honest grain, handheld gate weave — history as the crew actually saw it.",
+    desc="Vérité 16mm: muted Eastman color, honest grain, handheld gate weave - history as the crew actually saw it.",
     tagline="Muted Eastman, honest grain, gate weave",
     tags=("60s", "16mm", "documentary"),
     proc_height=640,

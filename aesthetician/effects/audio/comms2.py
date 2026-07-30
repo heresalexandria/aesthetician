@@ -19,7 +19,7 @@ class AShortwave(Effect):
         Param("hi_hz", "Bandwidth Top", "float", 3200.0, 2000.0, 5000.0, unit="Hz",
               desc="Receiver IF top edge (shortwave is narrower than AM broadcast).", group="Bandwidth"),
         Param("fade", "Multipath Fade", "float", 0.7, 0.0, 1.0,
-              desc="Deep selective fading, faster than AM skywave — the signal breathes away and back in seconds.", group="Damage", iscale=True),
+              desc="Deep selective fading, faster than AM skywave - the signal breathes away and back in seconds.", group="Damage", iscale=True),
         Param("het_db", "Heterodynes", "float", -46.0, -80.0, -28.0, unit="dB",
               desc="One to three drifting carrier whistles from stations nearby on the dial.", group="Noise"),
         Param("utility_qrm", "RTTY Interference", "float", 0.0, 0.0, 1.0,
@@ -141,7 +141,7 @@ class ACbRadio(Effect):
     desc = "1977 citizens-band rig: 300–3000 band, crushed and clipped modulation, squelch tails at the ends, heterodyne and other-station bleed."
     PARAMS = (
         Param("drive", "Drive", "float", 4.0, 1.0, 10.0,
-              desc="Mic gain wound up — compression into clipping.", group="Dynamics"),
+              desc="Mic gain wound up - compression into clipping.", group="Dynamics"),
         Param("squelch_tails", "Squelch Tails", "bool", True,
               desc="The kshhh-chk of the squelch opening at the start and closing at the end.", group="Damage"),
         Param("bleed", "Station Bleed", "float", 0.3, 0.0, 1.0,

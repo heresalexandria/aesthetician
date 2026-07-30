@@ -38,7 +38,7 @@ class Interlace(Effect):
         Param("field_order", "Field Order", "enum", "tff", choices=("tff", "bff"), group="Fields",
               desc="Which field is newer: top-field-first (most tape formats) or bottom-field-first (DV)."),
         Param("combing", "Combing", "float", 1.0, 0.0, 1.0, group="Fields", iscale=True,
-              desc="How fully the stale field shows through — the serrated edges on anything moving."),
+              desc="How fully the stale field shows through - the serrated edges on anything moving."),
         Param("twitter", "Line Twitter", "float", 0.25, 0.0, 1.0, group="Fields", iscale=True,
               desc="Interlace flicker on sharp horizontal edges: one-line shimmer alternating every frame."),
     )
@@ -376,7 +376,7 @@ class PhosphorDecay(Effect):
     label = "Phosphor Decay"
     kind = "frame"
     desc = ("Slow phosphor persistence: bright things drag glowing trails behind motion, green "
-            "lingering longest — the security-camera and old-terminal look.")
+            "lingering longest - the security-camera and old-terminal look.")
     _TINT = {
         "green_mono": (0.10, 1.0, 0.22),
         "amber_mono": (1.0, 0.66, 0.08),

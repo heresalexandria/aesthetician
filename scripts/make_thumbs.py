@@ -12,19 +12,19 @@ and emit two files into ``assets/thumbs/``:
 Framing/scale decisions (kept identical for every preset so the list reads as
 a controlled comparison):
 
-* ``--t0 7.9 --duration 1.0`` — a continuous close-up shot (the shot starts at
+* ``--t0 7.9 --duration 1.0`` - a continuous close-up shot (the shot starts at
   7.42 s) with a face, skin tones, a blown-white shirt, a saturated cardigan
   and dark hair: enough tonal range to judge a grade, and enough movement
   (talking + camera drift) to see temporal artifacts crawl.
-* ``--scale 0.55`` — the engine renders 396x704, i.e. close to the era
+* ``--scale 0.55`` - the engine renders 396x704, i.e. close to the era
   resolutions the ``proc_height`` presets simulate at, so VHS/broadcast/print
   families keep their character; visually indistinguishable from a scale-1.0
   render downsampled to 100px, at a third of the cost.
-* ``--crop-bias 0.32`` — the square crop sits slightly above centre so the
+* ``--crop-bias 0.32`` - the square crop sits slightly above centre so the
   head is framed as a portrait instead of being cut at the forehead.
 
-Presets with an empty video chain (family ``audio``) get a poster only — there
-is nothing to animate — and the GUI badges those rows with a ♪.
+Presets with an empty video chain (family ``audio``) get a poster only - there
+is nothing to animate - and the GUI badges those rows with a ♪.
 
 Usage:
   .venv/bin/python scripts/make_thumbs.py                  # incremental, 4 jobs
@@ -243,7 +243,7 @@ def make_one(pid: str, cfg: dict) -> dict:
             res["anim"] = os.path.getsize(anim_path)
         elif os.path.exists(anim_path):
             os.remove(anim_path)
-    except Exception as exc:  # noqa: BLE001 — one bad preset must not sink the batch
+    except Exception as exc:  # noqa: BLE001 - one bad preset must not sink the batch
         res["status"] = "fail"
         res["error"] = f"{type(exc).__name__}: {exc}"[:400]
     res["seconds"] = time.time() - t_start

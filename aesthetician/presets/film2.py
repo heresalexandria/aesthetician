@@ -168,7 +168,7 @@ register_preset(Preset(
     name="Two-Reel Chase",
     family="film",
     era="1926",
-    desc="Undercranked pursuit picture: shot slow to play fast, so the cops corner like billiard balls — splices every gag, motion half again quicker than life.",
+    desc="Undercranked pursuit picture: shot slow to play fast, so the cops corner like billiard balls - splices every gag, motion half again quicker than life.",
     tagline="Undercranked scramble, splice every gag",
     tags=("20s", "silent", "comedy", "undercranked"),
     proc_height=600,

@@ -14,10 +14,10 @@ from .rng import TemporalNoise, stream
 ParamKind = Literal["float", "int", "bool", "enum", "str"]
 
 # Effect kinds:
-#   frame          — pure per-frame video transform (streamed)
-#   filepass       — operates on an encoded intermediate file (real codec round-trips)
-#   audio          — full-buffer audio transform
-#   audio_filepass — real audio codec round-trip on a wav file
+#   frame          - pure per-frame video transform (streamed)
+#   filepass       - operates on an encoded intermediate file (real codec round-trips)
+#   audio          - full-buffer audio transform
+#   audio_filepass - real audio codec round-trip on a wav file
 EffectKind = Literal["frame", "filepass", "audio", "audio_filepass"]
 
 
@@ -90,7 +90,7 @@ class Context:
         self.is_preview = is_preview
         # Final delivery geometry. Presets often simulate at an era resolution
         # (`proc_height`) and are upscaled afterwards, which magnifies every
-        # texture generated here — effects that care can compensate via
+        # texture generated here - effects that care can compensate via
         # `upscale`.
         self.out_width = out_width if out_width is not None else width
         self.out_height = out_height if out_height is not None else height
@@ -114,7 +114,7 @@ class Context:
         return stream(self.seed, key)
 
     def frame_rng(self, key: str, fi: Optional[int] = None) -> np.random.Generator:
-        """Generator unique to (key, frame) — for per-frame spatial noise."""
+        """Generator unique to (key, frame) - for per-frame spatial noise."""
         return stream(self.seed, f"{key}@{self.fi_out if fi is None else fi}")
 
 

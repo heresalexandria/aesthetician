@@ -66,7 +66,7 @@ class ACodecSpeech(Effect):
     eid = "a_codec_speech"
     label = "Speech Codec"
     kind = "audio_filepass"
-    desc = "Real telephony codec round-trip at 8 kHz (G.726 ADPCM, AMR-NB, GSM, G.711, IMA ADPCM) — genuine cell/VoIP-era grit."
+    desc = "Real telephony codec round-trip at 8 kHz (G.726 ADPCM, AMR-NB, GSM, G.711, IMA ADPCM) - genuine cell/VoIP-era grit."
     # choice: (encoder, extra args, container ext, sample rate)
     _CODECS = {
         "g726_16": ("g726", ["-b:a", "16k"], "wav", 8000),
@@ -116,7 +116,7 @@ class ABitcrush(Effect):
         Param("sr_hz", "Sample Rate", "float", 0.0, 0.0, 48000.0, unit="Hz",
               desc="Zero-order-hold resample target; 0 = off.", group="Bandwidth"),
         Param("antialias", "Anti-alias", "bool", False,
-              desc="Polite lowpass before the hold (default off — aliasing is the point).", group="Bandwidth"),
+              desc="Polite lowpass before the hold (default off - aliasing is the point).", group="Bandwidth"),
         Param("mix", "Mix", "float", 1.0, 0.0, 1.0,
               desc="Dry/wet blend.", group="Dynamics", iscale=True),
     )

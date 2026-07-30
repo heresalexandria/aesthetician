@@ -28,7 +28,7 @@ class AWowFlutter(Effect):
         Param("start_wobble", "Start-up Wobble", "bool", False,
               desc="First ~0.7 s starts about 4% slow and rises as the motor gets up to speed.", group="Pitch"),
         Param("cogging", "Motor Cogging", "float", 0.0, 0.0, 1.0,
-              desc="Pole-cogging flutter: additive narrowband pitch ripple at a fixed motor rate with harmonics — the power-supply whine in the pitch of cheap decks.", group="Pitch", iscale=True),
+              desc="Pole-cogging flutter: additive narrowband pitch ripple at a fixed motor rate with harmonics - the power-supply whine in the pitch of cheap decks.", group="Pitch", iscale=True),
         Param("cogging_hz", "Cogging Rate", "float", 30.0, 10.0, 120.0, unit="Hz",
               desc="Pole-passing rate of the cogging ripple (only audible when Motor Cogging > 0).", group="Pitch"),
         Param("drift_long", "Long Drift", "float", 0.0, 0.0, 1.0,
@@ -156,7 +156,7 @@ class ATapeSat(Effect):
         mist = self.v["dolby_mistrack"]
         if mist > 0.001:
             # undecoded Dolby B ≈ a level-tracking HF shelf: quiet HF rides
-            # up to +8 dB and sags back on loud passages — audible breathing
+            # up to +8 dB and sags back on loud passages - audible breathing
             low = U.lowpass(x, 1800.0, sr, order=2)
             hf = (x - low).astype(np.float32)
             env = U.envelope(hf, sr, attack_ms=8.0, release_ms=140.0, mode="rms")

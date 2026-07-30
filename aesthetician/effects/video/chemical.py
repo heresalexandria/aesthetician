@@ -2,7 +2,7 @@
 nitrate decomposition and sticky-shed tape binder failure.
 
 These artifacts live on the print/tape, not in the scene, so their temporal
-randomness keys on ctx.fi_out — decay keeps crawling even while a cadence
+randomness keys on ctx.fi_out - decay keeps crawling even while a cadence
 effect holds a source frame. All fields are built from slowly-crossfading
 multi-octave noise (no geometric primitives), optionally enriched by the
 "film_burns" plate pack when it is present, so nothing reads as procedural.
@@ -54,13 +54,13 @@ class Vinegar(Effect):
             "separate into locally varying red/blue vertical offsets, and a milky blotchy haze veils the image.")
     PARAMS = (
         Param("warp", "Buckle Warp", "float", 0.35, 0.0, 1.0, iscale=True, group="Decay",
-              desc="Local low-frequency wavy geometric distortion from the shrinking, channeling base — "
+              desc="Local low-frequency wavy geometric distortion from the shrinking, channeling base - "
                    "evolves very slowly, like the film breathing in the gate."),
         Param("channel_split", "Layer Separation", "float", 0.2, 0.0, 1.0, iscale=True, group="Decay",
               desc="Dye layers delaminating: red/blue vertical offsets that vary ACROSS the frame rather "
                    "than shifting globally."),
         Param("haze", "Crystal Haze", "float", 0.25, 0.0, 1.0, iscale=True, group="Decay",
-              desc="Milky veil with blotchy structure — plasticizer exudation and crystal bloom on the base."),
+              desc="Milky veil with blotchy structure - plasticizer exudation and crystal bloom on the base."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -130,7 +130,7 @@ class WaterDamage(Effect):
             "record, and patches of small ring-shaped emulsion blisters.")
     PARAMS = (
         Param("tide_marks", "Tide Marks", "float", 0.5, 0.0, 1.0, iscale=True, group="Decay",
-              desc="Irregular stain boundaries with the dark mineral ring at the edge — the interior "
+              desc="Irregular stain boundaries with the dark mineral ring at the edge - the interior "
                    "discolors gently, the waterline is what you see."),
         Param("blistering", "Blistering", "float", 0.25, 0.0, 1.0, iscale=True, group="Decay",
               desc="Clusters of small circular emulsion blisters: bright-ringed dots where the gelatin "
@@ -278,7 +278,7 @@ class NitrateDecay(Effect):
         D0, qs, ptex, fine, reach = self._built
 
         # coverage: spread scales the stage's nominal area, breathing slightly
-        # and creeping forward over the clip — decay never retreats
+        # and creeping forward over the clip - decay never retreats
         g01 = fi / max(ctx.n_frames - 1, 1)
         breathe = 1.0 + 0.05 * float(self._grow[min(fi, len(self._grow) - 1)])
         area = area0 * (0.30 + 1.40 * self.v["spread"]) * breathe * (0.92 + 0.14 * g01)
@@ -331,7 +331,7 @@ class NitrateDecay(Effect):
                 fc = frame[..., ci]
                 fc *= 1.0 - alpha
                 fc += alpha * gc
-            # charred flecks trapped in the goo — sparse, mostly late-stage
+            # charred flecks trapped in the goo - sparse, mostly late-stage
             fleck = color.smoothstep(1.5, 2.1, fine) * m_in * (0.2 + 0.8 * k_deep)
             if float(fleck.max()) > 1e-3:
                 fl = np.clip(fleck * 0.6, 0.0, 0.75)

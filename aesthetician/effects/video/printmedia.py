@@ -1,6 +1,6 @@
 """Print and reprographic looks: halftone screening (newspaper, comic CMYK,
 fine magazine), photocopier generations, microfilm readers and risograph
-spot-color — stylized, but physically modeled.
+spot-color - stylized, but physically modeled.
 
 Halftoning is done properly: real rotated periodic dot screens (C 15°, M 75°,
 Y 0°, K 45°) thresholded at 2–3x supersample and area-downscaled, so fine
@@ -55,7 +55,7 @@ class Halftone(Effect):
     desc = (
         "Printed reproduction with real rotated dot screens: single 45° "
         "newspaper screen, four-color comic CMYK with genuine rosettes, or a "
-        "fine magazine screen — with paper tint, dot gain and CMYK plate "
+        "fine magazine screen - with paper tint, dot gain and CMYK plate "
         "misregistration."
     )
     PARAMS = (
@@ -110,7 +110,7 @@ class Halftone(Effect):
         self._gain_sigma = gain * float(self.v["paper"]) * p * 0.16
         self._screens: dict[str, np.ndarray] = {}
         for ink in inks:
-            # yellow is composed at output resolution — its dots are nearly
+            # yellow is composed at output resolution - its dots are nearly
             # invisible against paper, so it doesn't need the supersample
             sw, sh, sp = (W, H, period) if ink == "y" else (Ws, Hs, p)
             yy, xx = np.mgrid[0:sh, 0:sw].astype(np.float32)
@@ -119,7 +119,7 @@ class Halftone(Effect):
             u = (xx * np.float32(np.cos(th)) + yy * np.float32(np.sin(th))) * k
             v = (yy * np.float32(np.cos(th)) - xx * np.float32(np.sin(th))) * k
             # round-dot spot function in [0,1]. The SUM form keeps the dot
-            # lattice on the rotated grid at every angle — the product form
+            # lattice on the rotated grid at every angle - the product form
             # cos(u)cos(v) degenerates at 45° into an axis-aligned screen.
             self._screens[ink] = (0.5 + 0.25 * (np.cos(u) + np.cos(v))).astype(np.float32)
         self._half = {(Hs, Ws): np.full((Hs, Ws), 0.5, np.float32)}
@@ -296,7 +296,7 @@ class Photocopy(Effect):
             slope = (5.5 + 3.4 * gi) * sharp
             t = (y - 0.55) * slope
             y = 1.0 / (1.0 + np.exp(-t, dtype=np.float32))
-        # edge halo: copiers over-corrected edges — white ring around blacks
+        # edge halo: copiers over-corrected edges - white ring around blacks
         blur = cv2.GaussianBlur(y, (0, 0), 2.4)
         y = y + (y - blur) * (0.22 * gens * sharp)
         return y
@@ -390,7 +390,7 @@ class Microfilm(Effect):
     PARAMS = (
         Param("contrast", "Ortho Contrast", "float", 0.55, 0.0, 1.0, group="Film",
               desc="Document-film gamma: mids vanish, blacks crush, whites blow. "
-                   "Red-blind emulsion — warm tones go dark."),
+                   "Red-blind emulsion - warm tones go dark."),
         Param("reader_glare", "Reader Glare", "float", 0.25, 0.0, 1.0, iscale=True,
               group="Reader",
               desc="The projection lamp's glare blob drifting around the screen."),
@@ -508,7 +508,7 @@ class RisoPrint(Effect):
               desc="How far the second drum landed from the first. Fixed for the "
                    "whole run (with a hair of wobble), like a real pass."),
         Param("grain_ink", "Ink Grain", "float", 0.4, 0.0, 1.0, iscale=True, group="Ink",
-              desc="Speckly ink coverage in the midtones — the riso's stencil "
+              desc="Speckly ink coverage in the midtones - the riso's stencil "
                    "grain."),
         Param("paper", "Paper", "float", 0.6, 0.0, 1.0, group="Paper",
               desc="Warm uncoated-stock tint under the inks."),

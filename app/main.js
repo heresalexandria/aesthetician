@@ -180,7 +180,7 @@ async function runSmoke() {
     clearTimeout(deadline);
     if (!rendererReady) { console.error('[smoke] renderer never signaled ready'); app.exit(1); return; }
     if (rendererErrors.length) { console.error('[smoke] renderer errors:', rendererErrors.join(' | ')); app.exit(1); return; }
-    console.log('[smoke] renderer ready, no errors — PASS');
+    console.log('[smoke] renderer ready, no errors - PASS');
     app.exit(0);
   } catch (err) {
     clearTimeout(deadline);
@@ -304,7 +304,7 @@ ipcMain.handle('aesth:thumbs', () => {
 
 ipcMain.handle('aesth:check-env', async () => {
   const problems = [];
-  if (!fs.existsSync(PYTHON)) problems.push(`Python not found at ${PYTHON} — create the venv (see README) or set AESTHETICIAN_PYTHON.`);
+  if (!fs.existsSync(PYTHON)) problems.push(`Python not found at ${PYTHON} - create the venv (see README) or set AESTHETICIAN_PYTHON.`);
   try { await runCapture(['effects', '--json'], { timeoutMs: 30000 }); }
   catch (err) { problems.push(`Engine check failed: ${String(err.message).slice(0, 400)}`); }
   return { ok: problems.length === 0, problems, python: PYTHON };

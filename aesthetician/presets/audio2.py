@@ -309,7 +309,7 @@ register_preset(Preset(
     name="Subway PA",
     family="audio",
     era="1975",
-    desc="The next-train announcement, shredded by horn speakers and flung down a tiled tube — arriving as reverb with a rumor of words inside.",
+    desc="The next-train announcement, shredded by horn speakers and flung down a tiled tube - arriving as reverb with a rumor of words inside.",
     tagline="Words lost in horn mush and tile echo",
     tags=("audio-only", "70s", "pa", "transit"),
     audio=[
@@ -358,7 +358,7 @@ register_preset(Preset(
     name="Dolby Mistrack",
     family="audio",
     era="1979",
-    desc="Recorded with Dolby, played without: quiet passages hiss bright, loud ones dull down — the whole top end breathes with the music, and the borrowed deck's EQ never matched anyway.",
+    desc="Recorded with Dolby, played without: quiet passages hiss bright, loud ones dull down - the whole top end breathes with the music, and the borrowed deck's EQ never matched anyway.",
     tagline="Top end breathing with the music",
     tags=("audio-only", "70s", "tape", "nerd"),
     audio=[

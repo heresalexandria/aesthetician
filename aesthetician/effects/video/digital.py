@@ -26,8 +26,8 @@ _ENCODER_FOR = {
     "mpeg2video": "mpeg2video",  # DVD / broadcast MPEG-2
     "mpeg1video": "mpeg1video",  # VCD
     "mpeg4": "mpeg4",            # early-2000s MPEG-4 ASP (DivX/XviD era)
-    "msmpeg4": "msmpeg4",        # MS-MPEG4 v3 — late-90s web video / WMV7-ish
-    "flv1": "flv",               # Sorenson Spark — 2005 Flash web video
+    "msmpeg4": "msmpeg4",        # MS-MPEG4 v3 - late-90s web video / WMV7-ish
+    "flv1": "flv",               # Sorenson Spark - 2005 Flash web video
     "h263p": "h263p",            # H.263+ videoconferencing
     "mjpeg": "mjpeg",            # Motion-JPEG cameras
 }
@@ -53,7 +53,7 @@ _AVAILABLE = _available_encoders()
 
 
 def _codec_choices() -> tuple[str, ...]:
-    if not _AVAILABLE:  # probe failed (no ffmpeg yet) — expose all, fail late
+    if not _AVAILABLE:  # probe failed (no ffmpeg yet) - expose all, fail late
         return tuple(_ENCODER_FOR)
     avail = tuple(k for k, enc in _ENCODER_FOR.items() if enc in _AVAILABLE)
     return avail or tuple(_ENCODER_FOR)
@@ -113,18 +113,18 @@ class CodecEra(Effect):
         Param("gop", "Keyframe Interval", "int", 30, 1, 300, unit="frames", group="Codec",
               desc="GOP length. Long GOPs smear motion errors further between keyframes."),
         Param("passes", "Generations", "int", 1, 1, 3, group="Quality",
-              desc="Repeated decode→re-encode cycles — the web-era generation loss "
+              desc="Repeated decode→re-encode cycles - the web-era generation loss "
                    "of clips re-uploaded over and over."),
         Param("field_mode", "Field Mode", "enum", "progressive",
               choices=("progressive", "interlaced_tff"), group="Codec",
               desc="interlaced_tff encodes with real interlaced DCT and motion "
-                   "estimation (+ilme+ildct, top field first) — the genuine "
+                   "estimation (+ilme+ildct, top field first) - the genuine "
                    "DVD/broadcast MPEG-2 field structure. Ignored by codecs "
                    "without interlaced modes."),
         Param("denoise_pre", "Encoder Pre-Filter", "float", 0.0, 0.0, 1.0, iscale=True,
               group="Quality",
               desc="Broadcast-encoder noise pre-filter ahead of the first encode: "
-                   "trades fine texture for cleaner blocks — the slightly waxy "
+                   "trades fine texture for cleaner blocks - the slightly waxy "
                    "softness of professionally bit-starved digital TV."),
     )
 
@@ -207,7 +207,7 @@ class CodecGlitch(Effect):
     desc = (
         "Real datamosh-style corruption: encodes to a long-GOP era codec, then "
         "damages the actual bitstream with ffmpeg's noise filter and decodes "
-        "with error concealment — dragging smears, stale-reference pulls and "
+        "with error concealment - dragging smears, stale-reference pulls and "
         "blocky tears come from the codec itself. Falls back to a clean copy "
         "if the stream is corrupted beyond decodability."
     )
@@ -220,7 +220,7 @@ class CodecGlitch(Effect):
               desc="Bitstream damage density. ~0.2 = occasional block tears, "
                    "~0.4 = visible dragging smears, ~0.8 = heavy digital soup."),
         Param("drop_p", "Packet Drops", "float", 0.06, 0.0, 1.0, group="Damage",
-              desc="Fraction of predicted frames whose packets are discarded — "
+              desc="Fraction of predicted frames whose packets are discarded - "
                    "frozen drags that snap forward. Dominant artifact; a little "
                    "goes a long way on long GOPs."),
         Param("keyframes", "Protect Keyframes", "bool", True, group="Damage",
@@ -229,7 +229,7 @@ class CodecGlitch(Effect):
         Param("kbps", "Bitrate", "int", 2500, 500, 8000, unit="kbps", group="Codec",
               desc="Carrier bitrate before corruption."),
         Param("gop", "Keyframe Interval", "int", 48, 12, 300, unit="frames", group="Codec",
-              desc="Long GOPs make each glitch drag further before resyncing — "
+              desc="Long GOPs make each glitch drag further before resyncing - "
                    "damage compounds until the next keyframe."),
         Param("freeze_p", "Freeze-Ups", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",
               desc="Brief full-frame stalls: every packet in a window is discarded, "
@@ -237,12 +237,12 @@ class CodecGlitch(Effect):
                    "snaps forward. ~0.3 = a stall every ten seconds or so."),
         Param("slice_shift", "Slice Drag", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",
               desc="Extra per-slice displacement after decode: macroblock-row bands "
-                   "shear sideways and hold for a beat — the classic sliced-drag "
+                   "shear sideways and hold for a beat - the classic sliced-drag "
                    "tear of a corrupted transport stream."),
     )
 
     # Note on determinism: the noise bitstream filter has no seed option, but
-    # its byte-position PRNG is a fixed state machine — identical input bytes
+    # its byte-position PRNG is a fixed state machine - identical input bytes
     # and identical filter args reproduce the identical corruption. The render
     # seed enters through the drop pattern offset and an amount jitter, so
     # different seeds give different glitches and the same seed repeats exactly.
@@ -303,7 +303,7 @@ class CodecGlitch(Effect):
                         return
                 except media.MediaError:
                     pass
-            # beyond salvage — clean passthrough so the render never breaks
+            # beyond salvage - clean passthrough so the render never breaks
             media._run([media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path,
                         *_INTERMEDIATE, out_path])
             if slice_shift > 0.0:
@@ -363,7 +363,7 @@ class CodecGlitch(Effect):
             else:
                 # unprotected: keyframes 3x more likely to drop → stale-reference pulls
                 drop_parts.append(f"gt(n\\,0)*lt(mod(n*7919+{seed_off}\\,997)\\,{t}*(1+2*key))")
-        # freeze windows drop everything — keyframes included, that's the stall
+        # freeze windows drop everything - keyframes included, that's the stall
         drop_parts += [f"between(n\\,{a}\\,{b})" for a, b in getattr(self, "_freezes", [])]
         if drop_parts:
             opts.append("drop=" + "+".join(drop_parts))
@@ -374,7 +374,7 @@ class CodecGlitch(Effect):
 
     def _slice_drag(self, path: str, ctx: Context, amount: float) -> None:
         """Post-decode per-slice horizontal displacement: macroblock-row bands
-        shear sideways and hold for a stretch — decoded slices landing at the
+        shear sideways and hold for a stretch - decoded slices landing at the
         wrong offset. Streams the decoded intermediate through a numpy pass."""
         info = media.probe(path)
         W, H, fps = info.width, info.height, info.fps
@@ -586,8 +586,8 @@ class ChromaDV(Effect):
     kind = "frame"
     desc = (
         "Brutal digital chroma subsampling (4:2:0 / 4:1:1 DV-NTSC / 4:1:0) with "
-        "nearest-neighbor chroma reconstruction — the stair-stepped color edges "
-        "of DV tape and early digital cameras — plus in-camera edge sharpening."
+        "nearest-neighbor chroma reconstruction - the stair-stepped color edges "
+        "of DV tape and early digital cameras - plus in-camera edge sharpening."
     )
     PARAMS = (
         Param("ratio", "Subsampling", "enum", "4:1:1",
@@ -597,7 +597,7 @@ class ChromaDV(Effect):
         Param("edge_sharpen", "Edge Sharpen", "float", 0.35, 0.0, 2.0, iscale=True,
               group="Luma", desc="DV in-camera sharpening with its telltale halos."),
         Param("dct_blocks", "DCT Blocks", "float", 0.0, 0.0, 1.0, iscale=True, group="Luma",
-              desc="Faint 8x8 luma block boundaries surfacing under motion — real "
+              desc="Faint 8x8 luma block boundaries surfacing under motion - real "
                    "intra-frame DCT quantization, DV's compression signature. "
                    "Keep low; it should whisper, not shout."),
     )
@@ -649,7 +649,7 @@ class ChromaDV(Effect):
         if db > 0:
             y = np.ascontiguousarray(ycc[..., 0])
             if self._prev_y is not None and self._prev_y.shape == y.shape:
-                # the quantizer coarsens where the picture is changing — block
+                # the quantizer coarsens where the picture is changing - block
                 # edges surface with motion and melt away on stills
                 d = cv2.GaussianBlur(np.abs(y - self._prev_y), (0, 0), 2.5)
                 m = np.clip(d * 16.0, 0.0, 1.0)
@@ -686,7 +686,7 @@ class LCDScreen(Effect):
         Param("subpixel", "Subpixel Structure", "enum", "none",
               choices=("none", "rgb_stripe_lcd"), group="Panel",
               desc="Resolve the panel's R/G/B stripe triads inside each pixel cell "
-                   "— the close-enough-to-see-the-subpixels camera look. Wants "
+                   "- the close-enough-to-see-the-subpixels camera look. Wants "
                    "scale >= 3 so each stripe gets a column."),
         Param("dead_pixels", "Dead Pixels", "int", 0, 0, 24, group="Panel",
               desc="Stuck panel pixels at seed-stable positions: mostly dark-dead, "
@@ -789,7 +789,7 @@ class LCDScreen(Effect):
             self._prev_y = y
         if self._gamma is not None:
             # apply the per-column gamma tilt on luma and rescale RGB by the
-            # ratio — one-channel pow instead of three, visually identical
+            # ratio - one-channel pow instead of three, visually identical
             y = x @ _LUMA_W if smear <= 0 else y
             ys = np.clip(y, 1e-4, 1.0)
             ratio = (np.power(ys, self._gamma) / ys)[..., None]

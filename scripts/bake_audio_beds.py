@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Bake procedural ambience beds for the a_bed effect.
 
-Synthesizes period environment loops — running projectors, a wall of shop
-TVs, HVAC halls, CRT whine… — entirely from noise, oscillators and filters
+Synthesizes period environment loops - running projectors, a wall of shop
+TVs, HVAC halls, CRT whine… - entirely from noise, oscillators and filters
 (no recordings, no downloads), and writes them to assets/audio-beds/ as
 48 kHz stereo 16-bit WAVs, 12–20 s each, loop-ready (crossfaded ends),
 peak ≤ −12 dBFS.
@@ -10,7 +10,7 @@ peak ≤ −12 dBFS.
 Run:  .venv/bin/python scripts/bake_audio_beds.py [bed_name ...]
       (no args = bake everything; --list shows available names)
 
-Determinism: a fixed bake seed keyed per bed — re-running reproduces the
+Determinism: a fixed bake seed keyed per bed - re-running reproduces the
 same files bit-for-bit.
 """
 
@@ -59,7 +59,7 @@ def loop_fold(x: np.ndarray) -> np.ndarray:
 
 
 def stereoize(mono: np.ndarray, delay_ms: float = 0.35, gain_r: float = 0.94) -> np.ndarray:
-    """Mono source given a small inter-channel delay — phantom-center realism."""
+    """Mono source given a small inter-channel delay - phantom-center realism."""
     d = int(SR * delay_ms / 1000.0)
     right = np.concatenate([np.zeros(d, np.float32), mono[:-d]]) if d else mono
     return np.stack([mono, right * gain_r], axis=1)
@@ -262,7 +262,7 @@ def bake_tv_shop_wall() -> np.ndarray:
         b *= wander(gi, n, 0.08, 0.5, 0.12).astype(np.float32)
         b /= U.rms(b) + 1e-9
         b *= U.db_to_lin(gi.uniform(-14.0, -6.0))
-        # its flyback/PSU whine — aging sets sag below 15.7 kHz
+        # its flyback/PSU whine - aging sets sag below 15.7 kHz
         fw = gi.uniform(0.88, 1.0) * 15734.0
         whine = np.sin(running_phase(fw * wander(gi, n, 0.03, 0.2, 0.0004), n))
         whine += 0.5 * np.sin(running_phase(fw / 2.0, n) + gi.uniform(0, 2 * np.pi))

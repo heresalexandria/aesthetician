@@ -46,7 +46,7 @@ def _coarse_kf(ctx: Context, key: str, k: int, gh: int, gw: int, sigma: float = 
 
 class _EvolvingField:
     """Very-low-frequency spatial field that slowly crossfades between noise
-    keyframes — the engine behind grain boiling, density mottle and decay
+    keyframes - the engine behind grain boiling, density mottle and decay
     animation. Bounded cache, bilinear upsample to frame size on demand."""
 
     def __init__(self, key: str, gh: int, gw: int, rate_hz: float, sigma: float = 0.9):
@@ -113,11 +113,11 @@ class Grain(Effect):
                    "own grain size (blue layer coarsest, red finest); reversal is tighter overall; print_from_neg "
                    "adds a second softer achromatic dupe-grain octave printed through from the negative."),
         Param("shadow_boost", "Shadow Boost", "float", 0.0, 0.0, 1.0, iscale=True, group="Response",
-              desc="Pushes grain energy down into the shadows — the push-processed / underexposed look where "
+              desc="Pushes grain energy down into the shadows - the push-processed / underexposed look where "
                    "blacks crawl while highlights stay clean."),
         Param("intermittent", "Boiling", "float", 0.0, 0.0, 1.0, iscale=True, group="Response",
               desc="Grain 'boiling': a slowly evolving low-frequency unevenness of grain amplitude across the "
-                   "frame, as real scans show — grain energy is never perfectly uniform."),
+                   "frame, as real scans show - grain energy is never perfectly uniform."),
         Param("mottle", "Density Mottle", "float", 0.0, 0.0, 1.0, iscale=True, group="Response",
               desc="Very-low-frequency emulsion coating mottle: large soft ±1–2% density blotches drifting "
                    "slowly. Subliminal, but it is what makes a still frame read as a film scan."),
@@ -181,7 +181,7 @@ class Grain(Effect):
 
     def _grain_mono(self, frame: np.ndarray, amount: float, size: float, rough: float,
                     chroma: float, clm: float, H: int, W: int, ctx: Context) -> None:
-        """Classic single-layer path — kept exactly as the original implementation."""
+        """Classic single-layer path - kept exactly as the original implementation."""
         g = ctx.frame_rng(f"{self.key}:grain")
 
         # coarse octave: soft organic clumps at the grain size
@@ -274,7 +274,7 @@ class Grain(Effect):
             fine = self._layer_field(g, max(size * 0.45, 0.8), H, W, "lf")
         dup = None
         if dupe > 0:
-            # dupe grain: printed through from the negative — softer, larger, achromatic
+            # dupe grain: printed through from the negative - softer, larger, achromatic
             dup = self._layer_field(g, size * 1.9, H, W, "ld", sigma=0.9)
 
         resp = self._response(frame, amount, chroma, rough, H, W, ctx)
@@ -325,7 +325,7 @@ class Grain(Effect):
         if amount > 0:
             size = self.v["size"] * szm
             if self.v["size_ref"] == "output":
-                # generated here, but magnified by the final upscale — pre-shrink
+                # generated here, but magnified by the final upscale - pre-shrink
                 size /= max(ctx.upscale, 1e-3)
             size = float(np.clip(size, 0.8, 9.0))
             rough = float(np.clip(self.v["roughness"] * rgm, 0.0, 1.0))
@@ -365,7 +365,7 @@ class Halation(Effect):
               choices=("red", "red_orange", "orange", "warm_white", "neutral"), group="Glow",
               desc="Halo color; neutral suits black & white glow."),
         Param("double_pass", "Long Tails", "float", 0.0, 0.0, 1.0, iscale=True, group="Glow",
-              desc="Second, much wider and fainter halo pass — real base reflections trail off far beyond a "
+              desc="Second, much wider and fainter halo pass - real base reflections trail off far beyond a "
                    "single gaussian falloff."),
         Param("edge_only", "Edge Emphasis", "float", 0.0, 0.0, 1.0, group="Glow",
               desc="Suppresses the halo inside flat bright fields so it reads at dark–bright boundaries, where "
@@ -433,9 +433,9 @@ class PrintChar(Effect):
     PARAMS = (
         Param("acutance", "Edge Effect", "float", 0.0, 0.0, 1.0, iscale=True, group="Print",
               desc="Development adjacency effect: a faint dark line just inside the bright side of edges. "
-                   "Unlike digital sharpening there is no bright halo — only the exhausted-developer line."),
+                   "Unlike digital sharpening there is no bright halo - only the exhausted-developer line."),
         Param("dmax_breath", "Breathing Blacks", "float", 0.0, 0.0, 1.0, iscale=True, group="Print",
-              desc="Projector flare lifts the blacks in step with overall scene brightness — Dmax breathes "
+              desc="Projector flare lifts the blacks in step with overall scene brightness - Dmax breathes "
                    "as the picture cuts between bright and dark."),
         Param("contrast_buildup", "Dupe Generations", "int", 0, 0, 4, group="Print",
               desc="Each duplication generation adds S-curve contrast and loses a little detail. Pairs with "
@@ -444,7 +444,7 @@ class PrintChar(Effect):
               desc="Misframed projection: the dark frameline intrudes at the very top or bottom edge and "
                    "bounces slowly with the transport."),
         Param("perf_flash", "Perf Flashes", "float", 0.0, 0.0, 1.0, iscale=True, group="Gate",
-              desc="Rare one-frame warm flashes hugging the left edge — light striking through the "
+              desc="Rare one-frame warm flashes hugging the left edge - light striking through the "
                    "perforation area when a splice lifts the film off the gate."),
     )
 
@@ -839,7 +839,7 @@ class Scratches(Effect):
         Param("transient_rate", "Transients", "float", 4.0, 0.0, 30.0, unit="/min", group="Damage",
               desc="Rate of scratches that appear for a single frame."),
         Param("emulsion_side", "Emulsion Scratches", "float", 0.0, 0.0, 1.0, group="Damage",
-              desc="Fraction of persistent scratches that gouge the emulsion instead of the base — dye layers "
+              desc="Fraction of persistent scratches that gouge the emulsion instead of the base - dye layers "
                    "torn away refract green/orange with a complementary fringe, instead of a neutral line."),
         Param("gouge_rate", "Gouges", "float", 0.0, 0.0, 10.0, unit="/min", group="Damage",
               desc="Rare deep gouges: a wide ragged dark gash with torn bright edges, lasting one to three frames."),
@@ -914,7 +914,7 @@ class Scratches(Effect):
         if emul is None:
             frame[:, c0:c1] += (vmod[:, None] * prof[None, :] * sign)[..., None]
             return
-        # emulsion-side scratch: torn dye layers refract color — a green↔orange
+        # emulsion-side scratch: torn dye layers refract color - a green↔orange
         # core with a fainter complementary fringe hugging one flank
         t = emul
         colw = (np.asarray((0.30, 1.00, 0.42), np.float32) * (1.0 - t)
@@ -1021,7 +1021,7 @@ class FrameDamage(Effect):
               desc="Static discharge marks: one-frame branching bright streaks jumping in from a frame edge "
                    "(dry rewind sparks exposing the stock), most visible on dark scenes."),
         Param("mold_edge", "Edge Mold", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",
-              desc="Constant faint organic mottled darkening creeping in from the frame edges — mildew "
+              desc="Constant faint organic mottled darkening creeping in from the frame edges - mildew "
                    "blooming between the reel wraps."),
     )
 
@@ -1283,7 +1283,7 @@ class Cadence(Effect):
         Param("speed", "Shot Speed", "enum", "native", choices=("native", "silent_16fps_in_24"),
               group="Timing",
               desc="silent_16fps_in_24 resamples the source as if shot at ~16 fps and shown at 24: motion "
-                   "runs 1.5× fast inside a 2:1 hold pattern while total duration is preserved — the "
+                   "runs 1.5× fast inside a 2:1 hold pattern while total duration is preserved - the "
                    "authentic comedy fast-walk feel."),
     )
 
@@ -1428,7 +1428,7 @@ class LightLeak(Effect):
         Param("constant", "Constant Glow", "float", 0.15, 0.0, 1.0, group="Glow",
               desc="Always-on edge glow floor."),
         Param("sprocket_side", "Sprocket Fog", "float", 0.0, 0.0, 1.0, iscale=True, group="Glow",
-              desc="Fog hugging one edge in a repeating vertical rhythm — light seeping through the "
+              desc="Fog hugging one edge in a repeating vertical rhythm - light seeping through the "
                    "sprocket area between the perforations, breathing with the transport."),
     )
 

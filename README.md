@@ -1,18 +1,41 @@
 # Aesthetician
 
-**A premium archival-media aesthetic engine.** Aesthetician applies era-authentic looks — and sounds — to modern video: VHS in a dozen states of decay, three-strip Technicolor, 16mm news film, Saturday-morning cartoons, dying broadcast signals, early web video, and much more.
+![Aesthetician](preview.jpg)
 
-It is not a filter pack. Every aesthetic is a physically-motivated simulation of the original signal path:
+**A premium archival-media aesthetic engine.** Aesthetician applies era-authentic looks, and sounds, to modern video and audio: VHS in a dozen states of decay, three-strip Technicolor, 16mm news film, Saturday-morning cartoons, dying broadcast signals, early web video, and much more.
 
-- **Composite NTSC/PAL** is actually encoded onto a subcarrier and decoded like a receiver — dot crawl genuinely crawls, cross-color rainbows shimmer on fine detail, hue jitters per scanline.
-- **VHS** models color-under chroma, VCR edge-enhancement ringing, head-switch bending, comet-tail dropouts, tracking storms, time-base error and generation loss.
-- **Film** gets living multi-scale grain with luminance response, red halation, gate weave, hand-crank flicker, tramline scratches, splice jumps, dye-fade profiles (Eastman pink and friends), and projector presentation.
-- **Digital-era looks run the real codecs** — MPEG-1/2, MSMPEG4, FLV, H.263, MJPEG at era bitrates, with true bitstream-corruption datamosh decoded through error concealment.
-- **Audio** is treated with the same seriousness: wow/flutter from an integrated speed curve, tape saturation with head bump, vinyl crackle/pops/wear, optical-track noise, synthesized projector clatter, AM/FM/TV sound, era telephones with real μ-law, real low-bitrate MP3/AMR/G.726 round-trips, and eleven period speaker recipes.
-- **Archive-grade extremes**: five-stage nitrate decomposition, vinegar-syndrome warp, water tide marks, sticky-shed tape, reel-change cue dots, rear-projection TV, CMYK halftone with true rosettes, photocopy generations, DX television that breathes with the ionosphere, PXL2000, LaserDisc, analog horror.
-- **AI-generated overlay plates** (86 across 14 packs: dust, leaks, burns, grime, paper, tape creases, water stains, mold, emulsion decay, copier streaks, CRT glare, lens dirt, screen weaves, static discharge) blend with era-correct motion; 10 synthesized loopable ambience beds (projectors, TV-shop wall, CRT whine…) sit under the audio. Everything degrades gracefully to procedural fallbacks.
+It is not a filter pack. Every aesthetic is a physically-motivated simulation of the original signal path.
 
-**191 presets across twelve families** (vhs / broadcast / film / cartoon / digital / audio-only / world / decay / exhibition / print / transmission / stylized), **238 variants**, 103 effects, and well over a thousand exposed parameters. Deterministic per seed.
+## What you get
+
+| | |
+|---|---|
+| **191 presets** | 12 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), decay (8), exhibition (6), print (6), stylized (5), transmission (5) |
+| **238 variants** | alternate states of each look: worn prints, fifth-generation dubs, storm reception, terminal decay |
+| **103 effects, 505 parameters** | every one exposed and documented, in the app and from the CLI |
+| **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
+
+## Features
+
+- **Drag and drop video *or* audio.** Drop a WAV, MP3 or FLAC and the picture controls step aside, leaving only the sound chain.
+- **Session tabs.** Open as many clips as you like, each with its own aesthetic and knob positions. Try one clip several ways side by side; switching back is instant.
+- **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
+- **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
+- **Hover tooltips on every knob.** What the parameter physically models, its range, and the `--set` path to reach it from the CLI.
+- **Two master dials.** **Intensity** for damage, warping and glow; **Texture** for grain and noise alone, so a look can go completely clean without losing its colour and character.
+- **Deterministic.** Same seed, same render, every time. Roll the dice for a different take on the same aesthetic.
+- **A preview cache you control.** Size and file count in the footer, with Clear and Reveal.
+- **A real CLI** for batch and scripted work, with every parameter overridable.
+
+## The simulations, in brief
+
+- **Composite NTSC/PAL** is actually encoded onto a subcarrier and decoded like a receiver: dot crawl genuinely crawls, cross-color rainbows shimmer on fine detail, hue jitters per scanline, and an adaptive comb filter kills hanging dots exactly where a late-80s set would.
+- **VHS** models color-under chroma, VCR edge-enhancement ringing, head-switch bending, azimuth herringbone, a two-head chroma beat, comet-tail dropouts written by a compensator holding the line above, tracking storms, time-base error and generation loss.
+- **Film** gets living multi-scale grain with per-layer colour-negative sizing and emulsion mottle, red halation, gate weave, hand-crank flicker, refracting emulsion scratches, splice jumps, static-discharge flashes and dye-fade profiles.
+- **Decay** goes where archives fear to: five-stage nitrate decomposition, vinegar-syndrome warp with layers physically separating, water tide marks, mould creep, sticky-shed tape.
+- **Digital-era looks run the real codecs**: MPEG-1/2, MSMPEG4, FLV, H.263, MJPEG at era bitrates, plus true bitstream-corruption datamosh decoded through error concealment.
+- **Print** does real rotated-screen CMYK halftone with genuine rosettes, photocopy generation collapse, red-blind microfilm and two-ink risograph.
+- **Audio** is treated with the same seriousness: wow and flutter from an integrated speed curve, tape saturation with head bump, Dolby mistracking, vinyl crackle and warp thump, optical-track noise, synthesized projector clatter, shortwave RTTY interference, era telephones with real mu-law, real low-bitrate MP3/AMR/G.726 round-trips, and seventeen period speaker recipes.
 
 ## Setup (macOS)
 
@@ -23,11 +46,23 @@ python3 -m venv .venv
 cd app && npm install && cd ..        # for the GUI
 ```
 
-Optional one-time asset generation (needs `OPENAI_API_KEY` in `.env`, see `.env.example`):
+Optional one-time generation (asset plates need `OPENAI_API_KEY` in `.env`, see `.env.example`):
 
 ```bash
 .venv/bin/aesthetician assets generate
 ```
+
+```bash
+.venv/bin/python scripts/make_thumbs.py
+```
+
+## GUI
+
+```bash
+cd app && npm start
+```
+
+Full walkthrough: [docs/app-guide.md](docs/app-guide.md).
 
 ## CLI
 
@@ -37,46 +72,15 @@ aesthetician info vhs-camcorder-1989       # every knob, range, and variant
 aesthetician apply clip.mp4 -p vhs-rental-1992
 aesthetician apply clip.mp4 -p musical-1952 --variant worn-print --seed 42
 aesthetician apply clip.mp4 -p vhs-ep-longplay --set vhs.tracking_error=0.6 \
-    --set a_wow_flutter.wow_depth=14 --intensity 1.3
+    --set a_wow_flutter.wow_depth=14 --intensity 1.3 --texture 0.5
 aesthetician preview clip.mp4 -p news-film-1975    # fast 3 s look
-aesthetician apply clip.mp4 -p audio-am-1948       # audio-only family
-aesthetician apply song.wav -p audio-cassette-1984 # an audio FILE as the source
+aesthetician apply song.wav -p audio-cassette-1984 # an audio file as the source
 aesthetician apply clip.mp4 -p grindhouse-1973 --video-only
 ```
 
 Any parameter shown by `info` can be overridden with `--set effect.param=value`
-(audio effects start with `a_`). `--seed` pins the stochastic character;
-`--intensity` scales damage/noise amounts chain-wide.
-
-## GUI
-
-```bash
-cd app && npm start
-```
-
-Drop a clip (video **or** audio) → pick an aesthetic → tweak knobs (the preview re-renders through the
-real engine, so what you see is what exports) → hold **A/B** for the original →
-**Export Full Video**.
-
-Each row in the browse list carries a thumbnail of that treatment (hover to see it
-move) and a one-line summary of its artifacts. Hover any knob for a tooltip
-explaining what it physically models, its range, and the `--set` path to reach it
-from the CLI. Two master dials sit above the parameter stack: **Intensity**
-(damage, warping, glow) and **Texture** (grain, tape noise, dust, speckle — drag
-to 0 for a perfectly clean version of the look).
-
-Open as many clips as you like: each is a tab with its own aesthetic and knob
-positions, so you can try one clip several ways side by side, and switching back
-is instant. The footer shows what the preview cache is costing you on disk, with
-**Clear** and **Reveal** beside it.
-
-Full walkthrough: [docs/app-guide.md](docs/app-guide.md).
-
-Thumbnails are generated once:
-
-```bash
-.venv/bin/python scripts/make_thumbs.py
-```
+(audio effects start with `a_`). `--seed` pins the stochastic character,
+`--intensity` scales damage and warping, `--texture` scales grain and noise.
 
 ## Desktop app (packaged)
 
@@ -86,13 +90,13 @@ To build an installable app that needs no Python, ffmpeg or checkout:
 python3 scripts/package/build.py --target mac
 ```
 
-Artifacts land in `app/dist/` — a DMG on macOS (~495 MB, ~960 MB installed;
-almost all of it NumPy/SciPy/OpenCV), an NSIS installer on Windows. The bundle
-carries a relocatable CPython, static ffmpeg, and the asset packs.
+Artifacts land in `app/dist/`: a DMG on macOS (~495 MB, ~960 MB installed, almost
+all of it NumPy/SciPy/OpenCV), an NSIS installer on Windows. The bundle carries a
+relocatable CPython, static ffmpeg, and the asset packs.
 
 ### First run on macOS
 
-The build is **ad-hoc signed** — there is no Apple Developer ID in this project —
+The build is **ad-hoc signed** (there is no Apple Developer ID in this project),
 which is enough to run locally but not enough to satisfy Gatekeeper on a
 downloaded or copied DMG. The first launch will be blocked, showing a refusal or
 *"Aesthetician is damaged and can't be opened"*. Either right-click the app and
@@ -103,19 +107,19 @@ xattr -dr com.apple.quarantine /Applications/Aesthetician.app
 ```
 
 After that it opens normally. Real distribution needs a Developer ID plus
-notarization — see [docs/packaging.md](docs/packaging.md), which also covers the
+notarization, see [docs/packaging.md](docs/packaging.md), which also covers the
 GPL obligations that come with the bundled ffmpeg.
 
 The Windows target is fully scripted but has not been built or tested on Windows.
 
 ## Documentation
 
-- [docs/usage.md](docs/usage.md) — setup and workflows
-- [docs/catalog.md](docs/catalog.md) — the full preset/parameter catalog
-- [docs/app-guide.md](docs/app-guide.md) — using the desktop app
-- [docs/packaging.md](docs/packaging.md) — building installable macOS/Windows apps
-- [docs/architecture.md](docs/architecture.md) — how the engine works
-- [docs/preset-plan.md](docs/preset-plan.md) — the design map of the library
+- [docs/app-guide.md](docs/app-guide.md) - using the desktop app
+- [docs/usage.md](docs/usage.md) - setup and CLI workflows
+- [docs/catalog.md](docs/catalog.md) - all 191 presets and every knob
+- [docs/packaging.md](docs/packaging.md) - building installable macOS/Windows apps
+- [docs/architecture.md](docs/architecture.md) - how the engine works
+- [docs/preset-authoring.md](docs/preset-authoring.md) - writing new presets
 
 ## Development
 
@@ -123,8 +127,10 @@ The Windows target is fully scripted but has not been built or tested on Windows
 .venv/bin/python tests/test_engine.py         # engine unit tests
 .venv/bin/python tests/test_smoke.py          # end-to-end render
 .venv/bin/python scripts/validate_presets.py  # preset/registry consistency
+.venv/bin/python scripts/audit_calibration.py # calibration guardrails
+.venv/bin/python scripts/smoke_all_presets.py # batch-render every preset
 .venv/bin/python scripts/make_gallery.py --family vhs --input videos-samples/untreated.mp4
 ```
 
-No media files or secrets are ever committed; sample footage lives untracked in
-`videos-samples/`, generated assets in `assets/packs/`.
+No media files or secrets are ever committed. Sample footage lives untracked in
+`videos-samples/`, generated assets in `assets/`.

@@ -115,7 +115,7 @@ register_preset(Preset(
     name="Cartoon VHS Rip",
     family="cartoon",
     era="1985",
-    desc="Saturday's cartoons taped for Sunday: the cel-print look smeared through consumer tape — chroma bleeding out of the ink lines.",
+    desc="Saturday's cartoons taped for Sunday: the cel-print look smeared through consumer tape - chroma bleeding out of the ink lines.",
     tagline="Chroma bleeding out of the ink lines",
     tags=("80s", "vhs", "cel"),
     proc_height=520,

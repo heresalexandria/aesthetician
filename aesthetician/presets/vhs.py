@@ -28,7 +28,7 @@ register_preset(Preset(
         ("a_tape_hiss", {"level_db": -48.0}),
     ],
     variants=[
-        Variant("fresh", "Fresh Tape", "First playback of a new recording — minimal damage.",
+        Variant("fresh", "Fresh Tape", "First playback of a new recording - minimal damage.",
                 video={"vhs.dropouts": 0.05, "vhs.time_base_error": 0.2, "vhs.luma_noise": 0.25},
                 audio={"a_tape_hiss.level_db": -52.0}),
         Variant("hifi", "Hi-Fi Deck", "Late-80s HiFi audio path: wider, quieter sound.",
@@ -109,7 +109,7 @@ register_preset(Preset(
                 video={"vhs.tracking_error": 0.55, "vhs.dropouts": 4.0, "vcr_transport.random_glitch_rate": 3.0,
                        "plate.gate": 0.3},
                 audio={"a_tape_dropouts.rate": 6.0, "a_wow_flutter.wow_depth": 14.0}),
-        Variant("late-fee", "Ex-Rental", "Retired shelf copy — tired but watchable.",
+        Variant("late-fee", "Ex-Rental", "Retired shelf copy - tired but watchable.",
                 video={"vhs.tracking_error": 0.12, "vhs.dropouts": 1.2, "vcr_transport.random_glitch_rate": 0.5}),
     ],
 ))
@@ -250,7 +250,7 @@ register_preset(Preset(
                 video={"signal_rf.snow": 0.6, "signal_rf.ghost_alpha": 0.3, "signal_rf.weak_signal": 0.5,
                        "osd.channel": "CH 62"},
                 audio={"a_tv_sound.buzz_db": -38.0}),
-        Variant("cable", "Cable Box", "Clean-ish cable feed — no snow, just the wash.",
+        Variant("cable", "Cable Box", "Clean-ish cable feed - no snow, just the wash.",
                 video={"signal_rf.snow": 0.03, "signal_rf.ghost_alpha": 0.05, "osd.channel": "CH 23"}),
         Variant("no-osd", "No Readout", "Channel display off.",
                 video={"osd.show_ch": False}),

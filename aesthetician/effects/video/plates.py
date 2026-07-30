@@ -32,7 +32,7 @@ class PlateOverlay(Effect):
               choices=("per_frame", "per_second", "hold", "shuffle_fast"), group="Motion",
               desc="How often a new plate is chosen: every frame (dust), every second, held (texture), or chaotic."),
         Param("jitter", "Position Jitter", "float", 0.0, 0.0, 60.0, unit="px", group="Motion",
-              desc="Random offset per plate swap — keeps plates from reading as static."),
+              desc="Random offset per plate swap - keeps plates from reading as static."),
         Param("drift", "Drift Speed", "float", 0.0, 0.0, 40.0, unit="px/s", group="Motion",
               desc="Slow wander of the plate position (light leaks breathe)."),
         Param("flicker", "Opacity Flicker", "float", 0.0, 0.0, 1.0, group="Motion",
@@ -63,7 +63,7 @@ class PlateOverlay(Effect):
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         if self._n == 0 or self.v["opacity"] <= 0:
-            return frame  # pack not generated — procedural effects still cover the look
+            return frame  # pack not generated - procedural effects still cover the look
         if self.v["gate"] < 1.0:
             g = (self._gate_noise[ctx.fi_out] + 1.0) / 2.0
             if g > self.v["gate"]:

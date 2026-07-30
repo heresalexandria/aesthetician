@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-# ITU-R BT.601 luma weights — the analog-era standard, used across the engine.
+# ITU-R BT.601 luma weights - the analog-era standard, used across the engine.
 _RGB2YIQ = np.array(
     [
         [0.299, 0.587, 0.114],

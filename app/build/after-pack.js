@@ -8,8 +8,8 @@
  * bundled Python runtime, ffmpeg and asset packs landing afterwards.
  *
  * We have no Developer ID here, so this is an *ad-hoc* signature (`--sign -`).
- * That is enough for macOS to load the app locally — an arm64 bundle whose
- * signature is missing or stale is killed outright — but it is not enough for
+ * That is enough for macOS to load the app locally - an arm64 bundle whose
+ * signature is missing or stale is killed outright - but it is not enough for
  * Gatekeeper on a downloaded copy. See docs/packaging.md.
  */
 

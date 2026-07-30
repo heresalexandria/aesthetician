@@ -2,7 +2,7 @@
 behavior) and camcorder auto-exposure feel.
 
 Optical behaviors here happen at the camera, so temporal tracks are keyed on
-ctx.fi_src — a held frame under a cadence remap keeps its optical state.
+ctx.fi_src - a held frame under a cadence remap keeps its optical state.
 """
 
 from __future__ import annotations
@@ -147,7 +147,7 @@ class Optics(Effect):
         bs = self.v["bokeh_swirl"]
         if bs > 0:
             # tangential smear of the low-pass band: rotate the low band a touch
-            # both ways about center and average — the sharp core is added back
+            # both ways about center and average - the sharp core is added back
             hw, hh = max(W // 2, 16), max(H // 2, 16)
             small = cv2.resize(frame, (hw, hh), interpolation=cv2.INTER_AREA)
             lp = cv2.GaussianBlur(small, (0, 0), 1.6 * max(hscale, 0.4) + 0.6)
@@ -268,7 +268,7 @@ class ExposureAuto(Effect):
               desc="Auto white balance wandering warm/cool."),
         Param("flicker_60hz", "Mains Beat", "float", 0.0, 0.0, 1.0, iscale=True, group="Exposure",
               desc="Fluorescent/mains beat: a fast, shallow luma ripple from the shutter beating against "
-                   "50/60 Hz lighting — the indoor-camcorder shimmer."),
+                   "50/60 Hz lighting - the indoor-camcorder shimmer."),
         Param("iris_step", "Stepped Iris", "float", 0.0, 0.0, 1.0, group="Exposure",
               desc="Auto-iris moves in discrete clicks instead of gliding: exposure corrections land as "
                    "small visible steps."),

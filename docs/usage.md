@@ -1,4 +1,4 @@
-# Aesthetician — Usage
+# Aesthetician - Usage
 
 ## Setup (macOS)
 
@@ -10,7 +10,7 @@ python3 -m venv .venv
 cd app && npm install          # for the GUI
 ```
 
-Optional, once (AI overlay plates — needs OPENAI_API_KEY in `.env`):
+Optional, once (AI overlay plates - needs OPENAI_API_KEY in `.env`):
 
 ```bash
 .venv/bin/aesthetician assets generate
@@ -37,7 +37,7 @@ aesthetician preview clip.mp4 -p broadcast-news-film-1975
 aesthetician apply clip.mp4 -p audio-am-1948            # audio-only family
 aesthetician apply clip.mp4 -p vhs-ep-longplay --video-only
 
-# an audio FILE as the source — only the preset's sound chain runs
+# an audio FILE as the source - only the preset's sound chain runs
 aesthetician apply song.wav -p audio-cassette-1984
 aesthetician apply stem.mp3 -p vhs-ep-longplay -o stem.tape.mp3
 
@@ -50,7 +50,7 @@ aesthetician apply clip.mp4 -p news-film-1975 --texture 0.4
 
 ## Controlling grain and noise
 
-Film and tape noise is **regenerated every frame** — that liveliness is the point;
+Film and tape noise is **regenerated every frame** - that liveliness is the point;
 a frozen noise pattern reads as a dirty lens, not as film. What you can control:
 
 | control | what it does |
@@ -58,11 +58,11 @@ a frozen noise pattern reads as a dirty lens, not as film. What you can control:
 | `--texture 0…2` | one dial for every grain/noise/speckle *amount* in the chain (grain, tape noise, snow, dust, cel dirt, toner…). `0` renders the look completely clean. |
 | `--set grain.size=N` | clump diameter. Lower = finer, tighter grain. |
 | `--set grain.size_ref=output` | make `grain.size` mean pixels **in the delivered file** instead of at the era simulation resolution. |
-| `--intensity 0…2` | the broader strength dial (damage, warping, glow — everything flagged as an amount). |
+| `--intensity 0…2` | the broader strength dial (damage, warping, glow - everything flagged as an amount). |
 
 **Why grain can look chunkier than the number suggests:** most presets simulate at
 an era resolution (`proc_height`, e.g. 520 lines for Super 8) and upscale to your
-delivery size afterwards, which magnifies every texture generated inside — a 2.0 px
+delivery size afterwards, which magnifies every texture generated inside - a 2.0 px
 clump lands at ~5 px in a 1280-tall export. That magnification is physically right
 (small-gauge film really is grainy relative to its frame), but it means the `size`
 parameter is measured *before* the upscale. Use `grain.size_ref=output` when you
@@ -92,7 +92,7 @@ original → **Export Full Video**.
 
 ## Audio files as input
 
-Anything without a video stream — WAV, MP3, FLAC, M4A, AIFF, a bare stem — is
+Anything without a video stream - WAV, MP3, FLAC, M4A, AIFF, a bare stem - is
 accepted as a source. Only the preset's **sound** chain runs; its picture effects
 are skipped rather than erroring, so you can point a video-led preset at a stem
 and get exactly that medium's audio character (`vhs-ep-longplay` on a stem gives
@@ -103,4 +103,4 @@ lossless (24-bit PCM), `.flac` is lossless compressed, `.mp3`/`.m4a`/`.aac`
 encode at 320k. With no `-o`, the source's own extension is kept.
 
 All 191 presets carry an audio chain, so any of them does something to an audio
-file — but the 29 in the `audio` family are the ones designed sound-first.
+file - but the 29 in the `audio` family are the ones designed sound-first.

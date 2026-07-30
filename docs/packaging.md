@@ -36,7 +36,7 @@ Targets: `mac` (= `mac-arm64`), `mac-x64`, `mac-both`, `win` (= `win-x64`).
 The build stages a payload into `app/build-resources/`, which electron-builder
 copies to `Contents/Resources` (macOS) or `resources/` (Windows). `app/main.js`
 resolves everything against that directory when `app.isPackaged` is true, and
-against the repo `.venv` plus your PATH otherwise — so the same code runs in dev
+against the repo `.venv` plus your PATH otherwise - so the same code runs in dev
 and in the bundle.
 
 ```
@@ -58,7 +58,7 @@ A virtualenv bakes an absolute path to the interpreter that created it, so
 copying `.venv` into an app produces something that only runs on the machine that
 built it. Instead the build downloads an
 [astral-sh/python-build-standalone](https://github.com/astral-sh/python-build-standalone)
-`install_only` archive — a genuinely relocatable CPython — and pip-installs the
+`install_only` archive - a genuinely relocatable CPython - and pip-installs the
 project and its dependencies into it. Because real `.py` files sit on a real
 filesystem, the engine's `pkgutil`-based effect and preset discovery keeps working
 (a frozen single-file build would break it).
@@ -77,14 +77,14 @@ dependencies (keep that in step with `[project.dependencies]` in
 `pyproject.toml`). After bumping a pin, rebuild with `--force-runtime` or
 `--force-ffmpeg` and re-run the verification below.
 
-## ffmpeg licensing — read before redistributing
+## ffmpeg licensing - read before redistributing
 
 The bundled ffmpeg builds are **GPLv3** (configured `--enable-gpl
 --enable-version3`; no `--enable-nonfree`, so redistribution is permitted). If
 you ship this app to anyone else, the GPL obligations travel with it: convey the
 licence text and make the corresponding ffmpeg source available. Aesthetician's
 own code is MIT, and dynamic use of a separate ffmpeg binary is a different
-situation from bundling one — bundling is what triggers this. If you would rather
+situation from bundling one - bundling is what triggers this. If you would rather
 not take that on, build with an LGPL ffmpeg instead and expect to lose some
 encoders (several era codec presets depend on GPL-only ones).
 
@@ -94,7 +94,7 @@ There is no Developer ID in this project, so `app/build/after-pack.js`
 **ad-hoc signs** the bundle (`codesign --force --deep --sign -`) and then verifies
 the seal. That step has to happen after packing, because a signature covers
 `Contents/Resources` and the Python runtime, ffmpeg and assets are copied in
-during packing — signing earlier would immediately be invalidated. An arm64
+during packing - signing earlier would immediately be invalidated. An arm64
 bundle with a missing or stale signature is killed outright by macOS, so this is
 not optional.
 
@@ -144,9 +144,9 @@ cp -R app/dist/mac-arm64/Aesthetician.app /tmp/AesthRelo/
 Then render through the copy with the same scrubbed environment. Cover three
 cases, because they exercise different paths:
 
-- `super8-1974` — grain, overlay plates, audio chain
-- `vcd-1997` — a real-codec file pass, i.e. it must shell out to bundled ffmpeg
-- `audio-8track-1974` — the audio device library
+- `super8-1974` - grain, overlay plates, audio chain
+- `vcd-1997` - a real-codec file pass, i.e. it must shell out to bundled ffmpeg
+- `audio-8track-1974` - the audio device library
 
 Probe each result with the **bundled** `ffprobe` and confirm duration plus video
 and audio streams. Finally `open -a` the copied app and confirm the window comes
@@ -157,9 +157,9 @@ really is reaching its own engine rather than a stray system Python.
 ## Known limitations
 
 - **The Windows target is scripted but has never been built or run.** It is
-  correct by construction — pinned `x86_64-pc-windows-msvc` runtime, `win_amd64`
+  correct by construction - pinned `x86_64-pc-windows-msvc` runtime, `win_amd64`
   wheels, NSIS installer, `python.exe` and `.exe` suffixes handled in
-  `targets.py` — but treat it as unverified until someone builds it on Windows.
+  `targets.py` - but treat it as unverified until someone builds it on Windows.
 - Cross-building macOS Intel from Apple silicon installs x86_64 wheels but cannot
   execute them during the build, so `mac-x64` is likewise unverified here.
 - The app is large, and almost all of it is scientific Python. `--no-assets`

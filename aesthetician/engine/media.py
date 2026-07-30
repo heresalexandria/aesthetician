@@ -130,7 +130,7 @@ def read_frames(
     finally:
         proc.stdout.close()  # type: ignore[union-attr]
         if not finished:
-            # generator closed early (e.g. remap consumed fewer frames) — not an error
+            # generator closed early (e.g. remap consumed fewer frames) - not an error
             proc.kill()
             proc.wait()
             if proc.stderr:

@@ -1,7 +1,7 @@
 """Burned-in OSD overlays: camcorder/security timestamps and VCR UI chrome.
 
 All text is rendered from a 5x7 dot-matrix bitmap font defined in code, scaled
-with chunky nearest-neighbor blocks and a slight soft edge — the way real
+with chunky nearest-neighbor blocks and a slight soft edge - the way real
 character generators looked once recorded to tape.
 """
 

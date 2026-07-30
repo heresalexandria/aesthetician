@@ -80,7 +80,7 @@ def stage(target: Target, runtime: Path, ffmpeg_dir: Path, with_assets: bool) ->
                 included.append(f"{sub} ({human(size_of(src))})")
             else:
                 (assets_dst / sub).mkdir(parents=True, exist_ok=True)
-                log(f"        assets/{sub} missing — bundling empty dir")
+                log(f"        assets/{sub} missing - bundling empty dir")
     else:
         for sub in ASSET_SUBDIRS:
             (assets_dst / sub).mkdir(parents=True, exist_ok=True)

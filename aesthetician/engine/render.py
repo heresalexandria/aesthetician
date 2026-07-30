@@ -201,8 +201,8 @@ def _render_audio_only(
 ) -> str:
     """Treat a source that has no picture: only the preset's audio chain runs.
 
-    Presets whose audio chain is empty are a no-op here rather than an error —
-    the file is simply re-encoded — so a video-led preset can still be pointed at
+    Presets whose audio chain is empty are a no-op here rather than an error -
+    the file is simply re-encoded - so a video-led preset can still be pointed at
     a stem without blowing up.
     """
     tmp_root = tempfile.mkdtemp(prefix="aesth_a_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
@@ -379,7 +379,7 @@ def default_asset_root() -> str:
     """Where overlay plates and audio beds live.
 
     Packaged builds install the package into a bundled runtime, so the
-    repo-relative guess is wrong there — they set AESTHETICIAN_ASSETS instead.
+    repo-relative guess is wrong there - they set AESTHETICIAN_ASSETS instead.
     """
     env = os.environ.get("AESTHETICIAN_ASSETS")
     if env:

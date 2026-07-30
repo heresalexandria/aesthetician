@@ -1,6 +1,6 @@
 'use strict';
 
-/* Aesthetician renderer — schema-driven UI, no framework. */
+/* Aesthetician renderer - schema-driven UI, no framework. */
 
 const $ = (id) => document.getElementById(id);
 
@@ -145,7 +145,7 @@ function activateSession(id) {
   buildPresetList();
   if (sess.presetId) buildParamPane();
   else {
-    $('preset-title').textContent = '—';
+    $('preset-title').textContent = '-';
     $('variant-row').innerHTML = '';
     $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
   }
@@ -330,7 +330,7 @@ function showTipAt(anchor, { title, desc, facts = [], path = '' }) {
   el.style.top = `${Math.round(top)}px`;
 }
 
-/* attach(el, () => payload) — payload is built lazily on hover */
+/* attach(el, () => payload) - payload is built lazily on hover */
 function attachTip(el, build) {
   el.addEventListener('mouseenter', () => {
     clearTimeout(tipTimer);
@@ -464,7 +464,7 @@ function thumbFor(p) {
     const badge = document.createElement('span');
     badge.className = 't-badge';
     badge.textContent = '♪';
-    badge.title = 'Audio-only preset — the picture is untouched';
+    badge.title = 'Audio-only preset - the picture is untouched';
     holder.appendChild(badge);
   } else if (t && t.anim) {
     holder.classList.add('animable');
@@ -599,7 +599,7 @@ function buildParamPane() {
   if (state.audioOnly && p.video.length) {
     const note = document.createElement('div');
     note.className = 'audio-note';
-    note.textContent = `Audio source — this preset's ${p.video.length} picture effects are not applied.`;
+    note.textContent = `Audio source - this preset's ${p.video.length} picture effects are not applied.`;
     holder.appendChild(note);
   }
   for (const [label, chain] of sections) {
@@ -878,7 +878,7 @@ function wireControls() {
       videoA.removeAttribute('src'); videoB.removeAttribute('src');
       videoA.load(); videoB.load();
       $('player-empty').classList.remove('hidden');
-      $('player-empty').textContent = 'Cache cleared — press Preview to render again';
+      $('player-empty').textContent = 'Cache cleared - press Preview to render again';
       setExportStatus(`Cleared ${r.removed} cached preview${r.removed === 1 ? '' : 's'} (${fmtBytes(r.bytes)}).`);
       await refreshCacheInfo();
     } catch (err) {
@@ -892,7 +892,7 @@ function wireControls() {
 
   attachTip($('intensity').previousElementSibling, () => ({
     title: 'Intensity',
-    desc: 'Master strength for everything the preset does to the picture and sound — damage, warping, glow, colour treatment. 0 leaves the clip almost untouched, 2 doubles the authored amounts.',
+    desc: 'Master strength for everything the preset does to the picture and sound - damage, warping, glow, colour treatment. 0 leaves the clip almost untouched, 2 doubles the authored amounts.',
     facts: ['range 0 – 2', 'applies to the whole chain'],
   }));
   attachTip($('texture').previousElementSibling, () => ({
@@ -902,7 +902,7 @@ function wireControls() {
   }));
   attachTip($('cache-row'), () => ({
     title: 'Preview cache',
-    desc: 'Every preview render is kept on disk, keyed by its exact parameters, so returning to earlier settings is instant. It is safe to clear at any time — you only pay the re-render.',
+    desc: 'Every preview render is kept on disk, keyed by its exact parameters, so returning to earlier settings is instant. It is safe to clear at any time - you only pay the re-render.',
     facts: [G.cacheDir || 'location unavailable'],
   }));
 }
@@ -962,5 +962,5 @@ function setExportStatusLink(prefix, file) {
   a.textContent = file.split('/').pop();
   a.onclick = () => window.aesth.reveal(file);
   el.appendChild(a);
-  el.append(' — click to reveal');
+  el.append(' - click to reveal');
 }

@@ -1,4 +1,4 @@
-"""Print-family presets: the moving image pretending to be ink on paper —
+"""Print-family presets: the moving image pretending to be ink on paper -
 halftone screens, toner, microfilm and duplicator inks."""
 
 from ..engine.presets import Preset, Variant, register_preset

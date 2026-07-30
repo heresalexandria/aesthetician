@@ -1,4 +1,4 @@
-"""Exhibition-family presets: not the film, the SHOWING of it — booths and
+"""Exhibition-family presets: not the film, the SHOWING of it - booths and
 bedsheets, windshields and rec-room big screens."""
 
 from ..engine.presets import Preset, Variant, register_preset
@@ -50,7 +50,7 @@ register_preset(Preset(
     name="Living-Room Wall Show",
     family="exhibition",
     era="1966",
-    desc="No screen tonight — straight onto the wall: roller-mottle under the picture, keystone from the bookshelf perch, the cart jolting every time someone finds the couch.",
+    desc="No screen tonight - straight onto the wall: roller-mottle under the picture, keystone from the bookshelf perch, the cart jolting every time someone finds the couch.",
     tagline="Roller-mottle plaster, keystone, jolts",
     tags=("60s", "8mm", "home-projection", "silent"),
     proc_height=520,

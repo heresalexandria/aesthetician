@@ -2,8 +2,8 @@
 
 Why not the repo `.venv`: a venv records the absolute path of the interpreter it
 was created from, so it breaks the moment the app is copied to another machine.
-Instead we unpack an astral-sh/python-build-standalone "install_only" CPython —
-which is relocatable by construction — and pip-install the project into it.
+Instead we unpack an astral-sh/python-build-standalone "install_only" CPython -
+which is relocatable by construction - and pip-install the project into it.
 
 The result lands in `.cache/package/pyruntime/<target>/` and is mirrored into
 `app/build-resources/pyruntime` at stage time.
@@ -73,7 +73,7 @@ PRUNE_SITE_DIRS = (
     "numpy/random/lib",
     "numpy/_pyinstaller",
     "scipy/_lib/tests",
-    "cv2/data",           # haar cascades — the engine never does detection
+    "cv2/data",           # haar cascades - the engine never does detection
     "cv2/misc",
 )
 PRUNE_SITE_GLOBS = (
@@ -192,7 +192,7 @@ def _install(target: Target, root: Path, native: bool, builder_python: str) -> N
     wheel = _project_wheel(builder_python)
 
     if native:
-        # The bundled interpreter resolves its own wheels — always correct.
+        # The bundled interpreter resolves its own wheels - always correct.
         log(f"pip install (native) into {root.name}")
         run([py, "-m", "pip", "install", "--no-warn-script-location",
              "--no-cache-dir", "--upgrade", *DEPS])
@@ -261,7 +261,7 @@ def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | N
             raise SystemExit(f"{target.key}: missing packages in site-packages: {missing}")
         pyds = list((site / "cv2").glob("*.pyd")) + list((site / "numpy").rglob("*.pyd"))
         if not pyds:
-            raise SystemExit(f"{target.key}: no .pyd extensions found — wrong wheels?")
+            raise SystemExit(f"{target.key}: no .pyd extensions found - wrong wheels?")
         return "structural only (cannot execute this target here)"
 
     env = {"PATH": "/usr/bin:/bin", "HOME": os.environ.get("HOME", "/tmp")}
@@ -274,7 +274,7 @@ def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | N
     if (n_eff, n_pre) != expect:
         raise SystemExit(
             f"{target.key}: bundled runtime reports {n_eff} effects / {n_pre} presets, "
-            f"expected {expect[0]}/{expect[1]} — dynamic module discovery is broken"
+            f"expected {expect[0]}/{expect[1]} - dynamic module discovery is broken"
         )
     how = "native" if native else "under Rosetta"
     return f"{n_eff} effects, {n_pre} presets ({how})"

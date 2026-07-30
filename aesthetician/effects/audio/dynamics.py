@@ -91,7 +91,7 @@ class ADistortion(Effect):
     eid = "a_distortion"
     label = "Distortion"
     kind = "audio"
-    desc = "General clipper: soft tanh, hard clip, gated fuzz, or asymmetric — with post tone tilt and automatic level compensation."
+    desc = "General clipper: soft tanh, hard clip, gated fuzz, or asymmetric - with post tone tilt and automatic level compensation."
     PARAMS = (
         Param("type", "Type", "enum", "soft", choices=("soft", "hard", "fuzz", "asym"),
               desc="Clipping law.", group="Dynamics"),

@@ -2,7 +2,7 @@
 whole signal breathes, heterodyne interference gratings, jamming bars and
 studio-transmitter-link hits.
 
-These sit between the studio and the set — they corrupt whatever signal is
+These sit between the studio and the set - they corrupt whatever signal is
 already on the frame, so they stack naturally under `ntsc`, `vhs` and `crt`.
 Horizontal quantities follow the same 704-sample active-line model as
 `analog.py`; everything stochastic draws from ctx.noise tracks or per-frame
@@ -162,7 +162,7 @@ class Herringbone(Effect):
     label = "RF Herringbone"
     kind = "frame"
     desc = ("Heterodyne beat between the picture carrier and an interfering signal: fine "
-            "drifting gratings — the classic herringbone weave, plain diagonal bars, or "
+            "drifting gratings - the classic herringbone weave, plain diagonal bars, or "
             "broad rolling hum bands with a slow sideways wiggle.")
     PARAMS = (
         Param("amount", "Amount", "float", 0.35, 0.0, 1.0, group="Pattern", iscale=True,
@@ -174,7 +174,7 @@ class Herringbone(Effect):
         Param("wavelength", "Wavelength", "float", 7.0, 3.0, 40.0, unit="px", group="Pattern",
               desc="Stripe pitch of the beat pattern; hum bands run about ten times wider."),
         Param("drift", "Drift", "float", 0.6, 0.0, 4.0, unit="Hz", group="Motion",
-              desc="How fast the pattern crawls — an unlocked beat never sits still."),
+              desc="How fast the pattern crawls - an unlocked beat never sits still."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -205,7 +205,7 @@ class Herringbone(Effect):
         elif pat == "diagonal_bars":
             ph = (2.0 * np.pi / lam) * (_xgrid(H, W) + 0.6 * _ygrid(H, W)) + tph
             depth = a * 0.065
-        else:  # herringbone: stripe slope flips every couple of lines — a weave
+        else:  # herringbone: stripe slope flips every couple of lines - a weave
             rows = np.arange(H, dtype=np.float32)
             zig = np.abs((rows * 0.5) % 2.0 - 1.0)
             ph = (2.0 * np.pi / lam) * _xgrid(H, W) + (3.1 * zig)[:, None] + tph
@@ -226,7 +226,7 @@ class JamBars(Effect):
     kind = "frame"
     desc = ("Deliberate interference stomping on the channel: broad dark bars roll through "
             "the picture, colors smear inside them and the sync tears sideways where a bar "
-            "sits — the pirate-TV / jammed-broadcast look.")
+            "sits - the pirate-TV / jammed-broadcast look.")
     PARAMS = (
         Param("amount", "Amount", "float", 0.35, 0.0, 1.0, group="Bars", iscale=True,
               desc="Strength of the rolling bars; low values read as a nuisance, high as denial."),
@@ -235,7 +235,7 @@ class JamBars(Effect):
         Param("roll_speed", "Roll Speed", "float", 0.35, -2.0, 2.0, unit="bars/s", group="Bars",
               desc="How fast the bars roll; negative rolls them downward."),
         Param("tear", "Sync Tear", "float", 0.3, 0.0, 1.0, group="Tearing", iscale=True,
-              desc="Horizontal shear where a bar crosses — the jammer wrestling the sync."),
+              desc="Horizontal shear where a bar crosses - the jammer wrestling the sync."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -287,7 +287,7 @@ class MicrowaveHit(Effect):
     kind = "frame"
     desc = ("The studio-transmitter link taking a hit: for a frame or four the picture "
             "shatters into displaced strips of analog hash, then snaps back like nothing "
-            "happened — the mark of remote trucks and rain fade.")
+            "happened - the mark of remote trucks and rain fade.")
     PARAMS = (
         Param("rate", "Hit Rate", "float", 2.0, 0.0, 30.0, unit="/min", group="Events", iscale=True,
               desc="How often the link takes a hit; each one lasts one to four frames."),

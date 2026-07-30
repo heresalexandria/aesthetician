@@ -1,6 +1,6 @@
 """Asset pack manifest: AI-generated overlay plates.
 
-Plates live under assets/packs/<pack>/NN.png (gitignored — regenerate with
+Plates live under assets/packs/<pack>/NN.png (gitignored - regenerate with
 `aesthetician assets generate`). Every effect that can use plates also has a
 procedural fallback, so a fresh clone works without them.
 """
@@ -26,7 +26,7 @@ class Pack:
 PACKS: dict[str, Pack] = {
     "film_dust": Pack(
         name="film_dust",
-        desc="Dust, fibers and hairs on black — screen-blended over film looks",
+        desc="Dust, fibers and hairs on black - screen-blended over film looks",
         count=8,
         size="1024x1536",
         mode="screen",
@@ -38,7 +38,7 @@ PACKS: dict[str, Pack] = {
     ),
     "light_leaks": Pack(
         name="light_leaks",
-        desc="Warm light leaks on black — screen-blended camera leaks",
+        desc="Warm light leaks on black - screen-blended camera leaks",
         count=8,
         size="1536x1024",
         mode="screen",
@@ -63,7 +63,7 @@ PACKS: dict[str, Pack] = {
     ),
     "grime": Pack(
         name="grime",
-        desc="Projector glass grime and smudges on black — subtle screen overlay",
+        desc="Projector glass grime and smudges on black - subtle screen overlay",
         count=6,
         size="1024x1536",
         mode="screen",
@@ -74,7 +74,7 @@ PACKS: dict[str, Pack] = {
     ),
     "paper_textures": Pack(
         name="paper_textures",
-        desc="Cel board / paper textures (neutral gray) — overlay-blended for cartoon looks",
+        desc="Cel board / paper textures (neutral gray) - overlay-blended for cartoon looks",
         count=6,
         size="1024x1536",
         mode="gray",
@@ -97,7 +97,7 @@ PACKS: dict[str, Pack] = {
     ),
     "water_stains": Pack(
         name="water_stains",
-        desc="Water damage tide marks on white — multiply-blended",
+        desc="Water damage tide marks on white - multiply-blended",
         count=6,
         size="1024x1536",
         mode="multiply",
@@ -108,7 +108,7 @@ PACKS: dict[str, Pack] = {
     ),
     "mold": Pack(
         name="mold",
-        desc="Mold and fungus growth on white — multiply-blended",
+        desc="Mold and fungus growth on white - multiply-blended",
         count=6,
         size="1024x1536",
         mode="multiply",
@@ -130,7 +130,7 @@ PACKS: dict[str, Pack] = {
     ),
     "copier_streaks": Pack(
         name="copier_streaks",
-        desc="Photocopier toner streaks on white — multiply-blended",
+        desc="Photocopier toner streaks on white - multiply-blended",
         count=4,
         size="1024x1536",
         mode="multiply",
@@ -141,7 +141,7 @@ PACKS: dict[str, Pack] = {
     ),
     "glass_glare": Pack(
         name="glass_glare",
-        desc="Window/room reflections on black — screen-blended over CRT glass",
+        desc="Window/room reflections on black - screen-blended over CRT glass",
         count=6,
         size="1536x1024",
         mode="screen",
@@ -152,7 +152,7 @@ PACKS: dict[str, Pack] = {
     ),
     "lens_dirt": Pack(
         name="lens_dirt",
-        desc="Lens dust, smudges and fingerprints on black — screen-blended",
+        desc="Lens dust, smudges and fingerprints on black - screen-blended",
         count=6,
         size="1536x1024",
         mode="screen",
@@ -163,7 +163,7 @@ PACKS: dict[str, Pack] = {
     ),
     "screen_textures": Pack(
         name="screen_textures",
-        desc="Projection screen / glass-bead surface macro (neutral gray) — overlay-blended",
+        desc="Projection screen / glass-bead surface macro (neutral gray) - overlay-blended",
         count=4,
         size="1024x1536",
         mode="gray",
@@ -174,7 +174,7 @@ PACKS: dict[str, Pack] = {
     ),
     "static_discharge": Pack(
         name="static_discharge",
-        desc="Static electricity discharge branches on black — screen-blended",
+        desc="Static electricity discharge branches on black - screen-blended",
         count=6,
         size="1024x1536",
         mode="screen",

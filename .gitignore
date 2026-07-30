@@ -50,7 +50,7 @@ __pycache__/
 .eggs/
 build/
 # app/build/ holds build INPUTS (icon, entitlements, afterPack hook), not
-# outputs — re-include it here, since git never descends into an excluded dir.
+# outputs - re-include it here, since git never descends into an excluded dir.
 !app/build/
 dist/
 .venv/
@@ -70,7 +70,7 @@ npm-debug.log*
 # Staged Contents/Resources payload, and the download/runtime cache.
 app/build-resources/
 .cache/
-# Generated app icon (regenerate: see docs/packaging.md) — also matched by *.png.
+# Generated app icon (regenerate: see docs/packaging.md) - also matched by *.png.
 !app/build/icon.png
 
 # ── OS / editor ─────────────────────────────────────────
@@ -79,3 +79,13 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# ── Local machine setup: never commit ───────────────────
+# Agent instructions and the alt-account helper reference a private key path and
+# this machine's layout, so they stay local (see AGENTS.md for why).
+AGENTS.md
+use-heresalexandria.sh
+use_heresalexandria.sh
+
+# ── Tracked on purpose despite the rules above ──────────
+!preview.jpg

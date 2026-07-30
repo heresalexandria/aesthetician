@@ -1,5 +1,5 @@
 """Digital-transport failures: DAT error concealment and CD anti-shock
-buffer skipping. Purely digital artifacts — hard edges, perfect repeats."""
+buffer skipping. Purely digital artifacts - hard edges, perfect repeats."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class ADatError(Effect):
     desc = "Digital tape error concealment: brief sample-and-hold interpolation holds (a frozen buzz, not an analog dip) and occasional hard full mutes."
     PARAMS = (
         Param("error_rate", "Hold Rate", "float", 12.0, 0.0, 120.0, unit="/min",
-              desc="Concealment events per minute — the player freezes 2–10 ms of samples.", group="Damage", iscale=True),
+              desc="Concealment events per minute - the player freezes 2–10 ms of samples.", group="Damage", iscale=True),
         Param("mute_rate", "Mute Rate", "float", 1.5, 0.0, 30.0, unit="/min",
               desc="Uncorrectable blocks per minute: 50–200 ms of hard digital silence.", group="Damage", iscale=True),
     )
@@ -46,7 +46,7 @@ class ADatError(Effect):
                 s = int(t0 * sr)
                 e = min(s + L, n)
                 if e > s:
-                    x[s:e] = 0.0  # no fade — the edge click is authentic
+                    x[s:e] = 0.0  # no fade - the edge click is authentic
         return x.astype(np.float32)
 
 
@@ -95,7 +95,7 @@ class ACdSkip(Effect):
                 continue
             chunk = x[s:e].copy()
             # overwrite forward: duration is preserved and the program resumes
-            # exactly where it would have been — i.e. it 'jumps forward' past
+            # exactly where it would have been - i.e. it 'jumps forward' past
             # everything the loop papered over.
             for r in range(1, reps + 1):
                 a = s + r * L

@@ -145,7 +145,7 @@ register_preset(Preset(
     name="Tapes-to-DVD",
     family="digital",
     era="2005",
-    desc="Dad's VHS archive 'digitized': the noise reducer wipes away the tape grain and half of every face with it — waxy skin, ghost trails, a menu with beach clip-art.",
+    desc="Dad's VHS archive 'digitized': the noise reducer wipes away the tape grain and half of every face with it - waxy skin, ghost trails, a menu with beach clip-art.",
     tagline="DVNR-waxed faces, ghost trails, MPEG-2",
     tags=("00s", "vhs", "dvnr", "transfer"),
     proc_height=540,
@@ -213,7 +213,7 @@ register_preset(Preset(
     name="Filmed Off the Monitor",
     family="digital",
     era="2009",
-    desc="No capture card, no problem: a camera aimed at an LCD — moiré bands breathing over the subpixel stripes, backlight blooming in the corners, room tone on the mic.",
+    desc="No capture card, no problem: a camera aimed at an LCD - moiré bands breathing over the subpixel stripes, backlight blooming in the corners, room tone on the mic.",
     tagline="Subpixel moire, backlight bloom, room tone",
     tags=("00s", "lcd", "bootleg", "meta"),
     video=[

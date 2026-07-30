@@ -86,7 +86,7 @@ register_preset(Preset(
     name="Pirate UHF",
     family="transmission",
     era="1987",
-    desc="Forty watts from a tower-block roof: a second-generation tape through an off-spec exciter — bent sync, soft snow, a voice riding clipped and proud over the hum.",
+    desc="Forty watts from a tower-block roof: a second-generation tape through an off-spec exciter - bent sync, soft snow, a voice riding clipped and proud over the hum.",
     tagline="Bent sync, soft snow, clipped voice",
     tags=("80s", "pirate", "uhf", "outlaw"),
     proc_height=500,

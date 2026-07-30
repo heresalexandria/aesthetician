@@ -1,5 +1,5 @@
 """Decay-family presets: what time, chemistry and bad storage do to the element
-itself — nitrate goo, vinegar warp, water, mold, fire and dying binder."""
+itself - nitrate goo, vinegar warp, water, mold, fire and dying binder."""
 
 from ..engine.presets import Preset, Variant, register_preset
 

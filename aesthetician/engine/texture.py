@@ -1,19 +1,19 @@
 """The master Texture control.
 
-Real film and tape regenerate their noise every frame — a static noise pattern
+Real film and tape regenerate their noise every frame - a static noise pattern
 reads as a dirty lens, not as film. That liveliness is intentional, but "how
 much grain/noise/speckle" is a taste decision that spans many effects at once,
 so scattering it across a dozen effect cards makes it un-tunable in practice.
 
 `Context.texture` scales every parameter listed here (1.0 = as authored, 0 =
 none, >1 = heavier), giving one dial for the whole chain. Only *amount-like*
-noise parameters belong here — never sizes, rates of physical damage events, or
+noise parameters belong here - never sizes, rates of physical damage events, or
 anything whose zero value is not "clean".
 """
 
 from __future__ import annotations
 
-# (effect_id, param_name) — per-frame noise/speckle amounts.
+# (effect_id, param_name) - per-frame noise/speckle amounts.
 NOISE_PARAMS: frozenset[tuple[str, str]] = frozenset(
     {
         # photochemical texture
@@ -46,11 +46,11 @@ NOISE_PARAMS: frozenset[tuple[str, str]] = frozenset(
 )
 
 # Deliberately NOT here, though they are also "texture" in a loose sense:
-#   plate.opacity        — the packs in use carry decay CONTENT (mold, water
+#   plate.opacity        - the packs in use carry decay CONTENT (mold, water
 #                          stains, nitrate blistering, burns). Erasing a preset's
 #                          water damage because the user asked for less grain
 #                          would be a nasty surprise.
-#   scratches.*, dust size, frame_damage.*, sticky_shed.severity — physical
+#   scratches.*, dust size, frame_damage.*, sticky_shed.severity - physical
 #                          damage events, not noise; they belong to --intensity.
 
 

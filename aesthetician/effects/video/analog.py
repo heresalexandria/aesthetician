@@ -164,7 +164,7 @@ def _resize(img: np.ndarray, w: int, h: int, interp: int) -> np.ndarray:
 
 
 def _streak_noise(g: np.random.Generator, h: int, w: int, coarse_x: int = 3) -> np.ndarray:
-    """Horizontally smeared uniform noise in [0,1] — the tracking-band fill."""
+    """Horizontally smeared uniform noise in [0,1] - the tracking-band fill."""
     gw = max(w // coarse_x, 8)
     nz = g.random((h, gw), dtype=np.float32)
     nz = _resize(nz, w, h, cv2.INTER_LINEAR)
@@ -225,14 +225,14 @@ class CompositeColor(Effect):
         Param("phase_error", "Hue Error", "float", 0.0, -45.0, 45.0, unit="°", group="Phase",
               desc="Static hue rotation, as from a mis-set tint knob or phase drift."),
         Param("phase_noise", "Hue Instability", "float", 0.8, 0.0, 12.0, unit="°", group="Phase", iscale=True,
-              desc="Random per-scanline hue wobble — the classic NTSC tint shimmer (ignored for PAL)."),
+              desc="Random per-scanline hue wobble - the classic NTSC tint shimmer (ignored for PAL)."),
         Param("fringing", "Chroma Fringing", "float", 1.0, -8.0, 8.0, unit="px", group="Phase",
               desc="Color delayed against brightness so hues smear off edges to the right (negative = left)."),
         Param("comb_mode", "Comb Mode", "enum", "legacy_notch",
               choices=("legacy_notch", "comb_1line", "comb_2d_adaptive"), group="Decoder",
               desc="Y/C separator model: the legacy notch/comb blend (driven by the Comb Filter slider), "
                    "a forced 1-line comb, or a late-80s 2D adaptive comb that combs only where adjacent "
-                   "lines agree — far fewer hanging dots."),
+                   "lines agree - far fewer hanging dots."),
         Param("diff_phase", "Differential Phase", "float", 0.0, 0.0, 8.0, unit="°", group="Phase", iscale=True,
               desc="Hue tied to brightness: highlights rotate the subcarrier so bright faces drift "
                    "orange-red, the classic overdriven-transmitter error."),
@@ -336,7 +336,7 @@ class CompositeColor(Effect):
             din = din * (1.0 - c) + din_comb * c
         elif mode == "comb_2d_adaptive":
             # 2-line comb where the picture is vertically correlated, notch
-            # elsewhere — the late-80s "digital comb" that killed hanging dots
+            # elsewhere - the late-80s "digital comb" that killed hanging dots
             prev = np.empty_like(comp)
             prev[1:] = comp[:-1]
             prev[0] = comp[1]
@@ -357,7 +357,7 @@ class CompositeColor(Effect):
         if v["dot_crawl"] > 0.0:
             y_dec = y_dec + (0.55 * v["dot_crawl"]) * chroma_sig
         if v["setup_level"] > 0.0:
-            # pedestal: black lifted to setup, white pinned — headroom compresses
+            # pedestal: black lifted to setup, white pinned - headroom compresses
             y_dec = v["setup_level"] + y_dec * (1.0 - v["setup_level"])
 
         # ── chroma demodulation ────────────────────────────────────────
@@ -486,7 +486,7 @@ class VHS(Effect):
         Param("mode", "Tape Speed", "enum", "sp", choices=("sp", "lp", "ep"), group="Bandwidth",
               desc="SP is the cleanest; LP and EP squeeze more hours onto the tape at the cost of detail and noise."),
         Param("luma_bw", "Luma Bandwidth", "float", 3.0, 1.2, 5.2, unit="MHz", group="Bandwidth",
-              desc="Brightness detail surviving the tape — 3 MHz is standard VHS softness."),
+              desc="Brightness detail surviving the tape - 3 MHz is standard VHS softness."),
         Param("chroma_bw", "Chroma Bandwidth", "float", 0.4, 0.1, 1.2, unit="MHz", group="Bandwidth",
               desc="Color-under bandwidth; VHS color is drastically softer than brightness and smears down 2 lines."),
         Param("chroma_delay", "Chroma Delay", "float", 1.2, -6.0, 8.0, unit="px", group="Bandwidth",
@@ -504,9 +504,9 @@ class VHS(Effect):
         Param("dropout_burst", "Dropout Bursting", "float", 0.3, 0.0, 1.0, group="Damage",
               desc="Clusters dropouts into angry bursts, as on a creased or worn stretch of tape."),
         Param("time_base_error", "Time-Base Error", "float", 0.35, 0.0, 1.0, group="Timing", iscale=True,
-              desc="Per-line horizontal wobble — edges swim and breathe without a TBC."),
+              desc="Per-line horizontal wobble - edges swim and breathe without a TBC."),
         Param("flagging", "Flagging", "float", 0.25, 0.0, 1.0, group="Timing", iscale=True,
-              desc="The top of the picture skewing and waving — classic bent-top playback."),
+              desc="The top of the picture skewing and waving - classic bent-top playback."),
         Param("jitter_v", "Vertical Jitter", "float", 0.15, 0.0, 1.0, group="Timing", iscale=True,
               desc="Occasional one-or-two line vertical bounce of the whole frame."),
         Param("tracking_error", "Tracking Error", "float", 0.1, 0.0, 1.0, group="Tracking", iscale=True,
@@ -572,7 +572,7 @@ class VHS(Effect):
                     seg -= seg * (0.92 * wgt)
                 else:
                     # dropout compensator: holds the LINE ABOVE for the span,
-                    # with a hot switch fringe at the leading edge — so the
+                    # with a hot switch fringe at the leading edge - so the
                     # streak is a displaced copy of the picture, not flat white
                     above = y[rr - 1, x0:x0 + L] if rr > 0 else np.full(L, 0.82, np.float32)
                     fill = above + (0.20 + 0.42 * tail) * (1.0 - above)
@@ -731,7 +731,7 @@ class VHS(Effect):
             y = 0.5 * (yb + np.sqrt(yb * yb + kb * kb)) - 0.5 * kb
 
         # mistracked azimuth: the FM carrier reads back low, so HF luma dies;
-        # keep the detail map — the crosstalk pattern lives where detail was
+        # keep the detail map - the crosstalk pattern lives where detail was
         az = v["azimuth_error"]
         az_detail = None
         if az > 0.0:
@@ -950,7 +950,7 @@ class SignalRF(Effect):
         Param("snow", "Snow", "float", 0.12, 0.0, 1.0, group="Noise", iscale=True,
               desc="The fizzing per-pixel static of a marginal antenna, denser in the shadows."),
         Param("sparkle", "Snow Sparkle Size", "float", 2.0, 1.0, 8.0, unit="px", group="Noise",
-              desc="Grain size of the snow — bigger sparkles read as a worse, lower-band signal."),
+              desc="Grain size of the snow - bigger sparkles read as a worse, lower-band signal."),
         Param("ghost_n", "Ghost Copies", "int", 1, 0, 4, group="Ghosting",
               desc="Number of multipath reflections layered over the picture."),
         Param("ghost_px", "Ghost Offset", "float", 14.0, -60.0, 60.0, unit="px", group="Ghosting",
@@ -960,7 +960,7 @@ class SignalRF(Effect):
         Param("hum_bar", "Hum Bar", "float", 0.0, 0.0, 1.0, group="Interference", iscale=True,
               desc="A wide dark mains-hum band crawling slowly up the picture."),
         Param("hum_speed", "Hum Bar Speed", "float", 0.12, 0.01, 1.0, unit="bars/s", group="Interference",
-              desc="Crawl rate of the hum bar — the beat between mains and vertical sync."),
+              desc="Crawl rate of the hum bar - the beat between mains and vertical sync."),
         Param("impulse_noise", "Impulse Noise", "float", 0.0, 0.0, 30.0, unit="events/s",
               group="Interference", iscale=True,
               desc="Sparse bright one-line dashes from ignition or motor interference."),

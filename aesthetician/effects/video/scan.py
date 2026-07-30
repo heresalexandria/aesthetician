@@ -1,5 +1,5 @@
 """Archive-digitization artifacts: what the TRANSFER adds on top of whatever
-the film or tape already looked like — telecine/scanner transport, the
+the film or tape already looked like - telecine/scanner transport, the
 transfer suite's automatic color pumping, over-eager digital noise reduction,
 botched deinterlacing, and the re-upload generation loss of the early web.
 
@@ -185,7 +185,7 @@ class AutoColor(Effect):
             if self._lv_applied is None:
                 self._lv_applied = (lo, hi)
             elif ctx.fi_out % self._lv_step_frames == 0:
-                # snap toward the measurement in coarse quantized steps —
+                # snap toward the measurement in coarse quantized steps -
                 # the visible stair-step of consumer auto-levels
                 q = 0.035
                 alo, ahi = self._lv_applied
@@ -201,7 +201,7 @@ class AutoColor(Effect):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 3. DVNR — the over-denoised transfer
+# 3. DVNR - the over-denoised transfer
 # ═══════════════════════════════════════════════════════════════════════
 @register
 class DVNR(Effect):
@@ -211,7 +211,7 @@ class DVNR(Effect):
     desc = (
         "Aggressive digital video noise reduction, as run on 90s/00s transfers: "
         "temporal averaging that misjudges motion and drags ghost trails, plus "
-        "spatial over-smoothing with edge ringing — the waxy DVD look."
+        "spatial over-smoothing with edge ringing - the waxy DVD look."
     )
     PARAMS = (
         Param("strength", "Temporal Smear", "float", 0.35, 0.0, 1.0, iscale=True,
@@ -221,7 +221,7 @@ class DVNR(Effect):
                    "punch through."),
         Param("wax", "Waxiness", "float", 0.3, 0.0, 1.0, iscale=True, group="Spatial",
               desc="Spatial over-smooth plus compensating edge sharpen: texture "
-                   "melts, edges ring — faces go candle-wax."),
+                   "melts, edges ring - faces go candle-wax."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -261,7 +261,7 @@ class DeinterlaceArtifact(Effect):
     label = "Deinterlace Artifact"
     kind = "frame"
     desc = (
-        "What a cheap deinterlacer leaves behind — pick your poison: bob (line "
+        "What a cheap deinterlacer leaves behind - pick your poison: bob (line "
         "twitter and a half-line vertical bounce), weave (leftover mice-teeth "
         "combing on motion), or blend (a 30%-opacity double exposure on "
         "anything moving). The 'uploaded TV rip' tell."
@@ -336,7 +336,7 @@ class UploadGen(Effect):
                    "block/ringing residue."),
         Param("deband_loss", "Gradient Posterize", "float", 0.25, 0.0, 1.0, iscale=True,
               group="Loss",
-              desc="Posterization creep in smooth gradients — skies and vignettes "
+              desc="Posterization creep in smooth gradients - skies and vignettes "
                    "collapse into contour bands after repeated 8-bit round trips."),
         Param("qscale", "Base Quality", "int", 6, 2, 20, group="Loss",
               desc="MJPEG quantizer of the first re-encode; each generation bumps "

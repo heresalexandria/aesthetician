@@ -7,7 +7,7 @@ register_preset(Preset(
     name="Early DVD",
     family="digital",
     era="2001",
-    desc="A first-wave DVD authoring job: real MPEG-2 at modest bitrate — gentle macroblocks in motion, mosquito noise around titles.",
+    desc="A first-wave DVD authoring job: real MPEG-2 at modest bitrate - gentle macroblocks in motion, mosquito noise around titles.",
     tagline="Gentle macroblocks, mosquito noise",
     tags=("2000s", "mpeg2", "codec"),
     video=[

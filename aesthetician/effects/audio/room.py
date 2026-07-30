@@ -89,7 +89,7 @@ class ARoom(Effect):
                 damp = min(0.5 + 0.5 * self.v["damp"], 0.95)
                 dec = decay * 1.6
                 ap = (6.1, 2.3)
-            else:  # room — original path
+            else:  # room - original path
                 tun_l, tun_r = self._COMBS_L, self._COMBS_R
                 damp = self.v["damp"]
                 dec = decay
@@ -120,7 +120,7 @@ class ASlap(Effect):
     eid = "a_slap"
     label = "Slap Echo"
     kind = "audio"
-    desc = "Single or multi-tap slapback echo with progressive damping — gym PA and hallway flavor."
+    desc = "Single or multi-tap slapback echo with progressive damping - gym PA and hallway flavor."
     PARAMS = (
         Param("delay_ms", "Delay", "float", 110.0, 20.0, 600.0, unit="ms",
               desc="Slap delay time.", group="Damage"),

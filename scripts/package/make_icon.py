@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate app/build/icon.png — the source icon electron-builder converts to
+"""Generate app/build/icon.png - the source icon electron-builder converts to
 .icns and .ico.
 
 Committed output, regenerated only when the artwork changes:

@@ -2,7 +2,7 @@
 cadence, peg-bar registration wobble, cel dirt, board texture, ink lines and
 cartoon color rendering.
 
-These are the CEL-STAGE artifacts — what the artwork itself and the rostrum
+These are the CEL-STAGE artifacts - what the artwork itself and the rostrum
 camera contribute before the film stages (grain, gate weave, telecine live in
 other modules and get stacked by presets). Everything that lives ON a drawing
 is keyed on ctx.fi_src, so it holds perfectly still while a drawing is held
@@ -41,11 +41,11 @@ class CelFlatten(Effect):
         Param("smooth", "Paint Smoothing", "float", 0.5, 0.0, 1.0, group="Paint",
               desc="Edge-preserving (bilateral) flattening of shading inside regions."),
         Param("levels", "Paint Levels", "int", 12, 6, 24, group="Paint",
-              desc="Luminance posterization steps — fewer = posterier."),
+              desc="Luminance posterization steps - fewer = posterier."),
         Param("flatness", "Flatness", "float", 0.55, 0.0, 1.0, iscale=True, group="Paint",
               desc="Mix of the posterized luminance against the original."),
         Param("protect_gradients", "Protect Gradients", "bool", True, group="Paint",
-              desc="Reduce quantization in smooth sky-like areas — cel backgrounds "
+              desc="Reduce quantization in smooth sky-like areas - cel backgrounds "
                    "WERE painted gradients, so this stays on by default."),
         Param("sat_snap", "Poster Sat Snap", "float", 0.25, 0.0, 1.0, group="Paint",
               desc="Slight chroma quantization for a poster-paint feel."),
@@ -149,7 +149,7 @@ class AnimateOn(Effect):
               choices=("ones", "twos", "threes", "hb_mixed", "filmation", "shot_on_video"),
               group="Timing",
               desc="hb_mixed = mostly twos, occasional ones/threes, seed-stable. "
-                   "filmation = very long 4–8 frame holds with a rare single — "
+                   "filmation = very long 4–8 frame holds with a rare single - "
                    "the 1975 syndication budget. shot_on_video = every frame "
                    "fresh, the 59.94i videotape cadence (pair with interlace)."),
     )
@@ -158,7 +158,7 @@ class AnimateOn(Effect):
         n = ctx.n_frames
         pat = self.v["pattern"]
         if pat in ("ones", "shot_on_video"):
-            # shot_on_video: no held drawings at all — the cadence 'feel' comes
+            # shot_on_video: no held drawings at all - the cadence 'feel' comes
             # from pairing with interlace, which this leaves free to comb
             self._map = np.arange(n, dtype=np.int64)
             return
@@ -191,7 +191,7 @@ class CelWobble(Effect):
     desc = (
         "Peg-bar registration error: a tiny sub-pixel shift (and rare micro "
         "rotation) that stays LOCKED while a drawing is held and re-registers "
-        "only when the drawing changes — the authentic cel-swap jitter."
+        "only when the drawing changes - the authentic cel-swap jitter."
     )
     PARAMS = (
         Param("amount", "Wobble", "float", 0.9, 0.0, 4.0, unit="px", iscale=True,
@@ -233,7 +233,7 @@ class CelWobble(Effect):
     def _layer_masks(self, frame: np.ndarray, ctx: Context) -> list[np.ndarray]:
         """Soft luminance-band masks (sum to 1), cached per drawing.
 
-        Computed on a half-res proxy — the masks are low-frequency by design
+        Computed on a half-res proxy - the masks are low-frequency by design
         (soft blurred bands), so the upsample is lossless in practice."""
         if self._mask_cache is not None and self._mask_cache[0] == ctx.fi_src:
             return self._mask_cache[1]
@@ -319,14 +319,14 @@ class CelDirt(Effect):
         Param("smudge_size", "Smudge Size", "float", 0.5, 0.0, 1.0, group="Cel",
               desc="Scale of smudges and wipe marks."),
         Param("visibility", "Visibility", "float", 0.07, 0.0, 0.5, iscale=True, group="Cel",
-              desc="Opacity of the marks — keep low; these should read subliminally."),
+              desc="Opacity of the marks - keep low; these should read subliminally."),
         Param("glass_shadows", "Glass Shadows", "float", 0.35, 0.0, 1.0, group="Camera",
               desc="Ultra-soft dark patches near frame corners (platen glass / "
                    "rostrum shadows), static per shot with a tiny breathe."),
         Param("hair_in_gate_rate", "Hair in Gate", "float", 0.0, 0.0, 6.0, unit="events/min",
               iscale=True, group="Camera",
               desc="A dark hair caught at the frame edge, wiggling for a second "
-                   "or three before it clears — the classic rostrum-camera gate "
+                   "or three before it clears - the classic rostrum-camera gate "
                    "artifact."),
         Param("tape_splice", "Cel Tape", "float", 0.0, 0.0, 1.0, iscale=True, group="Cel",
               desc="Rare faint horizontal cel-tape edge: a hairline seam with a "
@@ -385,7 +385,7 @@ class CelDirt(Effect):
         ov = np.zeros((H, W), np.float32)
         mind = min(H, W)
         for h in active:
-            # ease in/out — the hair slides into the gate and clears
+            # ease in/out - the hair slides into the gate and clears
             u_in = np.clip((fi - h["f0"]) / 4.0, 0.0, 1.0)
             u_out = np.clip((h["f1"] - fi) / 4.0, 0.0, 1.0)
             vis = float(min(u_in, u_out))
@@ -467,12 +467,12 @@ class CelDirt(Effect):
             ay = max(1, int(ax * g.uniform(0.35, 1.0)))
             cv2.ellipse(dark_soft, _pt(), (ax, ay), float(g.uniform(0, 180)),
                         0, 360, float(g.uniform(0.35, 0.8)), -1)
-        # eraser shadow — one broad faint patch
+        # eraser shadow - one broad faint patch
         if g.random() < 0.35 * dens:
             ax = int(mind * g.uniform(0.10, 0.22)) + 2
             cv2.ellipse(dark_soft, _pt(), (ax, int(ax * g.uniform(0.4, 0.9))),
                         float(g.uniform(0, 180)), 0, 360, 0.16, -1)
-        # fingerprint arcs — concentric partial ellipses
+        # fingerprint arcs - concentric partial ellipses
         if g.random() < 0.4 * dens:
             c = _pt()
             r0 = mind * g.uniform(0.02, 0.045) * (1.0 + size)
@@ -554,7 +554,7 @@ class PaperTexture(Effect):
         Param("scale", "Texture Scale", "float", 1.0, 0.5, 3.0, group="Texture",
               desc="Feature size of the tooth/brush texture."),
         Param("amount", "Amount", "float", 0.05, 0.0, 0.5, iscale=True, group="Texture",
-              desc="Multiply-blend strength — subtle by default (film grain is a "
+              desc="Multiply-blend strength - subtle by default (film grain is a "
                    "separate print-stage effect and stacks on top)."),
     )
 
@@ -601,14 +601,14 @@ class InkLine(Effect):
         "Line treatment for cartoon sources: darkens and slightly thickens the "
         "existing dark drawn lines, with optional xerographic grit that makes "
         "line edges microscopically ragged (the post-1960 photocopied-pencil "
-        "look). Enhances lines already present — meant for animation, not "
+        "look). Enhances lines already present - meant for animation, not "
         "photographic content."
     )
     PARAMS = (
         Param("weight", "Line Weight", "float", 0.45, 0.0, 1.0, iscale=True, group="Line",
               desc="How much existing dark lines are darkened and thickened."),
         Param("xerox_grit", "Xerox Grit", "float", 0.35, 0.0, 1.0, group="Line",
-              desc="Ragged line-edge modulation — the xerography era's broken line."),
+              desc="Ragged line-edge modulation - the xerography era's broken line."),
         Param("line_color", "Line Color", "enum", "black",
               choices=("black", "sepia", "blue_pencil", "warm_brown"), group="Line",
               desc="Tint of the line boost: inked black, sepia print, the "
@@ -641,12 +641,12 @@ class InkLine(Effect):
         gy = cv2.Sobel(yb, cv2.CV_32F, 0, 1, ksize=3)
         mag = cv2.magnitude(gx, gy) * 0.25
         m = color.smoothstep(0.10, 0.34, mag)
-        # only boost near genuinely dark ink strokes — don't invent edges on
+        # only boost near genuinely dark ink strokes - don't invent edges on
         # paint-to-paint boundaries
         ymin = cv2.erode(y, self._k3)
         m = m * (1.0 - color.smoothstep(0.18, 0.45, ymin))
         # xerox raggedness eats into the CORE mask first (clumpy, band-limited
-        # noise — single-pixel salt reads as dots, not a broken line)
+        # noise - single-pixel salt reads as dots, not a broken line)
         grit = float(self.v["xerox_grit"])
         if grit > 0:
             if self._grit_cache is None or self._grit_cache[0] != ctx.fi_src:
