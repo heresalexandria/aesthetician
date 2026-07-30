@@ -222,10 +222,16 @@ def _compile_bytecode(root: Path, target: Target, native: bool, builder_python: 
     site = root / target.site_rel
     if site.is_dir():
         targets.append(site)
-    log("compileall (bytecode cache)")
+    log("compileall (bytecode cache, unchecked-hash)")
     for t in targets:
+        # unchecked-hash: the .pyc records a source hash and is trusted without
+        # comparing mtimes. Timestamp caches would be invalidated the moment
+        # electron-builder copies the tree, and Python would then rewrite them at
+        # runtime -- writing inside a signed .app breaks its seal and macOS
+        # refuses to launch it next time.
         # Not all sources compile cleanly across versions; -q and no check.
-        subprocess.run([py, "-m", "compileall", "-q", "-j", "0", "-f", str(t)],
+        subprocess.run([py, "-m", "compileall", "-q", "-j", "0", "-f",
+                        "--invalidation-mode", "unchecked-hash", str(t)],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

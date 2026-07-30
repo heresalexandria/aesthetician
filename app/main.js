@@ -35,6 +35,12 @@ const FFPROBE = process.env.AESTHETICIAN_FFPROBE
 /* The engine reads these; child processes inherit them. */
 function childEnv() {
   const env = { ...process.env, AESTHETICIAN_ASSETS: ASSETS_DIR };
+  if (PACKAGED) {
+    // Never let Python write .pyc into the bundle: Resources is covered by the
+    // code signature, and mutating it makes macOS refuse the next launch. The
+    // build ships hash-based caches, so there is nothing to regenerate anyway.
+    env.PYTHONDONTWRITEBYTECODE = '1';
+  }
   if (FFMPEG !== 'ffmpeg') env.AESTHETICIAN_FFMPEG = FFMPEG;
   if (FFPROBE !== 'ffprobe') env.AESTHETICIAN_FFPROBE = FFPROBE;
   if (PACKAGED) {
