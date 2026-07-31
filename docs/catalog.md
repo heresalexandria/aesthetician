@@ -1803,7 +1803,7 @@ The millennium home format: crisp but over-sharpened edges, 4:1:1 chroma stair-s
 - **Compressor** - `a_compressor.ratio=2.0`
 - **Vintage AGC** - `a_agc.amount=0.4`
 
-*40 adjustable parameters in this preset.*
+*41 adjustable parameters in this preset.*
 
 ### `myspace-2006` - MySpace Clip (2006)
 
@@ -1842,7 +1842,7 @@ Infrared home video: phosphor-green faces with glowing eyes, blooming highlights
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 - **Bandwidth** - `a_bandlimit.low_hz=120.0`, `a_bandlimit.high_hz=8000.0`
 
-*71 adjustable parameters in this preset.*
+*72 adjustable parameters in this preset.*
 
 ### `pixel-1990` - PC Game Capture (1990)
 
@@ -1944,7 +1944,7 @@ Camera 3, aisle 5: cool drained color, time-lapse stutter, phosphor smear on mov
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.3`, `a_hum.level_db=-40.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`, `a_tape_hiss.type=dictaphone`
 
-*88 adjustable parameters in this preset.*
+*89 adjustable parameters in this preset.*
 
 ### `vcd-1997` - Video CD (1997)
 
@@ -3181,7 +3181,7 @@ Nothing is wrong with your television set: EP-speed fog with crushed blacks, a t
 - **Ambience Bed** - `a_bed#2.bed=air_handler_hall`, `a_bed#2.level_db=-40.0`, `a_bed#2.duck=0.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`, `a_hum.buzz=0.3`
 
-*110 adjustable parameters in this preset.*
+*111 adjustable parameters in this preset.*
 
 ### `liminal-cctv-2002` - Liminal CCTV (2002)
 
@@ -3209,7 +3209,7 @@ Camera 7, food court, 3:12 AM: drained color under fluorescent green, three-fram
 - **Ambience Bed** - `a_bed#2.bed=air_handler_hall`, `a_bed#2.level_db=-34.0`, `a_bed#2.duck=0.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.35`, `a_hum.level_db=-44.0`
 
-*84 adjustable parameters in this preset.*
+*85 adjustable parameters in this preset.*
 
 ### `mall-tv-wall-1989` - TV Wall (1989)
 
@@ -3478,7 +3478,7 @@ The last tape in the bag on the slowest speed: mud-luma, skew tears off the top,
 - **Tape Hiss** - `a_tape_hiss.level_db=-40.0`
 - **Ambience Bed** - `a_bed.bed=vcr_transport`, `a_bed.level_db=-40.0`, `a_bed.duck=0.4`
 
-*86 adjustable parameters in this preset.*
+*87 adjustable parameters in this preset.*
 
 ### `ced-videodisc-1983` - CED VideoDisc (1983)
 
@@ -3732,7 +3732,7 @@ Full-size VHS camcorder with the orange date stamp: auto-iris pumping, autofocus
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.25`
 
-*98 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `vhs-camcorder-1996` - Palmcorder (1996)
 
@@ -3753,7 +3753,7 @@ Compact VHS-C/Video8 era: tighter image, cleaner color, white date stamp, still 
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=3.0`, `a_wow_flutter.flutter_depth=2.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`
 
-*92 adjustable parameters in this preset.*
+*93 adjustable parameters in this preset.*
 
 ### `vhs-dub-generation` - Dubbed Copy (1990)
 
@@ -3846,7 +3846,7 @@ The first seconds after PLAY: rainbow junk, a vertical roll, then the picture st
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=6.0`, `a_wow_flutter.flutter_depth=5.0`, `a_wow_flutter.start_wobble=True`
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 
-*85 adjustable parameters in this preset.*
+*86 adjustable parameters in this preset.*
 
 ### `vhs-taped-off-air-1987` - Taped Off Air (1987)
 
@@ -3871,7 +3871,7 @@ A broadcast caught on tape: antenna ghosting and snow under the VHS wash, channe
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.4`
 
-*113 adjustable parameters in this preset.*
+*114 adjustable parameters in this preset.*
 
 ### `vhs-tracking-nightmare` - Bad Tracking (1991)
 
@@ -3891,7 +3891,7 @@ The tape that never locks: rolling noise bands, shredded lines, a transport figh
 - **Tape Dropouts** - `a_tape_dropouts.rate=8.0`, `a_tape_dropouts.azimuth=0.6`
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 
-*85 adjustable parameters in this preset.*
+*86 adjustable parameters in this preset.*
 
 ### `video8-holiday-1990` - Video8 Holiday (1990)
 
@@ -3915,7 +3915,7 @@ A palm-size Handycam at the shore: tighter luma than VHS, a hair of azimuth shim
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=3.0`, `a_wow_flutter.flutter_depth=2.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 
-*93 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ### `wedding-master-1991` - Wedding Master (1991)
 
