@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
+const updater = require('./updater');
+
 const REPO_ROOT = path.resolve(__dirname, '..');
 
 /* ── runtime resolution ──────────────────────────────────────────────────
@@ -399,6 +401,27 @@ ipcMain.handle('aesth:thumbs', () => {
     result.thumbs[id] = { poster, anim: anims.get(id) || null };
   }
   return result;
+});
+
+/* ── updates ─────────────────────────────────────────────────────────────
+   See app/updater.js for why this is hand-rolled rather than electron-updater.
+   The renderer drives all of it: nothing is fetched or installed on a timer. */
+ipcMain.handle('aesth:update-info', () => updater.info());
+ipcMain.handle('aesth:update-check', (_e, opts) => updater.check(opts || {}));
+ipcMain.handle('aesth:update-download', (e) => updater.download(e.sender));
+ipcMain.handle('aesth:update-cancel', () => updater.cancelDownload());
+ipcMain.handle('aesth:update-install', () => updater.install());
+ipcMain.handle('aesth:update-reveal', () => {
+  const file = updater.stagedFile();
+  if (file) shell.showItemInFolder(file);
+  return { file };
+});
+ipcMain.handle('aesth:open-external', (_e, url) => {
+  // Only ever our own repo: a URL from a release payload does not get to pick
+  // what the browser opens.
+  const ok = /^https:\/\/github\.com\/heresalexandria\/aesthetician(\/|$)/.test(String(url || ''));
+  if (ok) shell.openExternal(url);
+  return ok;
 });
 
 ipcMain.handle('aesth:check-env', async () => {

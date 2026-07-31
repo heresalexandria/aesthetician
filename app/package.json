@@ -29,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "updater.js",
       "renderer/**/*",
       "package.json",
       "!**/.DS_Store"
@@ -53,7 +54,8 @@
     "mac": {
       "category": "public.app-category.video",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "icon": "build/icon.png",
       "darkModeSupport": true,

@@ -63,10 +63,39 @@ body {
   border: 1px solid var(--line); padding: 3px 11px; border-radius: 20px;
 }
 
+/* ── version chip + update button ─────────── */
+#btn-version {
+  flex: 0 0 auto;
+  padding: 4px 11px 5px; border-radius: 20px;
+  font-size: 11px; font-variant-numeric: tabular-nums;
+  color: var(--dim); background: var(--bg3); border: 1px solid var(--line);
+  -webkit-app-region: no-drag;
+}
+#btn-version:hover { color: var(--text); border-color: var(--accent-dim); }
+
+/* Outlined rather than filled: it is an offer, not the thing you came here to
+   do, and it sits next to a button that may be mid-export. */
+#btn-update {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px 5px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  color: #9dbaff; background: rgba(79,125,255,.10);
+  border: 1px solid rgba(79,125,255,.55);
+  -webkit-app-region: no-drag;
+}
+#btn-update::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent2); box-shadow: 0 0 0 3px rgba(79,125,255,.20);
+}
+#btn-update:hover { color: #cfdcff; background: rgba(79,125,255,.20); border-color: var(--accent2); }
+#btn-update.blocked { color: var(--danger); background: rgba(240,106,114,.10); border-color: rgba(240,106,114,.5); }
+#btn-update.blocked::before { background: var(--danger); box-shadow: 0 0 0 3px rgba(240,106,114,.18); }
+
 /* ── exports button + panel ───────────────── */
 #btn-exports {
   position: relative; overflow: hidden;
-  margin-left: auto; flex: 0 0 auto;
+  flex: 0 0 auto;
   display: flex; align-items: center; gap: 6px;
   padding: 4px 12px 5px; border-radius: 20px;
   font-size: 11px; color: var(--dim); background: var(--bg3);
@@ -640,6 +669,34 @@ input[type="checkbox"] { accent-color: var(--accent); }
 }
 #modal-input:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
 .modal-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+
+/* ── about / update dialog ────────────────── */
+#about-modal {
+  position: fixed; inset: 0; z-index: 60; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+}
+.about-box { width: 460px; }
+.about-head { display: flex; align-items: center; gap: 13px; }
+.about-head img { -webkit-user-drag: none; }
+.about-status { margin-top: 14px; font-size: 12px; line-height: 1.5; }
+.about-status.ok { color: #8ee0b0; }
+.about-status.warn { color: var(--danger); }
+.about-status.busy { color: #9dbaff; }
+.about-notes {
+  margin-top: 11px; padding: 10px 12px; max-height: 208px; overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+  font-size: 11.5px; line-height: 1.5; color: var(--dim);
+  white-space: pre-wrap; overflow-wrap: anywhere; user-select: text;
+}
+.about-bar {
+  margin-top: 12px; height: 4px; border-radius: 4px;
+  background: var(--bg3); overflow: hidden;
+}
+#about-bar-fill {
+  display: block; height: 100%; width: 0%;
+  background: var(--grad); transition: width .2s ease;
+}
 
 /* ── audio-only sessions ──────────────────── */
 .audio-note {
