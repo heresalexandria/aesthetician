@@ -16,6 +16,7 @@ const G = {
   jobCounter: 0,
   activeJob: null,
   exports: [],         // every export started this session, newest last
+  batchId: 0,          // groups exports queued together, for the aggregate bar
   navOrder: [],        // preset ids in visible list order, for ↑/↓ navigation
   duration: 3.0,       // preview length
   scale: 0.5,          // preview scale
@@ -124,9 +125,12 @@ const videoB = $('video-b'); // original
   wireDrop();
   wireControls();
   wireShortcuts();
+  wireUpdates();
   renderTabs();
   refreshCacheInfo();
   if (G.schema) console.log('aesth:renderer-ready');
+  // Off the critical path: the window is usable before GitHub answers.
+  initUpdates();
 })();
 
 // ── drag & drop ─────────────────────────────────────────────────────
@@ -630,6 +634,263 @@ function closeModal(result) {
   const r = modalResolve;
   modalResolve = null;
   if (r) r(result);
+}
+
+/* ── updates ─────────────────────────────────────────────────────────
+   The main process owns the network and the install; this half owns when to
+   ask and what to say about it. See app/updater.js for why the app updates
+   itself rather than going through electron-updater.                       */
+const U = {
+  info: null,        // { version, packaged, platform, arch, ... }
+  latest: null,      // the last check result
+  busy: '',          // '', 'checking', 'downloading', 'installing'
+  staged: false,     // a verified download is sitting on disk
+};
+
+function setVersionChip() {
+  $('btn-version').textContent = U.info ? `v${U.info.version}` : 'v-';
+  $('btn-version').title = U.info && !U.info.packaged
+    ? `Aesthetician ${U.info.version} - running from a dev checkout`
+    : 'About Aesthetician';
+}
+
+function syncUpdateButton() {
+  const btn = $('btn-update');
+  const show = Boolean(U.latest && U.latest.available);
+  btn.classList.toggle('hidden', !show);
+  btn.classList.remove('blocked');
+  if (!show) return;
+  btn.textContent = U.staged ? 'Install update' : 'Update available';
+  btn.title = `Aesthetician ${U.latest.latest} is out (you have ${U.latest.current})`;
+}
+
+/* Boot: show the version straight away, then check in the background if the
+   last check has aged past a day. A failed check stays quiet - the button just
+   does not appear. */
+async function initUpdates() {
+  try {
+    U.info = await window.aesth.updateInfo();
+  } catch (_) { /* leave the chip reading v- */ }
+  setVersionChip();
+  window.aesth.onUpdateProgress(onUpdateProgress);
+  if (!U.info || !U.info.stale) {
+    if (U.info && U.info.last) { U.latest = U.info.last; syncUpdateButton(); }
+    return;
+  }
+  try {
+    U.latest = await window.aesth.updateCheck({});
+    syncUpdateButton();
+  } catch (_) { /* offline: try again tomorrow */ }
+}
+
+function onUpdateProgress(msg) {
+  if (msg.stage !== 'download') return;
+  $('about-bar').classList.remove('hidden');
+  $('about-bar-fill').style.width = `${Math.round((msg.frac || 0) * 100)}%`;
+  const got = formatBytes(msg.received);
+  const total = msg.total ? ` of ${formatBytes(msg.total)}` : '';
+  setAboutStatus(`Downloading ${got}${total}…`, 'busy');
+}
+
+function formatBytes(n) {
+  if (!n) return '0 MB';
+  const mb = n / (1024 * 1024);
+  return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(0)} MB`;
+}
+
+/* Electron wraps every rejected IPC call in "Error invoking remote method
+   'aesth:x': Error: ..." - the part worth showing is the last one. */
+function errText(err) {
+  const raw = String((err && err.message) || err || '');
+  const m = /Error: ([\s\S]*)$/.exec(raw);
+  return (m ? m[1] : raw).trim();
+}
+
+function setAboutStatus(text, tone = '') {
+  const el = $('about-status');
+  el.textContent = text;
+  el.className = `about-status ${tone || 'dim'}`;
+}
+
+function openAbout() {
+  $('about-modal').classList.remove('hidden');
+  $('about-version').textContent = U.info
+    ? `version ${U.info.version}${U.info.packaged ? '' : ' · dev checkout'}`
+    : 'version unknown';
+  $('about-bar').classList.add('hidden');
+  paintAbout();
+}
+
+function closeAbout() {
+  $('about-modal').classList.add('hidden');
+}
+
+/* One dialog covers up to date, out of date, downloaded, and every way those
+   can fail, so the button label and the status line are derived rather than
+   set at each call site. */
+function paintAbout() {
+  const notes = $('about-notes');
+  const action = $('about-action');
+  const r = U.latest;
+
+  notes.classList.add('hidden');
+  action.disabled = false;
+  action.textContent = 'Check for updates';
+
+  if (U.busy === 'checking') { setAboutStatus('Checking for updates…', 'busy'); action.disabled = true; return; }
+  if (U.busy === 'downloading') { action.textContent = 'Cancel'; return; }
+  if (U.busy === 'installing') { setAboutStatus('Installing…', 'busy'); action.disabled = true; return; }
+
+  if (!r) {
+    setAboutStatus(U.info && U.info.lastCheckAt
+      ? `Last checked ${relativeTime(U.info.lastCheckAt)}.`
+      : 'Not checked yet.');
+    return;
+  }
+  if (!r.ok) {
+    setAboutStatus(`Could not reach GitHub: ${r.error}`, 'warn');
+    return;
+  }
+  if (!r.available) {
+    setAboutStatus(`Aesthetician ${r.current} is the latest version. `
+      + `Checked ${relativeTime(r.checkedAt)}.`, 'ok');
+    return;
+  }
+
+  if (r.notes) {
+    // Release notes come off the network. Text only, never markup.
+    notes.textContent = r.notes;
+    notes.classList.remove('hidden');
+  }
+  if (!r.installable) {
+    setAboutStatus(`Version ${r.latest} is available. ${r.note}`, 'warn');
+    action.textContent = 'View releases';
+    return;
+  }
+  if (U.staged) {
+    setAboutStatus(`Version ${r.latest} is downloaded and ready to install. `
+      + 'Aesthetician will restart.', 'ok');
+    action.textContent = 'Install and restart';
+    return;
+  }
+  const size = r.asset && r.asset.size ? ` (${formatBytes(r.asset.size)})` : '';
+  setAboutStatus(`Version ${r.latest} is available - you have ${r.current}.`);
+  action.textContent = `Download${size}`;
+}
+
+function relativeTime(ts) {
+  const mins = Math.max(Math.round((Date.now() - ts) / 60000), 0);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return `${Math.round(hours / 24)} d ago`;
+}
+
+async function checkForUpdates({ force = true } = {}) {
+  U.busy = 'checking';
+  paintAbout();
+  try {
+    U.latest = await window.aesth.updateCheck({ force });
+  } catch (err) {
+    U.latest = { ok: false, error: errText(err) };
+  }
+  U.busy = '';
+  U.staged = false;
+  syncUpdateButton();
+  paintAbout();
+}
+
+async function downloadUpdate() {
+  U.busy = 'downloading';
+  $('about-bar').classList.remove('hidden');
+  $('about-bar-fill').style.width = '0%';
+  paintAbout();
+  try {
+    await window.aesth.updateDownload();
+    U.staged = true;
+    U.busy = '';
+    $('about-bar').classList.add('hidden');
+  } catch (err) {
+    U.busy = '';
+    U.staged = false;
+    $('about-bar').classList.add('hidden');
+    const msg = errText(err);
+    paintAbout();
+    setAboutStatus(msg.includes('canceled') ? 'Download canceled.' : `Download failed: ${msg}`,
+      msg.includes('canceled') ? '' : 'warn');
+    syncUpdateButton();
+    return;
+  }
+  syncUpdateButton();
+  paintAbout();
+}
+
+async function installUpdate() {
+  // The installer replaces files this process has open, so anything still
+  // writing a video has to land first. Killing an export to install an update
+  // is not a trade the app gets to make on the user's behalf.
+  const busy = activeExports();
+  if (busy.length) {
+    const btn = $('btn-update');
+    btn.classList.add('blocked');
+    btn.textContent = 'Finish exports first';
+    setTimeout(syncUpdateButton, 4000);
+    const detail = `${busy.length} export${busy.length > 1 ? 's are' : ' is'} still running. `
+      + 'Let them finish or cancel them, then update.';
+    if ($('about-modal').classList.contains('hidden')) setExportStatus(detail, true);
+    else setAboutStatus(detail, 'warn');
+    toggleExportsPanel(true);
+    return;
+  }
+  U.busy = 'installing';
+  paintAbout();
+  try {
+    await window.aesth.updateInstall();
+    // On macOS the app exits here and a helper puts the new copy in place.
+    setAboutStatus('Restarting…', 'busy');
+  } catch (err) {
+    U.busy = '';
+    paintAbout();
+    setAboutStatus(`Install failed: ${errText(err)}`, 'warn');
+    await window.aesth.updateReveal();
+  }
+}
+
+/* The titlebar button is a shortcut through whatever step comes next. */
+async function updateButtonClicked() {
+  if (U.staged) { await installUpdate(); return; }
+  openAbout();
+  if (U.latest && U.latest.available && U.latest.installable) await downloadUpdate();
+}
+
+function wireUpdates() {
+  $('btn-version').addEventListener('click', openAbout);
+  $('btn-update').addEventListener('click', updateButtonClicked);
+  $('about-close').addEventListener('click', closeAbout);
+  $('about-repo').addEventListener('click', () => {
+    window.aesth.openExternal((U.latest && U.latest.htmlUrl)
+      || (U.info && U.info.releasesUrl)
+      || 'https://github.com/heresalexandria/aesthetician/releases');
+  });
+  $('about-action').addEventListener('click', async () => {
+    const r = U.latest;
+    if (U.busy === 'downloading') {
+      await window.aesth.updateCancel();
+      return;                                  // downloadUpdate's catch tidies up
+    }
+    if (U.busy) return;
+    if (U.staged) { await installUpdate(); return; }
+    if (r && r.ok && r.available && !r.installable) {
+      window.aesth.openExternal(r.htmlUrl || r.releasesUrl);
+      return;
+    }
+    if (r && r.ok && r.available && r.installable) { await downloadUpdate(); return; }
+    await checkForUpdates();
+  });
+  $('about-modal').addEventListener('mousedown', (e) => {
+    if (e.target === $('about-modal') && !U.busy) closeAbout();
+  });
 }
 
 // ── filter bar (family chips + era decades) ─────────────────────────
@@ -1418,7 +1679,9 @@ function onProgress(msg) {
   const job = G.exports.find((j) => j.id === msg.jobId);
   if (!job || job.status !== 'running') return;
   job.phase = msg.phase;
-  job.progress = msg.progress;
+  // The engine reports monotonically; hold the line here too so a line that
+  // arrives out of order cannot rewind a bar the user is watching.
+  job.progress = Math.max(job.progress, msg.progress);
   updateExportRow(job);
   syncExportsButton();
 }
@@ -1433,6 +1696,13 @@ function wireShortcuts() {
   window.addEventListener('keydown', (e) => {
     const meta = e.metaKey || e.ctrlKey;
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
+    // The about dialog owns the keyboard while it is up, the same way the name
+    // prompt does - Cmd+O behind a modal is nobody's intent.
+    if (!$('about-modal').classList.contains('hidden')) {
+      if (e.code === 'Escape' && !U.busy) closeAbout();
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'Escape' && !$('exports-panel').classList.contains('hidden')) {
       e.preventDefault();
       toggleExportsPanel(false);
@@ -1675,6 +1945,25 @@ function activeExports() {
   return G.exports.filter((j) => j.status === 'running' || j.status === 'queued');
 }
 
+/* Jobs started while the queue was already busy belong to the same batch, and
+   the titlebar bar averages over the whole batch rather than over whatever is
+   running right now. Averaging only the running jobs made the bar lurch
+   backwards every time one of a parallel pair landed: 95% and 10% averages to
+   52%, then the 95% one finishes and the average drops to 10%. */
+function currentBatch() {
+  return G.exports.filter((j) => j.batchId === G.batchId && j.status !== 'canceled');
+}
+
+function batchProgress() {
+  const batch = currentBatch();
+  if (!batch.length) return 0;
+  const total = batch.reduce((n, j) => {
+    if (j.status === 'done' || j.status === 'failed') return n + 1;
+    return n + (j.status === 'running' ? j.progress : 0);
+  }, 0);
+  return total / batch.length;
+}
+
 async function doExport() {
   const sess = activeSession();
   if (!sess || !sess.file || !sess.presetId) return;
@@ -1712,8 +2001,13 @@ async function doExport() {
     return;
   }
 
+  // A job queued while nothing is in flight opens a fresh batch for the
+  // titlebar's aggregate bar.
+  if (!activeExports().length) G.batchId++;
+
   const job = {
     id: `job${++G.jobCounter}`,
+    batchId: G.batchId,
     label: (sess.customId ? customName(sess.customId) : presetName(sess.presetId))
       + (sess.variant ? ` · ${sess.variant}` : ''),
     source: basename(sess.file.path),
@@ -1796,11 +2090,8 @@ function syncExportsButton() {
   btn.classList.toggle('has-error', live.length === 0 && failed > 0);
   if (live.length) {
     const running = live.filter((j) => j.status === 'running');
-    const frac = running.length
-      ? running.reduce((n, j) => n + j.progress, 0) / running.length
-      : 0;
     $('exports-label').textContent = `${live.length} exporting`;
-    $('exports-mini-bar').style.width = `${Math.round(frac * 100)}%`;
+    $('exports-mini-bar').style.width = `${Math.round(batchProgress() * 100)}%`;
     btn.title = `${running.length} rendering, ${live.length - running.length} queued`;
   } else {
     $('exports-label').textContent = failed

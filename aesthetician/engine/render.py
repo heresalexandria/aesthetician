@@ -19,6 +19,60 @@ from .presets import Preset, Variant, parse_override_paths
 ProgressCb = Callable[[str, float], None]  # (phase, fraction 0..1)
 
 
+class _PhasedProgress:
+    """Fold several per-phase 0..1 fractions into one monotonic job fraction.
+
+    Each phase used to report its own 0..1, so a treated video export climbed to
+    100% during "video", snapped back to 0 for "audio", then back to 0 again for
+    "mux". Anything drawing a single bar from these numbers - the GUI titlebar,
+    the CLI's rich bar - walked backwards twice near the end of every render.
+
+    Phases get a share of the bar proportional to their weight, in the order
+    they are declared, and the reported value is clamped so it can never
+    decrease: a phase that is skipped or ends early leaves the bar where it is
+    rather than dragging it back.
+    """
+
+    def __init__(self, cb: Optional[ProgressCb], weights: dict[str, float]) -> None:
+        self._cb = cb
+        total = sum(weights.values()) or 1.0
+        self._spans: dict[str, tuple[float, float]] = {}
+        at = 0.0
+        for phase, weight in weights.items():
+            # Accumulate raw weights and divide, rather than summing normalized
+            # shares: summing shares drifts, and the zero-weight "done" phase has
+            # to land on exactly 1.0.
+            self._spans[phase] = (at / total, weight / total)
+            at += weight
+        self._last = 0.0
+
+    def __call__(self, phase: str, frac: float) -> None:
+        if self._cb is None:
+            return
+        # "done" carries no weight, so it lands on 1.0 by construction. An
+        # unknown phase parks at wherever the bar already is.
+        start, span = self._spans.get(phase, (self._last, 0.0))
+        value = start + span * min(max(frac, 0.0), 1.0)
+        self._last = min(max(value, self._last), 1.0)
+        self._cb(phase, self._last)
+
+
+def _phase_weights(has_video_chain: bool, has_audio: bool) -> dict[str, float]:
+    """Rough shares of wall clock per phase. Only their ratio matters.
+
+    A treated video chain dominates a render; a straight copy (audio-only jobs,
+    or a preset with no video effects) does not, so the audio pass gets a much
+    larger share there.
+    """
+    weights = {
+        "video": 0.86 if has_video_chain else 0.42,
+        "audio": (0.11 if has_video_chain else 0.52) if has_audio else 0.0,
+        "mux": 0.03,
+        "done": 0.0,
+    }
+    return weights
+
+
 @dataclass
 class RenderOptions:
     seed: int = 1
@@ -88,10 +142,6 @@ def render(
     opts: RenderOptions,
     progress: Optional[ProgressCb] = None,
 ) -> str:
-    def report(phase: str, frac: float) -> None:
-        if progress:
-            progress(phase, min(max(frac, 0.0), 1.0))
-
     info = media.probe(input_path)
     duration = opts.duration if opts.duration is not None else max(info.duration - opts.t0, 0.1)
     duration = min(duration, max(info.duration - opts.t0, 0.1))
@@ -99,7 +149,10 @@ def render(
     n_frames = max(int(round(duration * fps)), 1)
 
     if not info.has_video:
-        return _render_audio_only(input_path, output_path, preset, opts, info, duration, report)
+        return _render_audio_only(
+            input_path, output_path, preset, opts, info, duration,
+            _PhasedProgress(progress, {"audio": 0.86, "encode": 0.14, "done": 0.0}),
+        )
 
     out_w, out_h = _even(int(info.width * opts.scale)), _even(int(info.height * opts.scale))
     if preset.proc_height and preset.proc_height < out_h:
@@ -143,6 +196,8 @@ def render(
                 eff.resolve(ctx, a_over.get(eff.key))
                 eff.prepare(ctx)
 
+        report = _PhasedProgress(progress, _phase_weights(bool(video_chain), info.has_audio))
+
         # ── video ─────────────────────────────────────────────────────
         if video_chain:
             video_out = _render_video(
@@ -150,8 +205,13 @@ def render(
                 proc_w, proc_h, out_w, out_h, opts, preset, duration, report,
             )
         else:
+            # A straight copy still costs a transcode, and ffmpeg reports nothing
+            # useful through this path, so bracket it rather than leaving the bar
+            # parked at zero.
+            report("video", 0.0)
             video_out = os.path.join(tmp_root, "video_copy.mp4")
             _plain_video(input_path, video_out, out_w, out_h, fps, opts.t0, duration, opts.crf)
+            report("video", 1.0)
 
         # ── audio ─────────────────────────────────────────────────────
         audio_out: Optional[str] = None
