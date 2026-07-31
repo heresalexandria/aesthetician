@@ -125,12 +125,32 @@ GPL obligations that come with the bundled ffmpeg.
 
 The Windows target is fully scripted but has not been built or tested on Windows.
 
+### Staying current
+
+The title bar shows the running version. Click it for the about dialog and a
+**Check for updates** button; the app also checks once a day on its own and puts
+an **Update available** button next to the version when there is something newer.
+Taking that update downloads the release from GitHub, verifies its checksum,
+replaces the installed copy and restarts - no browser, and no Gatekeeper prompt.
+Exports in flight block an update until they finish or are canceled.
+
+See [docs/updates.md](docs/updates.md).
+
+## Releases
+
+Releases are cut by CI from a labelled pull request: label it `major`, `minor` or
+`patch`, merge it, and the version bump, the binaries and the release notes
+follow by themselves. [docs/releases.md](docs/releases.md) has the details and
+the one-time repository setup.
+
 ## Documentation
 
 - [docs/app-guide.md](docs/app-guide.md) - using the desktop app
 - [docs/usage.md](docs/usage.md) - setup and CLI workflows
 - [docs/catalog.md](docs/catalog.md) - all 191 presets and every knob
 - [docs/packaging.md](docs/packaging.md) - building installable macOS/Windows apps
+- [docs/releases.md](docs/releases.md) - how a release is cut, and the CI setup it needs
+- [docs/updates.md](docs/updates.md) - how the app updates itself
 - [docs/architecture.md](docs/architecture.md) - how the engine works
 - [docs/preset-authoring.md](docs/preset-authoring.md) - writing new presets
 
@@ -138,6 +158,7 @@ The Windows target is fully scripted but has not been built or tested on Windows
 
 ```bash
 .venv/bin/python tests/test_engine.py         # engine unit tests
+node tests/test_updater.js                    # updater decisions
 .venv/bin/python tests/test_smoke.py          # end-to-end render
 .venv/bin/python scripts/validate_presets.py  # preset/registry consistency
 .venv/bin/python scripts/audit_calibration.py # calibration guardrails

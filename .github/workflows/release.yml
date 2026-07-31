@@ -1,0 +1,278 @@
+name: Release
+
+# Merging a labelled pull request into main cuts the release. The label says how
+# the version moves; this bumps it everywhere, builds the desktop binaries on a
+# real runner per target, and publishes them with notes taken from the pull
+# request itself - description, screenshots and all.
+#
+# The tag is created by the publish step, not up front, so a failed build leaves
+# no half-release behind. Setup this needs once is in docs/releases.md.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: How to move the version
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: write
+
+# Never two releases at once: they would race to push the version bump.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # Release that carries assets/ (see scripts/release/pack_assets.py). Override
+  # per-repo with an ASSETS_RELEASE_TAG variable.
+  ASSETS_TAG: ${{ vars.ASSETS_RELEASE_TAG || 'assets-v1' }}
+
+jobs:
+  prepare:
+    name: bump the version
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      sha: ${{ steps.push.outputs.sha }}
+      previous: ${{ steps.previous.outputs.tag }}
+      skip: ${{ steps.kind.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Which way does the version move
+        id: kind
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          DISPATCH: ${{ inputs.bump }}
+        run: |
+          if [ -n "$DISPATCH" ]; then
+            kind="$DISPATCH"
+          else
+            kind="$(python3 scripts/release/select_bump.py)"
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          if [ "$kind" = "none" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::no-release label set - merged without cutting a release"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Previous tag
+        id: previous
+        if: steps.kind.outputs.skip != 'true'
+        run: echo "tag=$(git tag --list 'v*' --sort=-v:refname | head -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Bump the version everywhere
+        id: bump
+        if: steps.kind.outputs.skip != 'true'
+        run: python3 scripts/release/bump_version.py "${{ steps.kind.outputs.kind }}"
+
+      - name: Commit and push
+        id: push
+        if: steps.kind.outputs.skip != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml aesthetician/__init__.py app/package.json app/package-lock.json
+          git commit -m "Release ${{ steps.bump.outputs.tag }}"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build ${{ matrix.target }}
+    needs: prepare
+    if: needs.prepare.outputs.skip != 'true'
+    runs-on: ${{ matrix.runner }}
+    # A dud on one target must not cost the others their release: they are
+    # separate downloads for separate machines, and the release notes list only
+    # what actually built.
+    continue-on-error: ${{ matrix.optional }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: mac-arm64
+            runner: macos-15
+            optional: false
+          - target: mac-x64
+            runner: macos-15-intel
+            optional: true
+          # Scripted but never verified on real hardware - see docs/packaging.md.
+          - target: win-x64
+            runner: windows-2022
+            optional: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Building the relocatable interpreter and fetching ffmpeg is the slow
+      # half of a build, and neither changes between releases.
+      - name: Cache the bundled runtime and ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: .cache/package
+          key: pkg-${{ matrix.target }}-${{ hashFiles('scripts/package/targets.py', 'pyproject.toml') }}
+          restore-keys: pkg-${{ matrix.target }}-
+
+      - name: Fetch the asset packs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # assets/ is gitignored media that lives on its own release. Without
+          # it the build still works, it just falls back to procedural overlays
+          # and placeholder preset thumbnails.
+          mkdir -p assets
+          if gh release download "$ASSETS_TAG" --repo "${{ github.repository }}" \
+               --pattern 'aesthetician-assets.tar.gz' --dir . ; then
+            tar -xzf aesthetician-assets.tar.gz -C assets
+            rm -f aesthetician-assets.tar.gz
+            echo "ASSET_FLAG=" >> "$GITHUB_ENV"
+            du -sh assets/* || true
+          else
+            echo "::warning::no asset bundle on release '$ASSETS_TAG' - building with --no-assets. See docs/releases.md."
+            echo "ASSET_FLAG=--no-assets" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install the app's dev dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: Package
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
+
+      - name: Collect the artifacts
+        shell: bash
+        run: |
+          mkdir -p out-dist
+          # What a human downloads plus what the in-app updater downloads.
+          # Blockmaps and the unpacked app stay behind.
+          find app/dist -maxdepth 1 -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*setup.exe' \) \
+            -exec cp {} out-dist/ \;
+          ls -lh out-dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.target }}
+          path: out-dist/*
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: [prepare, build]
+    # always(), because a target allowed to fail must not take the release with
+    # it. The gather step is what insists something actually built.
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: incoming
+          pattern: build-*
+
+      - name: Gather and checksum
+        run: |
+          mkdir -p release
+          find incoming -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*setup.exe' \) \
+            -exec mv {} release/ \;
+          if [ -z "$(ls -A release 2>/dev/null)" ]; then
+            echo "::error::every build target failed - nothing to release"
+            exit 1
+          fi
+          cd release
+          # The in-app updater verifies its download against this file.
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Write the release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # workflow_dispatch has no PR behind it; the notes then carry just the
+          # download table, which beats failing the release over prose.
+          if [ -n "$PR" ]; then
+            gh api "repos/${{ github.repository }}/pulls/$PR" > pr.json
+            gh api "repos/${{ github.repository }}/issues/$PR/comments?per_page=100" > issue-comments.json
+            gh api "repos/${{ github.repository }}/pulls/$PR/comments?per_page=100" > review-comments.json
+            jq -s add issue-comments.json review-comments.json > comments.json
+          fi
+          python3 scripts/release/release_notes.py \
+            ${PR:+--pr pr.json --comments comments.json} \
+            --version "${{ needs.prepare.outputs.version }}" \
+            --previous "${{ needs.prepare.outputs.previous }}" \
+            --repo "${{ github.repository }}" \
+            --files release \
+            -o notes.md
+          echo "--- notes ---"; cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # --target creates the tag here, at the bumped commit: a build that
+          # fell over earlier leaves no tag pointing at a release that is not
+          # coming. --latest is what makes /releases/latest - and so the in-app
+          # updater - see this one.
+          gh release create "${{ needs.prepare.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ needs.prepare.outputs.sha }}" \
+            --title "${{ needs.prepare.outputs.tag }}" \
+            --notes-file notes.md \
+            --latest \
+            release/*
+
+      - name: Move the rolling `latest` tag
+        run: |
+          # A stable ref to check out or link to. GitHub's own "Latest" badge
+          # comes from --latest above, not from this.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f latest "${{ needs.prepare.outputs.sha }}"
+          git push -f origin latest
+
+      - name: Summary
+        run: |
+          {
+            echo "## ${{ needs.prepare.outputs.tag }} published"
+            echo
+            echo "| file | size |"
+            echo "|---|---|"
+            for f in release/*; do
+              echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
+            done
+            echo
+            echo "https://github.com/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.tag }}"
+          } >> "$GITHUB_STEP_SUMMARY"

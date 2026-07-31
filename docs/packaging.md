@@ -14,9 +14,18 @@ python3 scripts/package/build.py --target mac
 python3 scripts/package/build.py --target win
 ```
 
-Prerequisites: Python 3 and `rsync` on the build machine, `npm install` already
-run in `app/`, and network access for the first build (it downloads a Python
-runtime and ffmpeg). Artifacts land in `app/dist/`.
+Prerequisites: Python 3 on the build machine, `npm install` already run in
+`app/`, and network access for the first build (it downloads a Python runtime and
+ffmpeg). `rsync` is used for staging when it is there and a slower Python copy
+when it is not, so Windows runners work too. Artifacts land in `app/dist/`.
+
+The macOS build produces both a `.dmg` and a `.zip` of the same bundle. The DMG
+is for people; the zip is what the in-app updater downloads, because it can be
+unpacked with `ditto` and swapped into place without mounting anything. See
+[updates.md](updates.md).
+
+CI builds all three targets on merge, from `.github/workflows/release.yml` - see
+[releases.md](releases.md). Everything below still applies to a build by hand.
 
 Useful flags:
 
@@ -115,6 +124,10 @@ notarization: set `identity` in the `mac` block of `app/package.json` (it is
 currently `null` so electron-builder does not go hunting for a certificate) and
 add notarization credentials. Hardened-runtime entitlements are already present
 in `app/build/entitlements.mac.plist`.
+
+This is also the reason the app updates itself by hand rather than through
+`electron-updater`: Squirrel.Mac refuses an unsigned update outright. A Developer
+ID would make `electron-updater` the better answer and let `app/updater.js` go.
 
 Windows builds are unsigned. Users will see a SmartScreen warning; an
 Authenticode certificate is the fix.
