@@ -10,7 +10,21 @@
   <div id="titlebar">
     <span class="brand"><img src="icon.png" alt="" draggable="false"/><span class="brand-name">AESTHETICIAN</span></span>
     <span id="file-chip" class="hidden"></span>
+    <button id="btn-exports" class="hidden" title="Show the export queue">
+      <svg class="ex-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 10 4.5 4 4.5-4"/><path d="M4 17.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5"/></svg>
+      <span id="exports-label">Exports</span>
+      <span id="exports-mini"><span id="exports-mini-bar"></span></span>
+    </button>
   </div>
+
+  <div id="exports-panel" class="hidden">
+    <div class="ep-head">
+      <span class="ep-title">Exports</span>
+      <button id="btn-exports-clear" class="link-btn">Clear finished</button>
+    </div>
+    <div id="exports-list"></div>
+  </div>
+
   <div id="tab-bar" class="hidden"></div>
 
   <div id="drop-screen">
@@ -52,6 +66,10 @@
         <div id="ab-badge" class="hidden">ORIGINAL</div>
       </div>
       <div id="player-controls">
+        <button id="btn-play" class="icon-btn" title="Pause the looping preview (or press Space)">
+          <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>
+          <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.6c0-.9 1-1.4 1.7-.9l8 6.4c.6.5.6 1.3 0 1.8l-8 6.4c-.7.5-1.7 0-1.7-.9z"/></svg>
+        </button>
         <button id="btn-ab" title="Hold to see the untreated original (or hold B)">A/B</button>
         <button id="btn-mute" class="icon-btn" title="Toggle audio">
           <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></svg>
@@ -80,7 +98,7 @@
         <label class="switch" title="Re-render the preview automatically after every change">
           <input type="checkbox" id="auto-preview" checked/><span class="knob"></span><span class="sw-label">auto</span>
         </label>
-        <button id="btn-render" class="accent">Preview</button>
+        <button id="btn-render" class="accent" title="Render the preview now. Only needed with auto off - with auto on every change re-renders by itself.">Preview</button>
       </div>
       <div id="export-bar">
         <div id="export-status" class="dim">Ready.</div>
@@ -93,7 +111,6 @@
         </div>
         <label class="check dim"><input type="checkbox" id="exp-video-only"/> video only</label>
         <label class="check dim"><input type="checkbox" id="exp-audio-only"/> audio only</label>
-        <button id="btn-export-cancel" class="danger hidden" title="Stop the export and delete the partial file">Cancel</button>
         <button id="btn-export" class="accent big">Export Full Video</button>
       </div>
     </main>
@@ -104,6 +121,9 @@
           <div id="preset-title">-</div>
           <div id="preset-sub" class="dim"></div>
         </div>
+        <button id="btn-save-custom" class="icon-btn hidden" title="Save these settings as a custom aesthetic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21V10a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v11l7-3.6z"/><path d="M12 3v6M9 6h6"/></svg>
+        </button>
         <button id="btn-fav" class="icon-btn star hidden" title="Favorite this aesthetic">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.7 5.8 6.3.7-4.7 4.3 1.3 6.2-5.6-3.2L6.4 20l1.3-6.2L3 9.5l6.3-.7z"/></svg>
         </button>
@@ -128,6 +148,18 @@
       </div>
       <div id="param-list"><div class="hint">Pick an aesthetic on the left.</div></div>
     </aside>
+  </div>
+
+  <div id="modal" class="hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-sub dim" id="modal-sub"></div>
+      <input id="modal-input" type="text" spellcheck="false"/>
+      <div class="modal-row">
+        <button id="modal-cancel">Cancel</button>
+        <button id="modal-ok" class="accent">Save</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

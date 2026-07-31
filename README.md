@@ -28,8 +28,12 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
 - **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
 - **Search, filters and favorites.** Family chips and an era dropdown narrow the 191 looks; star the keepers and they float to the top, across launches.
-- **Preview, tuned to your patience.** Pick the preview's length (2 to 8 s) and resolution (25 to 100%); exports always render full quality. A running export can be canceled cleanly.
-- **Keyboard-friendly.** ⌘O open, ⌘E export, Space play/pause, hold B for the original, / to search.
+- **Audition the catalog with ↑ / ↓.** Step through the list you filtered down to and every stop renders, so you can run a whole family past the player without touching the mouse.
+- **Save your own aesthetics.** Once a preset is dialled in, save the knobs, dials and seed under your own name. Saved looks sit at the top of the list with a ✎ badge, have their own filter, and name the files they export.
+- **Editable on-screen text.** Camcorder date stamps, security clocks, tape counters and channel labels are yours to set - a real date picker for the clock, and one switch to turn the whole overlay off.
+- **Export several at once.** Start an export and keep working; a queue at the top right shows every job with its own progress bar, and cancels or reveals them one by one.
+- **Preview, tuned to your patience.** Pick the preview's length (2 to 8 s) and resolution (25 to 100%); exports always render full quality. Pause the loop when it gets distracting.
+- **Keyboard-friendly.** ⌘O open, ⌘E export, ↑/↓ through the list, Space play/pause, hold B for the original, / to search.
 - **Hover tooltips on every knob.** What the parameter physically models, its range, and the `--set` path to reach it from the CLI.
 - **Two master dials.** **Intensity** for damage, warping and glow; **Texture** for grain and noise alone, so a look can go completely clean without losing its colour and character.
 - **Deterministic.** Same seed, same render, every time. Roll the dice for a different take on the same aesthetic.

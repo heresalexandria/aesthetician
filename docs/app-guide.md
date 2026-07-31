@@ -18,16 +18,36 @@ The browse pane is built for 191 presets:
   preset from the panel header on the right). Favorites float to the top of
   the list in their own group, and the **★** chip shows only them. Favorites
   persist across launches.
+- **↑ / ↓** walk the list one row at a time and render each one as you go, so
+  you can audition a whole family without touching the mouse. See below.
+
+## Running the list with the arrow keys
+
+Pick anything on the left, then press **↓** and **↑** to step through the
+aesthetics in the order you see them. Each stop re-renders the preview, so
+holding the key runs the catalog past the player.
+
+- The keys follow what is **on screen**: the search results you filtered down
+  to, in list order, skipping any family you have collapsed.
+- They work while the **search box** has focus - type `vhs`, then arrow through
+  the hits without reaching for the mouse. They are left alone inside sliders
+  and dropdowns, where arrows already mean something.
+- A favorite is drawn twice (once at the top, once in its family) but stepped
+  onto once, at the top copy, so a run down the list never renders it twice.
+- Renders are debounced: holding the key scrolls freely and only the row you
+  settle on is rendered.
 
 ## Keyboard shortcuts
 
 | key | does |
 |---|---|
 | **⌘O** | open a video or audio file (same as the Browse button) |
-| **⌘E** | export the current clip |
+| **⌘E** | export the current clip (starts another; it does not wait) |
+| **↑ / ↓** | previous / next aesthetic in the list |
 | **Space** | play / pause the preview |
 | **B** (hold) | show the untreated original, like holding A/B |
 | **/** or **⌘F** | focus the preset search |
+| **Esc** | close the exports panel |
 
 ## Working with clips: sessions and tabs
 
@@ -87,8 +107,53 @@ Preview cache   184.0 MB · 37 previews   Clear   Reveal
   `%APPDATA%\aesthetician-app\preview-cache` on Windows.
 
 Exports never go through the cache - those are written wherever you point the
-save dialog. A running export can be stopped with **Cancel** next to the
-export button; the partial file is deleted.
+save dialog.
+
+## Exporting more than one thing at once
+
+**Export Full Video** does not put the app into an exporting mode. Press it,
+pick a destination, and carry on: change the aesthetic, switch tabs, start
+another export. Each job holds a frozen copy of the settings it was started
+with, so nothing you do afterwards can change what is being written.
+
+A button appears at the **top right** while anything is in flight - `2
+exporting`, with the combined progress as a hairline underneath. Click it for
+the queue:
+
+- one row per export, newest first, with its own progress bar and phase;
+- **×** on a running or waiting job stops it and deletes the partial file;
+- **Reveal** on a finished one opens it in the Finder;
+- **Clear finished** tidies the list without touching anything still running.
+
+Two render at once and the rest wait their turn, marked *waiting for a free
+slot*. A full-length pass is CPU-bound, so a third in parallel would only make
+the first two slower. Exporting the same destination twice is refused rather
+than letting two jobs race over one file.
+
+## Saving your own aesthetics
+
+Once you have a preset dialled in - knobs moved, intensity and texture set,
+a seed you like - the **bookmark** button beside the star saves the whole thing
+as a custom aesthetic. It offers a name (`Shoulder Camcorder - custom 2026-07-31
+14:22`); replace it with something you will recognise.
+
+Saved customs appear in a **MY AESTHETICS** group at the very top of the browse
+list, each with a **✎** badge on its thumbnail and a note of the preset it grew
+from. The **✎** chip beside the search box shows only them.
+
+- Clicking one restores everything: variant, every override, intensity, texture
+  and seed.
+- Move a knob afterwards and the header adds **· edited**, so the list never
+  claims you are looking at the saved version when you are not. Save again to
+  keep the new one as well.
+- Hover a custom row for **✎** to rename and **×** to delete. Deleting only
+  discards the recipe; the preset it was built on is untouched, and any tab
+  wearing it keeps its settings.
+- Exports name the file after the custom (`clip.night-shift.mp4`).
+
+A custom stores the base preset's **id**, not a copy of its effect chain, so a
+preset that gains an effect in a later version carries your customs forward.
+They are kept with your favorites and survive restarts.
 
 ## Understanding the knobs
 
@@ -111,6 +176,24 @@ preset's value. While any overrides exist, a strip above the effect stack
 counts them and offers **Reset all**; effects carrying a tweak show a dot on
 their header.
 
+### On-screen text and dates
+
+Presets that burn text into the picture - camcorder date stamps, security
+clocks, `PLAY`/`REC` chrome, tape counters, channel labels - mark that effect
+with an **Aa** badge and open it on arrival, because the text is the first
+thing anyone wants to change.
+
+- **Show** at the top of the effect turns the whole overlay off in one click,
+  leaving the rest of the preset alone.
+- **Start Time** is a real date-and-time picker; the clock advances from there
+  with playback. It cannot produce a value the engine refuses, which a typed
+  date could.
+- Tape counters, channel labels and the rest are plain text fields, one per
+  line so there is room to read them.
+
+The same controls exist on the CLI as `--set timestamp.show=false`,
+`--set timestamp.start='1994-11-05 20:15:30'`, `--set osd.channel='CH 12'`.
+
 ## Preview fidelity
 
 Previews are rendered by the same engine that does the export - so what you
@@ -120,6 +203,15 @@ between speed and fidelity, and both settings persist across launches:
 - **length** (2s / 3s / 5s / 8s) - how much of the clip each preview renders;
 - **scale** (25% / 50% / 75% / 100%) - the preview's render resolution.
   Exports always render at full resolution regardless.
+
+The preview loops forever, which is not always what you want with the app open
+on a second screen. **⏸** beside the A/B button holds it on a frame (so does
+**Space**), and it stays held through the next render rather than restarting
+the loop under you.
+
+**auto** re-renders after every change. With it on there is nothing for a
+Preview button to do, so there isn't one; turn auto off and **Preview** appears
+beside the switch as the way to ask for a render.
 
 Two caveats worth knowing at reduced scale:
 

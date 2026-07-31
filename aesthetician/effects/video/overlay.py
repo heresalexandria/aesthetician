@@ -16,7 +16,17 @@ from ...engine.graph import Context, Effect, Param, register
 
 
 class StrParam(Param):
-    """Free-text parameter (start times, channel labels…)."""
+    """Free-text parameter (start times, channel labels…).
+
+    `fmt` tells a front end what shape the text has, so it can offer a real
+    editor instead of a bare box: "datetime" for 'YYYY-MM-DD HH:MM:SS', "clock"
+    for 'H:MM:SS', "text" for anything else. The engine still parses the string
+    itself, so a caller that ignores the hint loses nothing.
+    """
+
+    def __init__(self, *args, fmt: str = "text", **kw):
+        super().__init__(*args, **kw)
+        object.__setattr__(self, "fmt", fmt)   # Param is a frozen dataclass
 
     def coerce(self, value):  # type: ignore[override]
         return str(value)
@@ -175,6 +185,8 @@ class Timestamp(Effect):
     kind = "frame"
     desc = "Camcorder/security date-time burned into the image with a period dot-matrix character generator; the clock advances with playback."
     PARAMS = (
+        Param("show", "Show", "bool", True, group="OSD",
+              desc="Burn the date and time into the picture. Off leaves the frame clean and the rest of the preset untouched."),
         Param("style", "Style", "enum", "camcorder_orange",
               choices=("camcorder_orange", "vcr_white", "security_white", "security_green", "lcd_gray"),
               group="OSD", desc="Character generator look: glowing amber, chunky outlined white, boxed security text…"),
@@ -185,7 +197,8 @@ class Timestamp(Effect):
               group="OSD",
               desc="mon_d_yyyy = 'JAN 1 1990' + time line; mdy_time = '01/01/1990 12:00 AM'; dow_dmy_hms = 'MON 01-01-90 00:00:00'."),
         StrParam("start", "Start Time", "str", "1990-01-01 18:34:12",  # type: ignore[arg-type]
-                 group="OSD", desc="Clock value at the first frame, 'YYYY-MM-DD HH:MM:SS'."),
+                 group="OSD", fmt="datetime",
+                 desc="Clock value at the first frame, 'YYYY-MM-DD HH:MM:SS'. It advances with playback."),
         Param("size", "Pixel Scale", "int", 0, 0, 14, group="OSD",
               desc="Dot size in pixels; 0 picks a period-correct size for the resolution."),
         Param("opacity", "Opacity", "float", 1.0, 0.0, 1.0, group="OSD"),
@@ -230,7 +243,7 @@ class Timestamp(Effect):
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         op = self.v["opacity"]
-        if op <= 0:
+        if not self.v["show"] or op <= 0:
             return frame
         fi = ctx.fi_out
         fl = self.v["flicker"]
@@ -267,6 +280,8 @@ class OSD(Effect):
     kind = "frame"
     desc = "Tape-deck UI chrome: PLAY with its triangle, blinking REC dot, tape speed, an advancing counter and a channel label."
     PARAMS = (
+        Param("show", "Show UI", "bool", True, group="OSD",
+              desc="Master switch for every element below. Off leaves the frame clean and the rest of the preset untouched."),
         Param("style", "Style", "enum", "white", choices=("white", "green", "orange"), group="OSD",
               desc="Shared character style for all elements."),
         Param("size", "Pixel Scale", "int", 0, 0, 14, group="OSD",
@@ -283,7 +298,7 @@ class OSD(Effect):
         Param("sp_pos", "Speed Corner", "enum", "tr", choices=("tl", "tr", "bl", "br"), group="OSD"),
         Param("show_counter", "Counter", "bool", True, group="OSD",
               desc="Advancing tape counter with occasional digit flicker."),
-        StrParam("counter_start", "Counter Start", "str", "0:00:00",  # type: ignore[arg-type]
+        StrParam("counter_start", "Counter Start", "str", "0:00:00", fmt="clock",  # type: ignore[arg-type]
                  group="OSD", desc="Counter value at the first frame, 'H:MM:SS'."),
         Param("counter_pos", "Counter Corner", "enum", "tl", choices=("tl", "tr", "bl", "br"), group="OSD"),
         Param("show_ch", "Channel", "bool", False, group="OSD", desc="Channel/input label."),
@@ -343,7 +358,7 @@ class OSD(Effect):
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         op = self.v["opacity"]
-        if op <= 0:
+        if not self.v["show"] or op <= 0:
             return frame
         H, W = frame.shape[:2]
         fi = ctx.fi_out

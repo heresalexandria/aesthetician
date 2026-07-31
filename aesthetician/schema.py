@@ -31,6 +31,9 @@ def effect_schema() -> dict[str, Any]:
                     "desc": p.desc,
                     "group": p.group,
                     "iscale": p.iscale,
+                    # Free-text params carry a shape hint ("datetime", "clock");
+                    # everything else is plain text as far as a front end cares.
+                    "fmt": getattr(p, "fmt", "text"),
                 }
                 for p in cls.PARAMS
             ],
