@@ -209,3 +209,39 @@ register_preset(Preset(
                        "lcd_screen.viewing_angle": 0.0}),
     ],
 ))
+
+register_preset(Preset(
+    id="retro-grain-1968",
+    name="Retro Grain",
+    family="stylized",
+    era="1968",
+    desc="The look a colour outside-broadcast camera left on tape before anyone went near a correction desk: warmed highlights, a lens that never quite resolves, corners falling away into the dark, and grain sitting evenly over all of it.",
+    tagline="Warm grade, soft lens, dark corners, grain",
+    tags=("retro", "grain", "warm", "broadcast", "simple"),
+    upscale="soft",
+    video=[
+        ("tone", {"contrast": 1.1, "exposure": 0.03}),
+        ("saturation", {"amount": 1.2}),
+        ("balance", {"warmth": 0.1}),
+        ("optics", {"soft_focus": 0.14, "bloom_mids": 0.0}),
+        # Fine and even rather than clumpy: this look wants grain laid flat over
+        # the whole frame, so the smallest clump on the finest stock. A coarser
+        # setting reads as boiling emulsion and buries skin.
+        ("grain", {"amount": 0.3, "size": 0.8, "roughness": 1.0, "chroma_grain": 0.12,
+                   "stock": "fine_35", "layers": "color_neg"}),
+        ("vignette", {"amount": 0.55, "radius": 0.68, "softness": 0.55}),
+    ],
+    # Nothing here touches the sound: a look you reach for mid-edit should not
+    # rewrite the mix.
+    audio=[],
+    variants=[
+        Variant("light", "Light", "Gentle enough that you have to look twice to catch it.",
+                video={"tone.contrast": 1.05, "saturation.amount": 1.1, "balance.warmth": 0.05,
+                       "optics.soft_focus": 0.07, "grain.amount": 0.17,
+                       "vignette.amount": 0.42, "vignette.radius": 0.76}),
+        Variant("heavy", "Heavy", "Pushed until the corners close in and the grain has opinions.",
+                video={"tone.contrast": 1.18, "saturation.amount": 1.3, "balance.warmth": 0.18,
+                       "optics.soft_focus": 0.24, "grain.amount": 0.47,
+                       "vignette.amount": 0.7, "vignette.radius": 0.6}),
+    ],
+))

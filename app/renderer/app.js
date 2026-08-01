@@ -1054,7 +1054,7 @@ function taglineFor(p) {
 }
 
 /* Exactly one animated image exists in the document at any time: it is moved
-   into whichever row the pointer is over. 191 rows never animate at once. */
+   into whichever row the pointer is over. 192 rows never animate at once. */
 const hoverAnim = document.createElement('img');
 hoverAnim.className = 't-anim';
 hoverAnim.alt = '';
@@ -1347,7 +1347,7 @@ function selectById(id, opts = {}) {
   else selectPreset(id, opts);
 }
 
-/* Moving the highlight is a class flip, not a rebuild of 191 rows - which is
+/* Moving the highlight is a class flip, not a rebuild of 192 rows - which is
    what makes holding ↓ feel like scrubbing rather than stuttering. A favorited
    preset owns two rows and both light up. */
 function syncSelection() {

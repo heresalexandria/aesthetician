@@ -6,7 +6,7 @@ cd app && npm start
 
 ## Finding a look: search, filters, favorites
 
-The browse pane is built for 191 presets:
+The browse pane is built for 192 presets:
 
 - **Search** matches name, id, era, family, tagline and tags. Press **/**
   (or **⌘F**) to jump to it from anywhere.
@@ -79,7 +79,7 @@ switches into an audio session:
 - the **picture** half of the parameter panel disappears - only **SOUND** is
   shown, with a note saying how many picture effects the chosen preset is
   skipping;
-- the audio-first presets move to the top of the browse list (all 191 still work
+- the audio-first presets move to the top of the browse list (all 192 still work
   - every preset has a sound chain - but the `audio` family is the one designed
   for this);
 - the video/audio-only export toggles are hidden, the export button becomes
