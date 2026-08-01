@@ -181,9 +181,10 @@ function activateSession(id) {
 
   $('drop-screen').classList.add('hidden');
   $('workspace').classList.remove('hidden');
-  $('file-chip').textContent = sess.audioSource
+  $('file-chip-text').textContent = sess.audioSource
     ? `${basename(sess.file.path)} · audio · ${(sess.file.sr / 1000).toFixed(1)} kHz ${sess.file.channels === 1 ? 'mono' : 'stereo'} · ${sess.file.duration.toFixed(1)}s`
     : `${basename(sess.file.path)} · ${sess.file.width}×${sess.file.height} · ${sess.file.duration.toFixed(1)}s`;
+  $('file-chip').title = `${sess.file.path}\nClick to show it in the Finder`;
   $('file-chip').classList.remove('hidden');
 
   const scrub = $('scrub');
@@ -266,6 +267,23 @@ function showNewSessionScreen() {
   $('drop-screen').classList.remove('hidden');
   $('file-chip').classList.add('hidden');
   renderTabs();
+}
+
+/* The titlebar chip is a button: it shows the clip you are working on where it
+   actually lives. A session can outlive its file - renamed, moved, on a volume
+   that has since been ejected - so say so rather than opening nothing. */
+async function revealFile(path) {
+  const res = await window.aesth.reveal(path);
+  if (res && res.ok) return true;
+  setExportStatus(`${basename(path)} is no longer at ${path} - `
+    + 'it looks like it was moved, renamed or deleted.', true);
+  return false;
+}
+
+function revealSourceFile() {
+  const sess = activeSession();
+  if (!sess || !sess.file || !sess.file.path) return;
+  revealFile(sess.file.path);
 }
 
 function basename(p) {
@@ -1874,6 +1892,7 @@ function wireControls() {
   });
 
   $('btn-export').addEventListener('click', doExport);
+  $('file-chip').addEventListener('click', revealSourceFile);
 
   $('btn-exports').addEventListener('click', () => toggleExportsPanel());
   $('btn-exports-clear').addEventListener('click', clearFinishedExports);
@@ -2148,7 +2167,7 @@ function renderExports() {
       const rev = document.createElement('button');
       rev.className = 'link-btn';
       rev.textContent = 'Reveal';
-      rev.onclick = () => window.aesth.reveal(job.req.output);
+      rev.onclick = () => revealFile(job.req.output);
       head.appendChild(rev);
     }
     row.appendChild(head);
@@ -2223,7 +2242,7 @@ function setExportStatusLink(prefix, file) {
   el.append(prefix);
   const a = document.createElement('a');
   a.textContent = file.split('/').pop();
-  a.onclick = () => window.aesth.reveal(file);
+  a.onclick = () => revealFile(file);
   el.appendChild(a);
   el.append(' - click to reveal');
 }

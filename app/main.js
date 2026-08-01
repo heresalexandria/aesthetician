@@ -337,7 +337,14 @@ ipcMain.handle('aesth:cancel-export', async (_e, jobId) => {
   return false;
 });
 
-ipcMain.handle('aesth:reveal', (_e, file) => shell.showItemInFolder(file));
+/* Reports whether it found anything: showItemInFolder on a path that has since
+   moved does nothing at all, and a button that silently does nothing is worse
+   than one that explains itself. */
+ipcMain.handle('aesth:reveal', (_e, file) => {
+  if (!file || !fs.existsSync(file)) return { ok: false };
+  shell.showItemInFolder(file);
+  return { ok: true };
+});
 
 /* ── preview cache ───────────────────────────────────────────────────────
    Every preview render is kept on disk keyed by its full parameter set, which

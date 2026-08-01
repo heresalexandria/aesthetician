@@ -5,7 +5,12 @@
  * Only the pure half is covered here - which release counts as newer, which
  * asset belongs to this machine, which URLs we are willing to fetch. The
  * download and the on-disk swap need a real packaged app and are exercised by
- * hand; see docs/updates.md. */
+ * hand; see docs/updates.md.
+ *
+ * This runs under plain node with no `app/node_modules` present, which is also
+ * the point: requiring app/updater.js here is what proves it reaches for
+ * Electron lazily rather than at load. Do not "fix" a failure by installing
+ * Electron in the test job - that would hide the regression this catches. */
 
 const assert = require('assert');
 const path = require('path');
