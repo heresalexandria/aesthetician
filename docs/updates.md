@@ -90,6 +90,22 @@ exercising by hand after any change to `installMac`:
 Test the refusal path too, by putting the app somewhere unwritable: the dialog
 should explain rather than quit.
 
+## Release notes in the dialog
+
+Notes are rendered by a small parser in the renderer, not by anything that
+touches `innerHTML`. Headings become headings, screenshots become images, and
+everything else stays text - so the raw `<img>` tags the notes actually contain
+no longer sit in the dialog as literal markup.
+
+The images take a detour worth knowing about. `github.com/user-attachments/...`
+redirects to a signed URL on GitHub's S3 asset bucket, so allowing it in the
+renderer's `img-src` would mean allowing `*.s3.amazonaws.com` - every bucket on
+it. Instead the **main process fetches the bytes** and hands back a `data:` URL:
+the renderer's CSP still forbids remote images entirely, which is a tighter
+position than before the feature existed. The fetch checks the host, follows at
+most four redirects, requires an `image/*` content type and caps the response at
+8 MB.
+
 ## Trust boundary
 
 Release JSON is data off the network, so it is treated that way. Only `https` to
