@@ -123,7 +123,8 @@ After that it opens normally. Real distribution needs a Developer ID plus
 notarization, see [docs/packaging.md](docs/packaging.md), which also covers the
 GPL obligations that come with the bundled ffmpeg.
 
-The Windows target is fully scripted but has not been built or tested on Windows.
+Windows builds are produced by CI on every release, and the packaged `.exe` is
+launched and smoke-tested there before the release goes out.
 
 ### Staying current
 

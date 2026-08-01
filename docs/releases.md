@@ -82,18 +82,33 @@ release tagged `assets-v2`, and set the repository variable
 | target | runner | blocking |
 |---|---|---|
 | `mac-arm64` | `macos-15` | yes |
-| `mac-x64` | `macos-15-intel` | no |
-| `win-x64` | `windows-2022` | no |
+| `mac-x64` | `macos-15-intel` | yes |
+| `win-x64` | `windows-2022` | yes |
 
-Apple silicon is the one build that has been verified by hand, so it is the one
-that has to succeed. The other two are allowed to fail without taking the
-release with them - the Windows target has never been built on real hardware
-(see `docs/packaging.md`), and the Intel runner label is newer than the last
-time anyone checked. A target that drops out simply does not appear in the
-download table.
+All three have built and run, so a failure in any of them is a regression worth
+stopping the release for rather than a known gap to route around.
 
-Once Windows has shipped once, flip `optional: false` in
-`.github/workflows/release.yml` so a regression there is caught.
+The mechanism for letting a target drop out is still there for the next
+unproven one: set `optional: true` on its matrix entry in
+`.github/workflows/release.yml`. The release then publishes without it, and the
+download table lists only what actually built.
+
+## Debugging a build without cutting a release
+
+Packaging is only otherwise exercised during a release, which is a terrible
+moment to find it broken - the version has already been bumped by then. Push to
+any `ci/**` branch to run the **Build check** workflow, which packages a target
+and attaches the result to the run with no release involved:
+
+```bash
+git push -f origin HEAD:ci/windows
+```
+
+It defaults to `win-x64` and skips the asset packs for speed. Put `[assets]` in
+the commit message to include them - worth doing at least once before merging,
+because the packs are what exercise the hardlink and symlink paths in staging.
+`Run workflow` from the Actions tab takes a target and an assets toggle
+directly.
 
 ## If something goes wrong
 

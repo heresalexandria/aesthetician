@@ -169,12 +169,18 @@ really is reaching its own engine rather than a stray system Python.
 
 ## Known limitations
 
-- **The Windows target is scripted but has never been built or run.** It is
-  correct by construction - pinned `x86_64-pc-windows-msvc` runtime, `win_amd64`
-  wheels, NSIS installer, `python.exe` and `.exe` suffixes handled in
-  `targets.py` - but treat it as unverified until someone builds it on Windows.
+- **Windows builds on a Windows runner, not from here.** CI packages it on
+  every release and launches the resulting `.exe` to run its smoke test, so the
+  installer and the bundled engine are both exercised. Cross-building it from
+  macOS still only does a structural check - it cannot execute the target - so
+  trust the CI artifact over a local `--target win` build.
+- **The in-app update path on Windows has not been run by hand.** The installer
+  builds and the packaged app starts, but nobody has watched `installWindows`
+  actually spawn NSIS, quit, and come back on the far side. macOS has been
+  exercised end to end; Windows has not. See `docs/updates.md`.
 - Cross-building macOS Intel from Apple silicon installs x86_64 wheels but cannot
-  execute them during the build, so `mac-x64` is likewise unverified here.
+  execute them during the build. CI builds that target natively on
+  `macos-15-intel` instead.
 - The app is large, and almost all of it is scientific Python. `--no-assets`
   trims the overlay packs and audio beds if you need a smaller build.
 - The app icons (`app/build/icon.png` for the .icns/.ico conversion,
