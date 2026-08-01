@@ -151,8 +151,10 @@ function assetFor(assets, platform = process.platform, arch = process.arch) {
     return list.find((a) => a.name.endsWith(`-mac-${arch}.zip`)) || null;
   }
   if (platform === 'win32') {
-    // Aesthetician-0.6.0-win-x64-setup.exe
-    return list.find((a) => /win-x64-setup\.exe$/i.test(a.name)) || null;
+    // Aesthetician-0.6.0-win-x64-setup.exe. There is no arm64 Windows build;
+    // Windows on ARM runs the x64 installer under emulation, so handing it over
+    // is deliberate rather than an accident of loose matching.
+    return list.find((a) => /-win-x64-setup\.exe$/i.test(a.name)) || null;
   }
   return null;
 }
