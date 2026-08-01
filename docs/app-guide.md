@@ -130,6 +130,29 @@ slot*. A full-length pass is CPU-bound, so a third in parallel would only make
 the first two slower. Exporting the same destination twice is refused rather
 than letting two jobs race over one file.
 
+### Reading the progress
+
+A render is three passes - picture, then sound, then muxing the two together -
+and the bar covers all of them as one climb, weighted by how long each usually
+takes. Picture is most of it, so a job sitting at 86% has finished its frames and
+is working on audio. The hairline under the titlebar button is the whole batch
+you started, counting finished jobs as finished: one of a pair landing pushes it
+up, never back down.
+
+## Version and updates
+
+The version sits at the top right, left of the exports button. Click it for the
+about dialog, which has a **Check for updates** button.
+
+Aesthetician also checks by itself, at most once a day. When a newer release
+exists, a blue **Update available** button appears next to the version; clicking
+it downloads the release, checks it against the checksum published with it,
+replaces the installed copy and restarts. Nothing is downloaded until you ask.
+
+If anything is still exporting, the button turns red and says **Finish exports
+first**, and the export panel opens. Let the renders finish, or stop them, and
+the update goes through. See [updates.md](updates.md) for the details.
+
 ## Saving your own aesthetics
 
 Once you have a preset dialled in - knobs moved, intensity and texture set,

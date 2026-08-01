@@ -9,7 +9,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from aesthetician.engine.graph import Context, Param, build_chain, get_effect
 from aesthetician.engine.presets import parse_override_paths
-from aesthetician.engine.render import _compose_src_map, _segment_chain
+from aesthetician.engine.render import (
+    _compose_src_map,
+    _phase_weights,
+    _PhasedProgress,
+    _segment_chain,
+)
 from aesthetician.engine.rng import TemporalNoise, stream
 
 
@@ -182,6 +187,42 @@ def test_remap_composition():
     m = _compose_src_map([Hold2(), Skip()], ctx, 10)
     assert m.tolist() == [0, 0, 1, 1, 2, 3, 4, 4, 4, 4], m.tolist()
     assert np.all(np.diff(m) >= 0), "monotonic"
+
+
+def test_phased_progress_never_walks_backwards():
+    """One bar out of many per-phase 0..1 runs, and it only ever climbs."""
+    seen = []
+    report = _PhasedProgress(lambda phase, frac: seen.append((phase, frac)),
+                             _phase_weights(has_video_chain=True, has_audio=True))
+
+    for i in range(11):
+        report("video", i / 10)
+    report("audio", 0.0)         # used to snap the bar back to zero
+    report("audio", 1.0)
+    report("mux", 0.0)           # and again, right at the end
+    report("done", 1.0)
+
+    fracs = [f for _, f in seen]
+    assert all(b >= a for a, b in zip(fracs, fracs[1:])), f"went backwards: {fracs}"
+    assert fracs[0] == 0.0 and fracs[-1] == 1.0
+    # The video pass owns the bulk of the bar, so a finished video chain must not
+    # already read as finished overall.
+    video_end = next(f for p, f in seen if p == "audio")
+    assert 0.8 < video_end < 0.9, video_end
+
+    # A phase that never fires leaves the bar alone rather than rewinding it.
+    seen.clear()
+    silent = _PhasedProgress(lambda phase, frac: seen.append((phase, frac)),
+                             _phase_weights(has_video_chain=True, has_audio=False))
+    silent("video", 1.0)
+    silent("mux", 0.0)
+    silent("done", 1.0)
+    fracs = [f for _, f in seen]
+    assert all(b >= a for a, b in zip(fracs, fracs[1:])), f"went backwards: {fracs}"
+    assert fracs[-1] == 1.0
+
+    # No callback at all must stay a no-op.
+    _PhasedProgress(None, _phase_weights(True, True))("video", 0.5)
 
 
 def test_segmenting():

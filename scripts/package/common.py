@@ -136,10 +136,61 @@ def extract(archive: Path, dest: Path) -> None:
             t.extractall(dest, filter="data")
 
 
+def mirror(src: Path, dst: Path, *, hardlink: bool = False) -> None:
+    """Mirror src/ into dst/, deleting extras.
+
+    rsync when it is there (fast, and a near no-op on a repeat build), a plain
+    Python copy when it is not - which is every Windows runner, where the whole
+    packaging flow would otherwise stop at the staging step. `hardlink` asks for
+    hardlinks instead of copies so the asset packs are not duplicated on disk;
+    it is an optimisation, and falling back to a real copy is always correct.
+    """
+    dst.mkdir(parents=True, exist_ok=True)
+    if shutil.which("rsync"):
+        cmd = ["rsync", "-a", "--delete"]
+        if hardlink:
+            cmd.append(f"--link-dest={src.resolve()}")
+        cmd += [f"{src.resolve()}/", f"{dst}/"]
+        run(cmd, quiet=True)
+        return
+
+    keep: set[Path] = set()
+    for root, _dirs, files in os.walk(src):
+        rel = Path(root).relative_to(src)
+        (dst / rel).mkdir(parents=True, exist_ok=True)
+        keep.add(dst / rel)
+        for name in files:
+            s = Path(root) / name
+            d = dst / rel / name
+            keep.add(d)
+            if d.exists() or d.is_symlink():
+                d.unlink()
+            if s.is_symlink():
+                os.symlink(os.readlink(s), d)
+                continue
+            if hardlink:
+                try:
+                    os.link(s, d)
+                    continue
+                except OSError:
+                    pass          # across devices, or a filesystem without links
+            shutil.copy2(s, d)
+
+    # --delete, by hand: anything in dst that is no longer in src.
+    for root, dirs, files in os.walk(dst, topdown=False):
+        for name in files:
+            p = Path(root) / name
+            if p not in keep:
+                p.unlink(missing_ok=True)
+        for name in dirs:
+            p = Path(root) / name
+            if p not in keep and not any(p.iterdir()):
+                p.rmdir()
+
+
 def rsync(src: Path, dst: Path) -> None:
-    """Mirror src/ into dst/ (delete extras). Fast no-op when already identical."""
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    run(["rsync", "-a", "--delete", f"{src}/", f"{dst}/"], quiet=True)
+    """Back-compat alias for `mirror`."""
+    mirror(src, dst)
 
 
 def which(prog: str) -> str | None:

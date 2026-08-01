@@ -23,4 +23,17 @@ contextBridge.exposeInMainWorld('aesth', {
     return () => ipcRenderer.removeListener('aesth:progress', listener);
   },
   pathForFile: (file) => webUtils.getPathForFile(file),
+
+  updateInfo: () => ipcRenderer.invoke('aesth:update-info'),
+  updateCheck: (opts) => ipcRenderer.invoke('aesth:update-check', opts),
+  updateDownload: () => ipcRenderer.invoke('aesth:update-download'),
+  updateCancel: () => ipcRenderer.invoke('aesth:update-cancel'),
+  updateInstall: () => ipcRenderer.invoke('aesth:update-install'),
+  updateReveal: () => ipcRenderer.invoke('aesth:update-reveal'),
+  openExternal: (url) => ipcRenderer.invoke('aesth:open-external', url),
+  onUpdateProgress: (cb) => {
+    const listener = (_e, msg) => cb(msg);
+    ipcRenderer.on('aesth:update-progress', listener);
+    return () => ipcRenderer.removeListener('aesth:update-progress', listener);
+  },
 });

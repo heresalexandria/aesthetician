@@ -37,6 +37,7 @@ from .common import (  # noqa: E402
     STAGE_DIR,
     human,
     log,
+    mirror,
     rmtree,
     run,
     size_of,
@@ -48,14 +49,7 @@ ASSET_SUBDIRS = ("packs", "thumbs", "audio-beds")
 
 
 # ── staging ──────────────────────────────────────────────────────────────
-def _mirror(src: Path, dst: Path, *, hardlink: bool = False) -> None:
-    """Mirror src/ -> dst/ (deleting extras). Hardlinks avoid duplicating media."""
-    dst.mkdir(parents=True, exist_ok=True)
-    cmd = ["rsync", "-a", "--delete"]
-    if hardlink:
-        cmd.append(f"--link-dest={src.resolve()}")
-    cmd += [f"{src.resolve()}/", f"{dst}/"]
-    run(cmd, quiet=True)
+_mirror = mirror
 
 
 def stage(target: Target, runtime: Path, ffmpeg_dir: Path, with_assets: bool) -> dict:
@@ -98,13 +92,15 @@ def stage(target: Target, runtime: Path, ffmpeg_dir: Path, with_assets: bool) ->
 
 # ── electron-builder ─────────────────────────────────────────────────────
 def ensure_node_modules() -> None:
-    if not (APP_DIR / "node_modules" / ".bin" / "electron-builder").exists():
+    eb = "electron-builder.cmd" if sys.platform.startswith("win") else "electron-builder"
+    if not (APP_DIR / "node_modules" / ".bin" / eb).exists():
         log("npm install (electron + electron-builder)")
-        run(["npm", "install"], cwd=APP_DIR)
+        run(["npm.cmd" if sys.platform.startswith("win") else "npm", "install"], cwd=APP_DIR)
 
 
 def run_electron_builder(target: Target, *, dir_only: bool) -> None:
-    eb = APP_DIR / "node_modules" / ".bin" / "electron-builder"
+    eb = APP_DIR / "node_modules" / ".bin" / (
+        "electron-builder.cmd" if sys.platform.startswith("win") else "electron-builder")
     cmd = [eb, target.eb_flag, target.eb_arch, "--publish", "never"]
     if dir_only:
         cmd.append("--dir")
@@ -184,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         keys = (host,) if host.startswith("mac") else ("mac-arm64",)
 
     if not shutil.which("rsync"):
-        raise SystemExit("rsync is required for staging")
+        log("note    rsync not found - staging with the slower Python copy")
 
     results = [build_one(k, args) for k in keys]
 

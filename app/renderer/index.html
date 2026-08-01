@@ -10,6 +10,9 @@
   <div id="titlebar">
     <span class="brand"><img src="icon.png" alt="" draggable="false"/><span class="brand-name">AESTHETICIAN</span></span>
     <span id="file-chip" class="hidden"></span>
+    <div class="grow"></div>
+    <button id="btn-version" title="About Aesthetician">v-</button>
+    <button id="btn-update" class="hidden" title="A newer version is available">Update available</button>
     <button id="btn-exports" class="hidden" title="Show the export queue">
       <svg class="ex-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 10 4.5 4 4.5-4"/><path d="M4 17.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5"/></svg>
       <span id="exports-label">Exports</span>
@@ -158,6 +161,27 @@
       <div class="modal-row">
         <button id="modal-cancel">Cancel</button>
         <button id="modal-ok" class="accent">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="about-modal" class="hidden">
+    <div class="modal-box about-box">
+      <div class="about-head">
+        <img src="icon.png" width="46" height="46" alt="" draggable="false"/>
+        <div>
+          <div class="modal-title">Aesthetician</div>
+          <div class="modal-sub dim" id="about-version">version -</div>
+        </div>
+      </div>
+      <div id="about-status" class="about-status dim">Checking for updates…</div>
+      <div id="about-notes" class="about-notes hidden"></div>
+      <div id="about-bar" class="about-bar hidden"><div id="about-bar-fill"></div></div>
+      <div class="modal-row">
+        <button id="about-repo" class="link-btn">View releases</button>
+        <div class="grow"></div>
+        <button id="about-close">Close</button>
+        <button id="about-action" class="accent">Check for updates</button>
       </div>
     </div>
   </div>
