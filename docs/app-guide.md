@@ -66,6 +66,11 @@ with the filename and whichever aesthetic that clip is currently wearing.
 Switching tabs never re-renders: the preview files persist in the cache, so
 flipping between tabs is instant.
 
+The chip in the title bar naming the open clip is a button: click it to show
+that file in the Finder. Hover it for the full path. If the file has been moved,
+renamed or deleted since you opened it, the status line at the bottom says so
+rather than opening nothing.
+
 ## Dropping an audio file
 
 Audio files are first-class sources. Drop a WAV, MP3, FLAC or M4A and the app
