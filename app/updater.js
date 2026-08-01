@@ -14,7 +14,17 @@
  * browser-downloaded DMG does.
  */
 
-const { app } = require('electron');
+let app = null;
+try {
+  ({ app } = require('electron'));
+} catch (err) {
+  // Only reachable under plain node, where tests/test_updater.js exercises the
+  // pure helpers at the bottom of this file and never touches `app`. A real
+  // Electron process always has this module, so anything other than "it is not
+  // installed" is a genuine fault and must not be swallowed here.
+  if (err.code !== 'MODULE_NOT_FOUND') throw err;
+}
+
 const { execFile, spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
