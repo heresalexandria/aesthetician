@@ -95,9 +95,10 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.skip != 'true'
     runs-on: ${{ matrix.runner }}
-    # A dud on one target must not cost the others their release: they are
-    # separate downloads for separate machines, and the release notes list only
-    # what actually built.
+    # All three targets have built and run, so a failure is now a regression
+    # worth stopping for rather than a known gap to route around. The mechanism
+    # stays: flip `optional` to true to let a target drop out, and the release
+    # notes list only what actually built.
     continue-on-error: ${{ matrix.optional }}
     strategy:
       fail-fast: false
@@ -108,11 +109,10 @@ jobs:
             optional: false
           - target: mac-x64
             runner: macos-15-intel
-            optional: true
-          # Scripted but never verified on real hardware - see docs/packaging.md.
+            optional: false
           - target: win-x64
             runner: windows-2022
-            optional: true
+            optional: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,6 +163,9 @@ jobs:
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # The Windows runner's console is cp1252 and these scripts print box
+          # drawing; scripts/package/common.py handles it, this is the braces.
+          PYTHONUTF8: '1'
         run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
 
       - name: Collect the artifacts

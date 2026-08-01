@@ -77,8 +77,13 @@ jobs:
           key: pkg-${{ matrix.target }}-${{ hashFiles('scripts/package/targets.py', 'pyproject.toml') }}
           restore-keys: pkg-${{ matrix.target }}-
 
+      # On a push there are no inputs, and GitHub coerces the missing one to
+      # false - so say what a push should do rather than inheriting that.
+      # Skipping the packs makes iteration much faster but leaves the staging
+      # path (hardlinks, symlinks) untested, so a final run before merging
+      # should include them.
       - name: Fetch the asset packs
-        if: inputs.assets != false
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.assets || contains(github.event.head_commit.message, '[assets]') }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,6 +93,7 @@ jobs:
                --pattern 'aesthetician-assets.tar.gz' --dir . ; then
             tar -xzf aesthetician-assets.tar.gz -C assets
             rm -f aesthetician-assets.tar.gz
+            echo "WITH_ASSETS=1" >> "$GITHUB_ENV"
           else
             echo "::warning::no asset bundle on '$ASSETS_TAG' - building with --no-assets"
             echo "ASSET_FLAG=--no-assets" >> "$GITHUB_ENV"
