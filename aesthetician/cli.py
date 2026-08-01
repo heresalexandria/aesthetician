@@ -33,6 +33,60 @@ def _parse_value(raw: str) -> Any:
     return raw
 
 
+def _split_mapping(sets: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Same routing as _split_overrides, for values that arrived already typed."""
+    video: dict[str, Any] = {}
+    audio: dict[str, Any] = {}
+    for path, value in (sets or {}).items():
+        target = audio if path.split(".", 1)[0].startswith("a_") else video
+        target[path.strip()] = value
+    return video, audio
+
+
+def _parse_layers(raw: str) -> list[Any]:
+    """Build engine Layers from the JSON the GUI sends.
+
+    Accepts inline JSON or `@path`. The file form matters on Windows, where the
+    whole command line is capped at 32k and a deep stack of overrides can get
+    close to it.
+    """
+    from .engine.presets import get_preset
+    from .engine.render import Layer
+
+    text = raw
+    if raw.startswith("@"):
+        with open(raw[1:], encoding="utf-8") as fh:
+            text = fh.read()
+    try:
+        spec = json.loads(text)
+    except json.JSONDecodeError as err:
+        raise click.BadParameter(f"--layers is not valid JSON: {err}") from err
+    if not isinstance(spec, list) or not spec:
+        raise click.BadParameter("--layers expects a non-empty JSON array")
+
+    layers = []
+    for i, item in enumerate(spec):
+        if not isinstance(item, dict) or not item.get("preset"):
+            raise click.BadParameter(f"--layers[{i}] needs a 'preset' id")
+        # A disabled layer is simply absent from the render, which is what makes
+        # the checkbox in the GUI free rather than a re-render of everything.
+        if item.get("enabled") is False:
+            continue
+        video_over, audio_over = _split_mapping(item.get("sets") or {})
+        layers.append(Layer(
+            preset=get_preset(item["preset"]),
+            variant=item.get("variant") or None,
+            video_overrides=video_over,
+            audio_overrides=audio_over,
+            seed=int(item.get("seed", 1)),
+            intensity=float(item.get("intensity", 1.0)),
+            texture=float(item.get("texture", 1.0)),
+        ))
+    if not layers:
+        raise click.BadParameter("every layer in --layers is disabled")
+    return layers
+
+
 def _split_overrides(pairs: tuple[str, ...]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Route key=value overrides to (video, audio) by the a_ effect prefix."""
     video: dict[str, Any] = {}
@@ -137,6 +191,16 @@ def schema() -> None:
     click.echo(json.dumps(full_schema()))
 
 
+def _dispatch(input_path, output, preset, stack, opts, cb) -> None:
+    """One preset or a stack of them, same progress callback either way."""
+    from .engine.render import render, render_layers
+
+    if stack:
+        render_layers(input_path, output, stack, opts, progress=cb)
+    else:
+        render(input_path, output, preset, opts, progress=cb)
+
+
 def _run_render(
     input_path: str,
     output: Optional[str],
@@ -154,11 +218,17 @@ def _run_render(
     crf: int,
     json_progress: bool,
     suffix: str,
+    layers_json: Optional[str] = None,
 ) -> str:
     from .engine.presets import get_preset
-    from .engine.render import RenderOptions, render
+    from .engine.render import RenderOptions, render, render_layers
 
-    preset = get_preset(preset_id)
+    stack = _parse_layers(layers_json) if layers_json else None
+    if not stack and not preset_id:
+        raise click.UsageError("give --preset, or --layers for a stack")
+    # A stack takes its identity from its bottom layer; --preset is ignored, and
+    # the single-preset path below is left exactly as it was.
+    preset = stack[0].preset if stack else get_preset(preset_id)
     if seed is None:
         seed = int.from_bytes(os.urandom(4), "little") % 999983 + 1
     video_over, audio_over = _split_overrides(sets)
@@ -170,7 +240,11 @@ def _run_render(
         vtag = f"-{variant}" if variant else ""
         if not ext:
             ext = ".mp4" if _probe(input_path).has_video else ".wav"
-        output = f"{base}.{preset_id.replace('/', '-')}{vtag}{suffix}{ext}"
+        if stack:
+            extra = f"+{len(stack) - 1}" if len(stack) > 1 else ""
+            output = f"{base}.{preset.id.replace('/', '-')}{extra}{suffix}{ext}"
+        else:
+            output = f"{base}.{preset_id.replace('/', '-')}{vtag}{suffix}{ext}"
 
     opts = RenderOptions(
         seed=seed,
@@ -193,9 +267,11 @@ def _run_render(
             click.echo(json.dumps({"phase": phase, "progress": round(frac, 4)}), nl=True)
             sys.stdout.flush()
 
-        render(input_path, output, preset, opts, progress=cb)
+        _dispatch(input_path, output, preset, stack, opts, cb)
     else:
-        console.print(f"[bold]{preset.name}[/bold] → {output}  [dim](seed {seed})[/dim]")
+        what = (f"{preset.name} +{len(stack) - 1} more" if stack and len(stack) > 1
+                else preset.name)
+        console.print(f"[bold]{what}[/bold] → {output}  [dim](seed {seed})[/dim]")
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
@@ -208,14 +284,17 @@ def _run_render(
             def cb(phase: str, frac: float) -> None:
                 prog.update(task, completed=int(frac * 1000), description=phase)
 
-            render(input_path, output, preset, opts, progress=cb)
+            _dispatch(input_path, output, preset, stack, opts, cb)
     if not json_progress:
         console.print(f"[green]done[/green] in {time.time() - t_start:.1f}s")
     return output
 
 
 _render_options = [
-    click.option("--preset", "-p", "preset_id", required=True, help="Preset id (see `list`)."),
+    click.option("--preset", "-p", "preset_id", default=None, help="Preset id (see `list`)."),
+    click.option("--layers", "layers_json", default=None,
+                 help="JSON array of stacked layers (or @file); each renders into the next. "
+                      "Takes precedence over --preset."),
     click.option("--variant", default=None, help="Preset variant id."),
     click.option("--set", "sets", multiple=True, help="Override: effect.param=value (repeatable)."),
     click.option("--seed", type=int, default=None, help="Fix the random seed (default: random, printed)."),

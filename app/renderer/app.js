@@ -14,6 +14,7 @@ const G = {
   activeId: null,
   seq: 0,
   jobCounter: 0,
+  layerSeq: 0,
   activeJob: null,
   exports: [],         // every export started this session, newest last
   batchId: 0,          // groups exports queued together, for the aggregate bar
@@ -81,11 +82,19 @@ function saveStore() {
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
 
-function newSession(info) {
+/* ── layers ──────────────────────────────────────────────────────────
+   A session is a stack of layers rendered bottom to top, each one treating what
+   the one below actually produced. One layer is the overwhelmingly common case
+   and behaves exactly as it always did.
+
+   The per-layer fields are reachable as `state.presetId`, `state.seed` and so
+   on: they are accessors onto whichever layer is selected. That is deliberate -
+   every existing call site (rendering knobs, saving a custom, naming an export)
+   keeps working untouched, and only the code that genuinely cares about the
+   stack has to know it exists. */
+function newLayer(overrides = {}) {
   return {
-    id: `s${++G.seq}`,
-    file: info,
-    audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
+    lid: `L${++G.layerSeq}`,
     presetId: null,
     customId: null,      // set when the pick came from a saved custom aesthetic
     variant: null,
@@ -93,11 +102,43 @@ function newSession(info) {
     seed: 1 + Math.floor(Math.random() * 99999),
     intensity: 1.0,
     texture: 1.0,
+    enabled: true,
+    ...overrides,
+  };
+}
+
+const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'seed', 'intensity', 'texture'];
+
+function newSession(info) {
+  const sess = {
+    id: `s${++G.seq}`,
+    file: info,
+    audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
+    layers: [newLayer()],
+    activeLayer: 0,
     previewT: Math.max((info.duration - G.duration) / 2, 0),
     treatedSrc: null,
     originalSrc: null,
     originalT: null,
   };
+  for (const key of LAYER_FIELDS) {
+    Object.defineProperty(sess, key, {
+      get() { return (this.layers[this.activeLayer] || this.layers[0])[key]; },
+      set(v) { (this.layers[this.activeLayer] || this.layers[0])[key] = v; },
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return sess;
+}
+
+/* Layers actually worth rendering, bottom first. */
+function liveLayers(sess) {
+  return (sess.layers || []).filter((l) => l.enabled && l.presetId);
+}
+
+function activeLayer(sess = state) {
+  return sess.layers[sess.activeLayer] || sess.layers[0];
 }
 
 /* The active session, or a blank stand-in before the first video is loaded so
@@ -1610,14 +1651,28 @@ let previewTimer = null;
    twiddle. `delayMs` overrides the wait: keyboard navigation passes a longer one
    so running down the list does not start a render per row. */
 function schedulePreview(immediate = false, delayMs = null) {
-  if (!state.file || !state.presetId) return;
+  if (!state.file || !liveLayers(state).length) return;
   if (!G.autoPreview && !immediate) return;
   clearTimeout(previewTimer);
   previewTimer = setTimeout(runPreview, delayMs != null ? delayMs : (immediate ? 40 : 550));
 }
 
+/* The stack as the engine wants it: bottom layer first, disabled ones dropped.
+   Only render-affecting fields, because this is also what the preview cache is
+   keyed on - anything cosmetic in here would cost a re-render for nothing. */
+function layerSpec(sess = state) {
+  return liveLayers(sess).map((l) => ({
+    preset: l.presetId,
+    variant: l.variant || null,
+    sets: l.sets || {},
+    seed: l.seed,
+    intensity: l.intensity,
+    texture: l.texture,
+  }));
+}
+
 async function runPreview() {
-  if (!state.file || !state.presetId) return;
+  if (!state.file || !liveLayers(state).length) return;
   const sess = state;                    // this render belongs to THIS tab
   const jobId = `job${++G.jobCounter}`;
   G.activeJob = jobId;
@@ -1625,6 +1680,7 @@ async function runPreview() {
   const req = {
     jobId,
     input: state.file.path,
+    layers: layerSpec(),
     presetId: state.presetId,
     variant: state.variant,
     sets: state.sets,
@@ -2003,11 +2059,12 @@ function batchProgress() {
 
 async function doExport() {
   const sess = activeSession();
-  if (!sess || !sess.file || !sess.presetId) return;
+  if (!sess || !sess.file || !liveLayers(sess).length) return;
 
   // Freeze everything now: the save dialog is modal, but the export outlives it.
   const req = {
     input: sess.file.path,
+    layers: layerSpec(sess),
     presetId: sess.presetId,
     variant: sess.variant,
     sets: { ...sess.sets },

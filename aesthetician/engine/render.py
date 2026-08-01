@@ -135,6 +135,87 @@ def _compose_src_map(chain: list[Effect], ctx: Context, n_frames: int) -> np.nda
     return idx
 
 
+@dataclass
+class Layer:
+    """One preset in a stack, with the knobs that belong to it alone."""
+    preset: Preset
+    variant: Optional[str] = None
+    video_overrides: dict[str, Any] = field(default_factory=dict)
+    audio_overrides: dict[str, Any] = field(default_factory=dict)
+    seed: int = 1
+    intensity: float = 1.0
+    texture: float = 1.0
+
+
+# Intermediate passes are encoded near-losslessly. The generation loss a stack
+# is meant to show comes from the era simulations themselves - which do their
+# own real codec round-trips - not from us quietly mushing the picture between
+# layers on top of that.
+INTERMEDIATE_CRF = 12
+
+
+def render_layers(
+    input_path: str,
+    output_path: str,
+    layers: list[Layer],
+    opts: RenderOptions,
+    progress: Optional[ProgressCb] = None,
+) -> str:
+    """Render through each layer in turn, feeding each pass into the next.
+
+    Sequential rather than one merged chain, so a stack compounds the way real
+    generations do: layer 2 treats what layer 1 actually produced, including
+    whatever resolution and detail layer 1 threw away. That also settles the era
+    resolution question by construction - the harshest `proc_height` in the
+    stack has already destroyed the detail by the time later layers run, so
+    nothing can put it back.
+
+    The cost is honest: N layers is N encodes and roughly N times the wall clock.
+    """
+    if not layers:
+        raise ValueError("render_layers needs at least one layer")
+
+    # Trimming and preview scaling belong to the first pass only; afterwards the
+    # intermediate already *is* the trimmed, scaled clip.
+    tmp_root = tempfile.mkdtemp(prefix="aesth_stack_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+    total = len(layers)
+    try:
+        current = input_path
+        for i, layer in enumerate(layers):
+            last = i == total - 1
+            step = RenderOptions(
+                seed=layer.seed,
+                intensity=layer.intensity,
+                texture=layer.texture,
+                variant=layer.variant,
+                video_overrides=layer.video_overrides,
+                audio_overrides=layer.audio_overrides,
+                video_only=opts.video_only,
+                audio_only=opts.audio_only,
+                t0=opts.t0 if i == 0 else 0.0,
+                duration=opts.duration if i == 0 else None,
+                scale=opts.scale if i == 0 else 1.0,
+                crf=opts.crf if last else INTERMEDIATE_CRF,
+                keep_temp=opts.keep_temp,
+            )
+            dest = output_path if last else os.path.join(tmp_root, f"layer_{i}.mp4")
+
+            # Each layer owns its slice of the bar, so one climb covers the lot.
+            def scaled(phase: str, frac: float, _i: int = i) -> None:
+                if progress:
+                    progress(f"{phase} {_i + 1}/{total}" if total > 1 else phase,
+                             min((_i + frac) / total, 1.0))
+
+            render(current, dest, layer.preset, step, progress=scaled)
+            current = dest
+        return output_path
+    finally:
+        if opts.keep_temp:
+            print(f"[aesthetician] stack temp kept at {tmp_root}")
+        else:
+            shutil.rmtree(tmp_root, ignore_errors=True)
+
+
 def render(
     input_path: str,
     output_path: str,
