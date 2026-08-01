@@ -160,6 +160,37 @@ If anything is still exporting, the button turns red and says **Finish exports
 first**, and the export panel opens. Let the renders finish, or stop them, and
 the update goes through. See [updates.md](updates.md) for the details.
 
+## Stacking aesthetics as layers
+
+One aesthetic is the usual case and behaves exactly as it always has. When you
+want two, the row you are hovering grows a green **+**: click it to add that
+aesthetic as another layer on top. **+** or **=** on the keyboard does the same
+to whichever row is highlighted, so search-and-stack never needs the mouse.
+
+Arrowing and clicking still *swap* the selected layer rather than adding to it -
+that is what keeps ↑/↓ usable for auditioning a whole family against the rest of
+your stack. **Enter** commits the highlighted aesthetic on its own, dropping
+everything else.
+
+With more than one layer a **Layers** panel appears above the knobs:
+
+- rows are in **processing order**, top of the list rendered first;
+- the **checkbox** takes a layer out of the render without losing its settings;
+- **drag by the grip** to change the order effects are applied in;
+- **×** removes a layer (removing the last one leaves an empty slot for your
+  next pick);
+- clicking a row selects it, and everything below - variant, Intensity, Texture,
+  seed and every knob - belongs to **that layer alone**.
+
+The same aesthetic can be stacked on itself. Two passes of the same tape is a
+real thing, and so is a second helping of grain.
+
+Layers render **in sequence**: layer 2 treats what layer 1 actually produced,
+including whatever resolution and detail layer 1 threw away. That is what makes
+a stack compound the way real generations do - and it means each layer is a full
+render pass, so a three-layer export takes roughly three times as long. The
+panel says so once you reach three.
+
 ## Saving your own aesthetics
 
 Once you have a preset dialled in - knobs moved, intensity and texture set,

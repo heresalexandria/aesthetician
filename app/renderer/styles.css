@@ -762,3 +762,60 @@ body.audio-session #player-wrap::before {
 }
 body.audio-session #player-empty { z-index: 1; }
 body.audio-session #btn-ab { position: relative; }
+
+/* ── layers ───────────────────────────────── */
+#layers-panel { border-bottom: 1px solid var(--line); padding: 9px 12px 10px; }
+.lp-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.lp-title { font-size: 10px; letter-spacing: 2px; font-weight: 700; color: var(--dim); }
+#lp-hint { font-size: 10.5px; }
+#layers-list { display: flex; flex-direction: column; gap: 4px; }
+
+.layer-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid transparent;
+  font-size: 11.5px; cursor: pointer;
+}
+.layer-row:hover { border-color: var(--line2); }
+/* The selected layer is the one whose knobs fill the rest of the pane. */
+.layer-row.sel { border-color: var(--accent-dim); background: var(--accent-soft); }
+.layer-row.off .l-name, .layer-row.off .l-sub { opacity: .42; text-decoration: line-through; }
+.layer-row.drag-over { border-color: var(--accent2); }
+.layer-row.dragging { opacity: .4; }
+
+.l-grip {
+  cursor: grab; color: var(--dim); flex: 0 0 auto; letter-spacing: -1px;
+  font-size: 13px; line-height: 1; padding: 0 1px;
+}
+.l-grip:active { cursor: grabbing; }
+.l-check { flex: 0 0 auto; accent-color: var(--accent); }
+.l-num {
+  flex: 0 0 auto; min-width: 15px; text-align: center;
+  font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums;
+}
+.l-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.l-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-sub { font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-drop {
+  flex: 0 0 auto; border: none; background: none; color: var(--dim);
+  font-size: 15px; line-height: 1; padding: 0 3px; cursor: pointer;
+}
+.l-drop:hover { color: var(--danger); }
+
+#lp-warn {
+  margin-top: 8px; padding: 7px 9px; border-radius: 7px;
+  background: rgba(240,106,114,.10); border: 1px solid rgba(240,106,114,.35);
+  color: #f0a6aa; font-size: 10.5px; line-height: 1.45;
+}
+
+/* The green + on a preset row: only once something is already applied, because
+   until then there is no stack to add to. */
+.card-add {
+  position: absolute; top: 6px; right: 30px;
+  display: none; align-items: center; justify-content: center;
+  width: 19px; height: 19px; border-radius: 50%;
+  border: 1px solid rgba(109,219,160,.5); background: rgba(109,219,160,.14);
+  color: #6ddba0; font-size: 14px; line-height: 1; padding: 0; cursor: pointer;
+}
+body.has-layers .preset-card:hover .card-add { display: flex; }
+.card-add:hover { background: rgba(109,219,160,.3); border-color: #6ddba0; }
