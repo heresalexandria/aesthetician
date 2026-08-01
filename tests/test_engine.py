@@ -225,6 +225,26 @@ def test_phased_progress_never_walks_backwards():
     _PhasedProgress(None, _phase_weights(True, True))("video", 0.5)
 
 
+def test_source_counts_match_the_registry():
+    """The packaging check counts effects and presets by parsing the source.
+
+    It has to, because it runs on a build host with no engine installed - but
+    that only works while the parse agrees with what import-time registration
+    actually produces. If someone registers a preset inside a loop or behind a
+    conditional, the packaging build starts failing at the very end of a release
+    with a confusing message. Catch the divergence here instead.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from aesthetician.engine.graph import all_effects
+    from aesthetician.engine.presets import all_presets
+    from scripts.package.build_runtime import source_counts
+
+    assert source_counts() == (len(all_effects()), len(all_presets())), (
+        f"source scan says {source_counts()} but the registry has "
+        f"{len(all_effects())} effects / {len(all_presets())} presets"
+    )
+
+
 def test_segmenting():
     tone = get_effect("tone")()
     fade = get_effect("fade")()

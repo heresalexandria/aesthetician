@@ -11,12 +11,13 @@ The result lands in `.cache/package/pyruntime/<target>/` and is mirrored into
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import shutil
 import subprocess
-import tempfile
 import sys
+import tempfile
 from pathlib import Path
 
 from .common import (
@@ -315,9 +316,44 @@ def assert_bundled_engine(python: str | Path, root: Path, root_env: dict[str, st
     return version
 
 
+def source_counts() -> tuple[int, int]:
+    """How many effects and presets the source tree declares.
+
+    Counted by parsing rather than importing: this runs on the build host, which
+    has no obligation to have the engine or numpy/scipy/OpenCV installed. The
+    registrations are plain, unconditional module-level declarations - a
+    `@register`-decorated class per effect, a `register_preset(...)` call per
+    preset - so the AST is an exact count, not an estimate.
+    """
+    def scan(pkg: str, pred) -> int:
+        total = 0
+        for path in (REPO_ROOT / "aesthetician" / pkg).rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            total += sum(1 for node in ast.walk(ast.parse(path.read_text())) if pred(node))
+        return total
+
+    def is_effect(node) -> bool:
+        if not isinstance(node, ast.ClassDef):
+            return False
+        return any(getattr(d.func if isinstance(d, ast.Call) else d, "id", "") == "register"
+                   for d in node.decorator_list)
+
+    def is_preset(node) -> bool:
+        return isinstance(node, ast.Call) and getattr(node.func, "id", "") == "register_preset"
+
+    return scan("effects", is_effect), scan("presets", is_preset)
+
+
 def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | None,
-           expect: tuple[int, int] = (103, 191)) -> str:
-    """Run the bundled interpreter and confirm dynamic discovery still works."""
+           expect: tuple[int, int] | None = None) -> str:
+    """Run the bundled interpreter and confirm dynamic discovery still works.
+
+    The bundle has to find exactly what the source declares. Comparing against
+    the source rather than a number written down here is the point: the counts
+    move every time a preset lands, and a hardcoded pair turns "someone added a
+    preset" into a failed release build - which is precisely what it did.
+    """
     native = is_native(target)
     launcher: list[str] | None = None
     if not native:
@@ -346,10 +382,12 @@ def verify(target: Target, root: Path, ffmpeg_dir: Path | None, assets: Path | N
         env["AESTHETICIAN_ASSETS"] = str(assets)
     version = assert_bundled_engine(root / target.python_rel, root, env, launcher)
     n_eff, n_pre = engine_counts(root / target.python_rel, env, launcher)
-    if (n_eff, n_pre) != expect:
+    want = expect if expect is not None else source_counts()
+    if (n_eff, n_pre) != want:
         raise SystemExit(
             f"{target.key}: bundled runtime reports {n_eff} effects / {n_pre} presets, "
-            f"expected {expect[0]}/{expect[1]} - dynamic module discovery is broken"
+            f"but the source declares {want[0]}/{want[1]} - either dynamic module "
+            "discovery is broken or the prune step removed something it should not have"
         )
     how = "native" if native else "under Rosetta"
     return f"v{version}, {n_eff} effects, {n_pre} presets ({how})"
