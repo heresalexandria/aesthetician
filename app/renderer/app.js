@@ -14,6 +14,7 @@ const G = {
   activeId: null,
   seq: 0,
   jobCounter: 0,
+  layerSeq: 0,
   activeJob: null,
   exports: [],         // every export started this session, newest last
   batchId: 0,          // groups exports queued together, for the aggregate bar
@@ -81,11 +82,19 @@ function saveStore() {
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
 
-function newSession(info) {
+/* ── layers ──────────────────────────────────────────────────────────
+   A session is a stack of layers rendered bottom to top, each one treating what
+   the one below actually produced. One layer is the overwhelmingly common case
+   and behaves exactly as it always did.
+
+   The per-layer fields are reachable as `state.presetId`, `state.seed` and so
+   on: they are accessors onto whichever layer is selected. That is deliberate -
+   every existing call site (rendering knobs, saving a custom, naming an export)
+   keeps working untouched, and only the code that genuinely cares about the
+   stack has to know it exists. */
+function newLayer(overrides = {}) {
   return {
-    id: `s${++G.seq}`,
-    file: info,
-    audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
+    lid: `L${++G.layerSeq}`,
     presetId: null,
     customId: null,      // set when the pick came from a saved custom aesthetic
     variant: null,
@@ -93,11 +102,43 @@ function newSession(info) {
     seed: 1 + Math.floor(Math.random() * 99999),
     intensity: 1.0,
     texture: 1.0,
+    enabled: true,
+    ...overrides,
+  };
+}
+
+const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'seed', 'intensity', 'texture'];
+
+function newSession(info) {
+  const sess = {
+    id: `s${++G.seq}`,
+    file: info,
+    audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
+    layers: [newLayer()],
+    activeLayer: 0,
     previewT: Math.max((info.duration - G.duration) / 2, 0),
     treatedSrc: null,
     originalSrc: null,
     originalT: null,
   };
+  for (const key of LAYER_FIELDS) {
+    Object.defineProperty(sess, key, {
+      get() { return (this.layers[this.activeLayer] || this.layers[0])[key]; },
+      set(v) { (this.layers[this.activeLayer] || this.layers[0])[key] = v; },
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return sess;
+}
+
+/* Layers actually worth rendering, bottom first. */
+function liveLayers(sess) {
+  return (sess.layers || []).filter((l) => l.enabled && l.presetId);
+}
+
+function activeLayer(sess = state) {
+  return sess.layers[sess.activeLayer] || sess.layers[0];
 }
 
 /* The active session, or a blank stand-in before the first video is loaded so
@@ -225,15 +266,8 @@ function activateSession(id) {
   renderTabs();
   buildFilterBar();   // chip order follows famRank, which flips for audio sources
   buildPresetList();
-  if (sess.presetId) buildParamPane();
-  else {
-    $('preset-title').textContent = '-';
-    $('preset-sub').textContent = '';
-    $('btn-fav').classList.add('hidden');
-    $('override-row').classList.add('hidden');
-    $('variant-row').innerHTML = '';
-    $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
-  }
+  buildLayersPanel();
+  buildParamPane();
 
   // Restore this tab's already-rendered preview if it has one; the files live in
   // the preview cache, so switching back is instant and costs no re-render.
@@ -554,6 +588,7 @@ async function saveCustom() {
   buildFilterBar();
   buildPresetList();
   buildParamPane();
+  buildLayersPanel();
   renderTabs();
   setExportStatus(`Saved “${name}”.`);
 }
@@ -572,6 +607,7 @@ function applyCustom(cid, opts = {}) {
   syncSelection();
   renderTabs();
   buildParamPane();
+  buildLayersPanel();
   schedulePreview(true, opts.previewDelay);
 }
 
@@ -1140,6 +1176,18 @@ function thumbFor(p) {
   return holder;
 }
 
+/* Stacking is deliberate: the row itself still swaps the selected layer, and
+   only this button (or +/=) adds another. Otherwise arrowing down the list
+   would build a twenty-layer stack in a second of key repeat. */
+function addLayerButton(id) {
+  const add = document.createElement('button');
+  add.className = 'card-add';
+  add.textContent = '+';
+  add.title = 'Add as another layer on top';
+  add.onclick = (e) => { e.stopPropagation(); addLayer(id); };
+  return add;
+}
+
 function presetCard(p) {
   const card = document.createElement('div');
   card.className = 'preset-card' + (p.id === selectionId() ? ' sel' : '');
@@ -1175,6 +1223,8 @@ function presetCard(p) {
   star.title = G.favs.has(p.id) ? 'Remove from favorites' : 'Favorite this aesthetic';
   star.onclick = (e) => { e.stopPropagation(); toggleFav(p.id); };
   card.appendChild(star);
+
+  card.appendChild(addLayerButton(p.id));
 
   const t = G.thumbs[p.id];
   if (t && t.anim && !isAudioOnly(p)) armHoverAnim(card, holder, t.anim);
@@ -1230,6 +1280,7 @@ function customCard(c) {
   tools.appendChild(del);
   card.appendChild(tools);
 
+  card.appendChild(addLayerButton(c.id));
   card.onclick = () => applyCustom(c.id);
   return card;
 }
@@ -1348,6 +1399,204 @@ function buildPresetList() {
   }
 }
 
+/* ── layers panel ────────────────────────────────────────────────────
+   One row per layer in processing order, top of the list rendered first. The
+   selected row is the one whose knobs fill the rest of the pane, which is what
+   makes this an accordion without needing N copies of the parameter UI. */
+function layerLabel(l) {
+  if (!l.presetId) return 'Empty layer';
+  if (l.customId) return customName(l.customId);
+  const p = G.schema && G.schema.presets[l.presetId];
+  return p ? p.name : l.presetId;
+}
+
+function layerSub(l) {
+  const bits = [];
+  if (l.variant) bits.push(l.variant);
+  const n = Object.keys(l.sets || {}).length;
+  if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
+  if (l.intensity !== 1) bits.push(`int ${l.intensity.toFixed(2)}`);
+  if (l.texture !== 1) bits.push(`tex ${l.texture.toFixed(2)}`);
+  return bits.join(' · ');
+}
+
+function buildLayersPanel() {
+  const panel = $('layers-panel');
+  const list = $('layers-list');
+  const layers = state.layers || [];
+  const many = layers.length > 1;
+  // With one layer this is just noise - the pane below already names it.
+  panel.classList.toggle('hidden', !many);
+  document.body.classList.toggle('has-layers', liveLayers(state).length > 0);
+  if (!many) return;
+
+  const live = liveLayers(state).length;
+  $('lp-hint').textContent = `${live} of ${layers.length} rendering, in order`;
+  list.innerHTML = '';
+
+  layers.forEach((l, i) => {
+    const row = document.createElement('div');
+    row.className = 'layer-row'
+      + (i === state.activeLayer ? ' sel' : '')
+      + (l.enabled ? '' : ' off');
+    row.draggable = true;
+    row.dataset.lid = l.lid;
+
+    const grip = document.createElement('span');
+    grip.className = 'l-grip';
+    grip.textContent = '⣿';
+    grip.title = 'Drag to change the order effects are applied in';
+    row.appendChild(grip);
+
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'l-check';
+    check.checked = l.enabled;
+    check.title = l.enabled ? 'Skip this layer' : 'Include this layer';
+    check.onclick = (e) => {
+      e.stopPropagation();
+      l.enabled = check.checked;
+      buildLayersPanel();
+      schedulePreview();
+    };
+    row.appendChild(check);
+
+    const num = document.createElement('span');
+    num.className = 'l-num';
+    num.textContent = String(i + 1);
+    row.appendChild(num);
+
+    const text = document.createElement('div');
+    text.className = 'l-text';
+    const name = document.createElement('span');
+    name.className = 'l-name';
+    name.textContent = layerLabel(l);
+    text.appendChild(name);
+    const sub = layerSub(l);
+    if (sub) {
+      const s = document.createElement('span');
+      s.className = 'l-sub';
+      s.textContent = sub;
+      text.appendChild(s);
+    }
+    row.appendChild(text);
+
+    const drop = document.createElement('button');
+    drop.className = 'l-drop';
+    drop.textContent = '×';
+    drop.title = 'Remove this layer';
+    drop.onclick = (e) => { e.stopPropagation(); removeLayer(i); };
+    row.appendChild(drop);
+
+    row.onclick = () => selectLayer(i);
+    wireLayerDrag(row, i);
+    list.appendChild(row);
+  });
+
+  // Each layer is a full encode, so a deep stack is worth warning about before
+  // someone starts a feature-length export and wonders why it never ends.
+  const warn = $('lp-warn');
+  const slow = live >= 3;
+  warn.classList.toggle('hidden', !slow);
+  if (slow) {
+    warn.textContent = `${live} layers means ${live} full render passes - `
+      + 'exports take roughly that many times as long.';
+  }
+}
+
+let dragFrom = -1;
+
+function wireLayerDrag(row, index) {
+  row.addEventListener('dragstart', (e) => {
+    dragFrom = index;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    // Firefox and Chromium both want *something* set or the drag never starts.
+    try { e.dataTransfer.setData('text/plain', String(index)); } catch (_) {}
+  });
+  row.addEventListener('dragend', () => {
+    row.classList.remove('dragging');
+    for (const r of $('layers-list').children) r.classList.remove('drag-over');
+  });
+  row.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+  row.addEventListener('drop', (e) => {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    if (dragFrom < 0 || dragFrom === index) return;
+    moveLayer(dragFrom, index);
+    dragFrom = -1;
+  });
+}
+
+function moveLayer(from, to) {
+  const layers = state.layers;
+  if (from < 0 || to < 0 || from >= layers.length || to >= layers.length) return;
+  const [moved] = layers.splice(from, 1);
+  layers.splice(to, 0, moved);
+  // Keep the selection on the layer the user was holding, wherever it landed.
+  state.activeLayer = to;
+  buildLayersPanel();
+  buildParamPane();
+  schedulePreview();
+}
+
+function selectLayer(i) {
+  if (i === state.activeLayer) return;
+  state.activeLayer = i;
+  buildLayersPanel();
+  buildParamPane();
+  syncSelection();
+  renderTabs();
+}
+
+function removeLayer(i) {
+  const layers = state.layers;
+  if (layers.length <= 1) {
+    // The last one becomes empty rather than vanishing: a session always has a
+    // layer to put the next pick into.
+    layers[0] = newLayer();
+    state.activeLayer = 0;
+  } else {
+    layers.splice(i, 1);
+    state.activeLayer = Math.min(state.activeLayer, layers.length - 1);
+  }
+  buildLayersPanel();
+  buildParamPane();
+  syncSelection();
+  renderTabs();
+  schedulePreview();
+}
+
+/* Append `pid` as a new layer on top and select it. The same aesthetic can be
+   stacked on itself - two passes of the same tape is a real thing. */
+function addLayer(pid, opts = {}) {
+  if (!pid) return;
+  const custom = isCustomId(pid) ? customById(pid) : null;
+  state.layers.push(newLayer(custom
+    ? { presetId: custom.base, customId: custom.id, variant: custom.variant || null,
+        sets: { ...(custom.sets || {}) } }
+    : { presetId: pid }));
+  state.activeLayer = state.layers.length - 1;
+  buildLayersPanel();
+  buildParamPane();
+  syncSelection();
+  renderTabs();
+  schedulePreview(true, opts.previewDelay);
+}
+
+/* Collapse the stack to this one aesthetic - what Enter does while arrowing. */
+function applyOnly(id) {
+  state.layers = [newLayer()];
+  state.activeLayer = 0;
+  selectById(id);
+  buildLayersPanel();
+}
+
 function selectPreset(pid, opts = {}) {
   state.presetId = pid;
   state.customId = null;   // picking a stock preset leaves any custom behind
@@ -1356,6 +1605,7 @@ function selectPreset(pid, opts = {}) {
   syncSelection();       // the rows themselves have not changed, only which one is lit
   renderTabs();          // the tab shows which aesthetic the clip is wearing
   buildParamPane();
+  buildLayersPanel();
   schedulePreview(true, opts.previewDelay);
 }
 
@@ -1411,7 +1661,22 @@ function variantOverrides() {
   return v ? { ...v.video, ...v.audio } : {};
 }
 
+function clearParamPane() {
+  $('preset-title').textContent = '-';
+  $('preset-sub').textContent = '';
+  $('btn-fav').classList.add('hidden');
+  $('btn-save-custom').classList.add('hidden');
+  $('override-row').classList.add('hidden');
+  $('variant-row').innerHTML = '';
+  $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
+}
+
 function buildParamPane() {
+  // A layer can be emptied - remove the last one and it stays as an empty slot
+  // waiting for the next pick - so this is reachable with nothing selected.
+  if (!state.presetId || !G.schema.presets[state.presetId]) { clearParamPane(); return; }
+  // The dials belong to the selected layer, so they move with it.
+  syncMasterDials();
   const p = G.schema.presets[state.presetId];
   const c = state.customId ? customById(state.customId) : null;
   $('preset-title').textContent = c ? c.name : p.name;
@@ -1610,14 +1875,28 @@ let previewTimer = null;
    twiddle. `delayMs` overrides the wait: keyboard navigation passes a longer one
    so running down the list does not start a render per row. */
 function schedulePreview(immediate = false, delayMs = null) {
-  if (!state.file || !state.presetId) return;
+  if (!state.file || !liveLayers(state).length) return;
   if (!G.autoPreview && !immediate) return;
   clearTimeout(previewTimer);
   previewTimer = setTimeout(runPreview, delayMs != null ? delayMs : (immediate ? 40 : 550));
 }
 
+/* The stack as the engine wants it: bottom layer first, disabled ones dropped.
+   Only render-affecting fields, because this is also what the preview cache is
+   keyed on - anything cosmetic in here would cost a re-render for nothing. */
+function layerSpec(sess = state) {
+  return liveLayers(sess).map((l) => ({
+    preset: l.presetId,
+    variant: l.variant || null,
+    sets: l.sets || {},
+    seed: l.seed,
+    intensity: l.intensity,
+    texture: l.texture,
+  }));
+}
+
 async function runPreview() {
-  if (!state.file || !state.presetId) return;
+  if (!state.file || !liveLayers(state).length) return;
   const sess = state;                    // this render belongs to THIS tab
   const jobId = `job${++G.jobCounter}`;
   G.activeJob = jobId;
@@ -1625,6 +1904,7 @@ async function runPreview() {
   const req = {
     jobId,
     input: state.file.path,
+    layers: layerSpec(),
     presetId: state.presetId,
     variant: state.variant,
     sets: state.sets,
@@ -1752,6 +2032,22 @@ function wireShortcuts() {
       e.preventDefault();
       navPreset(e.code === 'ArrowDown' ? 1 : -1);
       return;
+    }
+    /* Enter commits the highlighted aesthetic on its own, dropping any stack;
+       + / = appends it as another layer. Both work from the search box, so a
+       search-and-stack never needs the mouse. */
+    if (G.activeId && selectionId()
+        && (!typingTarget(e) || e.target === $('preset-search'))) {
+      if (e.code === 'Enter' && !meta) {
+        e.preventDefault();
+        applyOnly(selectionId());
+        return;
+      }
+      if ((e.key === '+' || e.key === '=') && !meta && liveLayers(state).length) {
+        e.preventDefault();
+        addLayer(selectionId());
+        return;
+      }
     }
     if (typingTarget(e)) return;
     if (meta && e.code === 'KeyE') {
@@ -2003,11 +2299,12 @@ function batchProgress() {
 
 async function doExport() {
   const sess = activeSession();
-  if (!sess || !sess.file || !sess.presetId) return;
+  if (!sess || !sess.file || !liveLayers(sess).length) return;
 
   // Freeze everything now: the save dialog is modal, but the export outlives it.
   const req = {
     input: sess.file.path,
+    layers: layerSpec(sess),
     presetId: sess.presetId,
     variant: sess.variant,
     sets: { ...sess.sets },

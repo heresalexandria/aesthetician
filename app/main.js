@@ -54,6 +54,30 @@ function childEnv() {
 
 const CHILD_OPTS = () => ({ cwd: PACKAGED ? RES : REPO_ROOT, env: childEnv() });
 const CACHE_DIR = path.join(app.getPath('userData'), 'preview-cache');
+// Layer specs are scratch handed to the CLI, not previews - keep them out of
+// the cache the footer reports and the Clear button empties.
+const LAYER_SPEC_DIR = path.join(app.getPath('temp'), 'aesthetician-layers');
+
+/* Specs are unlinked as soon as their render settles, but a crash or a kill
+   mid-render leaves one behind. Sweep the stale ones on the way in rather than
+   letting them accumulate across a bad week. */
+function sweepLayerSpecs() {
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  let files = [];
+  try { files = fs.readdirSync(LAYER_SPEC_DIR); } catch (_) { return; }
+  for (const f of files) {
+    const full = path.join(LAYER_SPEC_DIR, f);
+    try {
+      if (fs.statSync(full).mtimeMs < cutoff) fs.unlinkSync(full);
+    } catch (_) { /* vanished, or in use */ }
+  }
+}
+
+function dropLayerSpec(req) {
+  if (req && req._layerSpec) {
+    try { fs.unlinkSync(req._layerSpec); } catch (_) { /* already gone */ }
+  }
+}
 
 let win = null;
 let previewProc = null; // superseded previews get killed
@@ -82,17 +106,35 @@ function runCapture(args, { timeoutMs = 60000 } = {}) {
 
 function renderArgs(req, outputPath) {
   const args = ['-m', 'aesthetician.cli', 'apply', req.input, '-o', outputPath,
-    '-p', req.presetId, '--json-progress', '--seed', String(req.seed ?? 1),
-    '--intensity', String(req.intensity ?? 1.0),
-    '--texture', String(req.texture ?? 1.0)];
-  if (req.variant) args.push('--variant', req.variant);
+    '--json-progress'];
+
+  // A stack carries its own per-layer seed, intensity, texture, variant and
+  // overrides, so none of the single-preset flags apply to it. Written to a
+  // file rather than passed inline: Windows caps a command line at 32k and a
+  // deep stack of overrides can get close.
+  if (Array.isArray(req.layers) && req.layers.length) {
+    fs.mkdirSync(LAYER_SPEC_DIR, { recursive: true });
+    const spec = path.join(LAYER_SPEC_DIR, `${req.jobId || 'job'}-${process.hrtime.bigint()}.json`);
+    fs.writeFileSync(spec, JSON.stringify(req.layers));
+    args.push('--layers', `@${spec}`);
+    req._layerSpec = spec;
+  } else {
+    args.push('-p', req.presetId,
+      '--seed', String(req.seed ?? 1),
+      '--intensity', String(req.intensity ?? 1.0),
+      '--texture', String(req.texture ?? 1.0));
+    if (req.variant) args.push('--variant', req.variant);
+  }
+
   if (req.videoOnly) args.push('--video-only');
   if (req.audioOnly) args.push('--audio-only');
   if (req.start != null) args.push('--start', String(req.start));
   if (req.duration != null) args.push('--duration', String(req.duration));
   if (req.scale != null) args.push('--scale', String(req.scale));
   if (req.crf != null) args.push('--crf', String(req.crf));
-  for (const [k, v] of Object.entries(req.sets || {})) args.push('--set', `${k}=${v}`);
+  if (!(Array.isArray(req.layers) && req.layers.length)) {
+    for (const [k, v] of Object.entries(req.sets || {})) args.push('--set', `${k}=${v}`);
+  }
   return args;
 }
 
@@ -151,6 +193,7 @@ function argValue(flag) {
 
 app.whenReady().then(() => {
   ensureCacheDir();
+  sweepLayerSpecs();
   if (SMOKE) runSmoke();
   if (SHOT) runShot();
   const iconPng = path.join(__dirname, 'renderer', 'icon.png');
@@ -293,7 +336,11 @@ ipcMain.handle('aesth:preview', async (e, req) => {
   if (fs.existsSync(output)) return { output, cached: true };
   if (previewProc) { try { previewProc.kill('SIGKILL'); } catch (_) {} previewProc = null; }
   const args = renderArgs(req, output + '.part' + ext);
-  await spawnRender(args, req.jobId, e.sender, 'preview');
+  try {
+    await spawnRender(args, req.jobId, e.sender, 'preview');
+  } finally {
+    dropLayerSpec(req);
+  }
   fs.renameSync(output + '.part' + ext, output);
   return { output, cached: false };
 });
@@ -334,7 +381,11 @@ ipcMain.handle('aesth:pick-export-path', async (_e, suggestion, audioOnly = fals
 
 ipcMain.handle('aesth:export', async (e, req) => {
   const args = renderArgs(req, req.output);
-  await spawnRender(args, req.jobId, e.sender, 'export', req.output);
+  try {
+    await spawnRender(args, req.jobId, e.sender, 'export', req.output);
+  } finally {
+    dropLayerSpec(req);
+  }
   return { output: req.output };
 });
 
