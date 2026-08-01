@@ -1,0 +1,141 @@
+name: Build check
+
+# Packaging a desktop build only really gets exercised during a release, which
+# is a terrible time to discover it is broken - the version has already been
+# bumped by then. This runs the same packaging job with no release attached, so
+# a target can be debugged on a branch.
+#
+# Push to any `ci/**` branch to run it, or start it by hand from the Actions tab.
+
+on:
+  push:
+    branches: ['ci/**']
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which target to package
+        type: choice
+        options: [win-x64, mac-arm64, mac-x64, all]
+        default: win-x64
+      assets:
+        description: Include the asset packs (slower, but what a release does)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASSETS_TAG: ${{ vars.ASSETS_RELEASE_TAG || 'assets-v1' }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.pick.outputs.targets }}
+    steps:
+      - id: pick
+        env:
+          CHOICE: ${{ inputs.target }}
+        run: |
+          # A push to ci/** defaults to Windows, which is the one that needs it.
+          case "${CHOICE:-win-x64}" in
+            all) echo 'targets=["win-x64","mac-arm64","mac-x64"]' >> "$GITHUB_OUTPUT" ;;
+            *)   echo "targets=[\"${CHOICE:-win-x64}\"]" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    needs: plan
+    name: package ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    runs-on: >-
+      ${{ matrix.target == 'win-x64' && 'windows-2022'
+       || matrix.target == 'mac-x64' && 'macos-15-intel'
+       || 'macos-15' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache the bundled runtime and ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: .cache/package
+          key: pkg-${{ matrix.target }}-${{ hashFiles('scripts/package/targets.py', 'pyproject.toml') }}
+          restore-keys: pkg-${{ matrix.target }}-
+
+      # On a push there are no inputs, and GitHub coerces the missing one to
+      # false - so say what a push should do rather than inheriting that.
+      # Skipping the packs makes iteration much faster but leaves the staging
+      # path (hardlinks, symlinks) untested, so a final run before merging
+      # should include them.
+      - name: Fetch the asset packs
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.assets || contains(github.event.head_commit.message, '[assets]') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p assets
+          if gh release download "$ASSETS_TAG" --repo "${{ github.repository }}" \
+               --pattern 'aesthetician-assets.tar.gz' --dir . ; then
+            tar -xzf aesthetician-assets.tar.gz -C assets
+            rm -f aesthetician-assets.tar.gz
+            echo "WITH_ASSETS=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::no asset bundle on '$ASSETS_TAG' - building with --no-assets"
+            echo "ASSET_FLAG=--no-assets" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install the app's dev dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: Package
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # Belt to the braces in scripts/package/common.py: the runners' console
+          # codepage is cp1252 and these scripts print box drawing and arrows.
+          PYTHONUTF8: '1'
+        run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
+
+      - name: What came out
+        shell: bash
+        run: |
+          ls -lh app/dist || true
+          mkdir -p out-dist
+          find app/dist -maxdepth 1 -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*setup.exe' \) \
+            -exec cp {} out-dist/ \;
+          ls -lh out-dist
+
+      # A packaged app that cannot find its own engine is not a build worth
+      # keeping, and that only shows up when you run it.
+      - name: Does the packaged app actually run
+        if: matrix.target == 'win-x64'
+        shell: bash
+        run: |
+          exe=$(find app/dist -name 'Aesthetician.exe' -path '*win-unpacked*' | head -1)
+          if [ -z "$exe" ]; then echo "::error::no unpacked Aesthetician.exe to test"; exit 1; fi
+          echo "smoke testing $exe"
+          "$exe" --smoke
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-check-${{ matrix.target }}
+          path: out-dist/*
+          retention-days: 3
+          if-no-files-found: error

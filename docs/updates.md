@@ -55,7 +55,14 @@ the app quits, so a copy in a folder you do not own fails with a message rather
 than an app that exits and never returns.
 
 Windows re-runs the NSIS installer, visibly rather than silently, and quits so
-the installer can replace files it would otherwise find locked.
+the installer can replace files it would otherwise find locked. The installer is
+per-user (`perMachine: false`), so it needs no elevation, and electron-builder's
+NSIS detects a running copy and offers to close it.
+
+**That Windows path has not been run by hand.** CI proves the installer builds
+and the packaged app starts; nobody has watched an installed copy update itself
+on Windows the way macOS has been watched. Treat it as the least-tested corner
+of this file until someone does.
 
 **Exports block updates.** If anything is still rendering, the update button
 turns red, says `Finish exports first`, and opens the export panel. Killing

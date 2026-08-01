@@ -29,6 +29,28 @@ STAGE_DIR = APP_DIR / "build-resources"
 _T0 = time.time()
 
 
+def _force_utf8_output() -> None:
+    """Make stdout/stderr able to carry the characters we actually print.
+
+    Python on Windows picks the console codepage - cp1252 on the GitHub runners -
+    and these scripts print box drawing, arrows and whatever ffmpeg reports in
+    its version banner. Printing a rule was enough to kill the Windows release
+    build with a UnicodeEncodeError, several minutes in and nowhere near the
+    thing that had gone wrong. `errors="replace"` so a stray byte degrades to a
+    question mark instead of taking the build with it.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        enc = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        if enc not in ("utf8", "utf8mb4") and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass          # a redirected or already-wrapped stream; not fatal
+
+
+_force_utf8_output()
+
+
 def log(msg: str) -> None:
     print(f"[{time.time() - _T0:6.1f}s] {msg}", flush=True)
 
@@ -166,8 +188,16 @@ def mirror(src: Path, dst: Path, *, hardlink: bool = False) -> None:
             if d.exists() or d.is_symlink():
                 d.unlink()
             if s.is_symlink():
-                os.symlink(os.readlink(s), d)
-                continue
+                try:
+                    os.symlink(os.readlink(s), d)
+                    continue
+                except OSError:
+                    # Windows refuses symlinks without developer mode or admin.
+                    # Copying what the link points at is heavier but correct.
+                    if not s.exists():
+                        continue          # dangling link: nothing to copy
+                    shutil.copy2(s, d, follow_symlinks=True)
+                    continue
             if hardlink:
                 try:
                     os.link(s, d)

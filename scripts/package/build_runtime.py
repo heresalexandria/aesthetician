@@ -36,7 +36,7 @@ from .targets import DEPS, PBS_RELEASE, PBS_URL, PY_VERSION, PY_XY, Target, is_n
 
 STAMP = ".aesthetician-runtime.json"
 # Bump when the prune/install recipe changes so cached runtimes are rebuilt.
-RECIPE = 5
+RECIPE = 6
 
 
 # ── pruning ──────────────────────────────────────────────────────────────
@@ -109,7 +109,15 @@ def _prune(root: Path, site: Path, keep_bytecode: bool) -> dict[str, int]:
         drop(stdlib / rel, "stdlib extras")
 
     # Tcl/Tk and the static libpython are pure overhead for a GUI-less engine.
-    for pat in ("libpython*.a", "libtcl*", "libtk*", "tcl*", "tk*", "itcl*", "thread*"):
+    #
+    # The digits in these patterns are load-bearing. Tcl ships version-stamped
+    # package directories (tcl8.6, tk8.6, itcl4.2, thread2.8.9), and a bare
+    # `thread*` also matches `threading.py`. On Windows the stdlib lives at
+    # `Lib/`, which a case-insensitive filesystem happily resolves from `lib/` -
+    # so the loose pattern deleted the stdlib's threading module and the bundled
+    # interpreter then failed to import click, a long way from the real cause.
+    for pat in ("libpython*.a", "libtcl*", "libtk*",
+                "tcl[0-9]*", "tk[0-9]*", "itcl[0-9]*", "thread[0-9]*"):
         for p in (root / "lib").glob(pat):
             drop(p, "tcl/tk + static libs")
     drop(root / "lib" / f"python{PY_XY}" / f"config-{PY_XY}-darwin", "static libs")
@@ -150,6 +158,19 @@ def _prune(root: Path, site: Path, keep_bytecode: bool) -> dict[str, int]:
                 if name == "__pycache__":
                     dirnames.remove(name)
                     drop(Path(dirpath) / name, "__pycache__")
+
+    # A prune that eats a stdlib module does not announce itself: it surfaces
+    # later as an ImportError from some third-party package that happened to
+    # need it. Check the ones our dependency tree pulls in, and name the file.
+    required = ("threading.py", "subprocess.py", "queue.py", "shutil.py",
+                "tempfile.py", "typing.py", "json", "logging", "encodings",
+                "importlib", "ctypes", "multiprocessing", "concurrent")
+    missing = [n for n in required if not (stdlib / n).exists()]
+    if missing:
+        raise SystemExit(
+            f"prune removed stdlib modules from {stdlib}: {', '.join(missing)}\n"
+            "one of the glob patterns in _prune is too loose - see the tcl/tk block"
+        )
 
     return freed
 

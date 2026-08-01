@@ -66,6 +66,46 @@ function test_asset_selection() {
   // An Intel machine must not be handed the Apple-silicon build.
   assert.strictEqual(
     u.assetFor([{ name: 'Aesthetician-0.6.0-mac-arm64.zip' }], 'darwin', 'x64'), null);
+  // ...nor the reverse, and no platform may ever be handed another's format.
+  assert.strictEqual(
+    u.assetFor([{ name: 'Aesthetician-0.6.0-mac-x64.zip' }], 'darwin', 'arm64'), null);
+  assert.strictEqual(
+    u.assetFor([{ name: 'Aesthetician-0.6.0-win-x64-setup.exe' }], 'darwin', 'arm64'), null);
+  assert.strictEqual(
+    u.assetFor([{ name: 'Aesthetician-0.6.0-mac-arm64.zip' },
+                { name: 'Aesthetician-0.6.0-mac-arm64.dmg' }], 'win32', 'x64'), null);
+
+  // Windows on ARM has no build of its own and runs the x64 installer under
+  // emulation - that is a decision, so pin it.
+  assert.strictEqual(u.assetFor(assets, 'win32', 'arm64').name,
+    'Aesthetician-0.6.0-win-x64-setup.exe');
+}
+
+function test_asset_selection_against_a_real_release() {
+  // Exactly what the v0.7.1 release carries, plus the Windows installer the
+  // build is about to start producing. Guards the naming contract between
+  // electron-builder's artifactName and what the updater goes looking for.
+  const real = [
+    { name: 'Aesthetician-0.7.1-mac-arm64.dmg' },
+    { name: 'Aesthetician-0.7.1-mac-arm64.zip' },
+    { name: 'Aesthetician-0.7.1-mac-x64.dmg' },
+    { name: 'Aesthetician-0.7.1-mac-x64.zip' },
+    { name: 'Aesthetician-0.7.1-win-x64-setup.exe' },
+    { name: 'SHA256SUMS.txt' },
+  ];
+  const picks = {
+    'darwin/arm64': 'Aesthetician-0.7.1-mac-arm64.zip',
+    'darwin/x64': 'Aesthetician-0.7.1-mac-x64.zip',
+    'win32/x64': 'Aesthetician-0.7.1-win-x64-setup.exe',
+  };
+  for (const [key, want] of Object.entries(picks)) {
+    const [platform, arch] = key.split('/');
+    const got = u.assetFor(real, platform, arch);
+    assert.ok(got, `${key} found nothing`);
+    assert.strictEqual(got.name, want, `${key} picked ${got.name}`);
+  }
+  // The checksum file is never mistaken for a build.
+  assert.strictEqual(u.assetFor([{ name: 'SHA256SUMS.txt' }], 'win32', 'x64'), null);
 }
 
 function test_allowed_urls() {
@@ -93,6 +133,7 @@ const tests = Object.entries({
   test_parse_version,
   test_is_newer,
   test_asset_selection,
+  test_asset_selection_against_a_real_release,
   test_allowed_urls,
 });
 
