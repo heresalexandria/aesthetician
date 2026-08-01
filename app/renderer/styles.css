@@ -115,12 +115,20 @@ body {
 #btn-exports:hover, #btn-exports.open { color: var(--text); border-color: var(--accent-dim); }
 #btn-exports .ex-ico { width: 13px; height: 13px; flex: 0 0 auto; }
 #btn-exports.busy { color: #cdbcff; border-color: var(--accent-dim); background: var(--accent-soft); }
-#btn-exports.busy .ex-ico { animation: nudge 1.6s ease-in-out infinite; }
 #btn-exports.has-error { color: var(--danger); border-color: rgba(240,106,114,.45); }
-@keyframes nudge {
-  0%, 62%, 100% { transform: translateY(0); }
-  76% { transform: translateY(2px); }
+
+/* While anything is rendering the download arrow gives way to a spinner: a
+   turning ring reads as "still working" from across the room in a way a
+   progress hairline does not. */
+.ex-spin {
+  display: none;
+  width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%;
+  border: 2px solid rgba(205,188,255,.28);
+  border-top-color: #cdbcff;
+  animation: spin 0.75s linear infinite;
 }
+#btn-exports.busy .ex-spin { display: block; }
+#btn-exports.busy .ex-ico { display: none; }
 /* aggregate progress, hairline across the bottom of the pill */
 #exports-mini {
   position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
@@ -130,6 +138,34 @@ body {
   display: block; height: 100%; width: 0%;
   background: var(--grad); transition: width .25s ease;
 }
+
+/* ── toasts ───────────────────────────────── */
+/* Under the titlebar, out from under the exports panel so an export finishing
+   while the queue is open does not cover the queue. */
+#toasts {
+  position: fixed; top: 48px; right: 12px; z-index: 55;
+  display: flex; flex-direction: column; gap: 7px;
+  pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 210px; max-width: 340px;
+  padding: 9px 13px; border-radius: 10px;
+  background: #0b0c14; border: 1px solid var(--line2);
+  box-shadow: 0 10px 30px rgba(0,0,0,.55);
+  font-size: 11.5px; color: var(--text);
+  animation: toast-in .18s ease-out;
+}
+.toast.leaving { animation: toast-out .22s ease-in forwards; }
+.toast::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--accent2);
+}
+.toast.done::before { background: #6ddba0; }
+.toast.error::before { background: var(--danger); }
+.toast .t-sub { color: var(--dim); }
+@keyframes toast-in  { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(-6px); } }
 
 #exports-panel {
   position: fixed; top: 44px; right: 12px; z-index: 40;

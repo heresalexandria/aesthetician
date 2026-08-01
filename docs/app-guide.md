@@ -122,8 +122,10 @@ another export. Each job holds a frozen copy of the settings it was started
 with, so nothing you do afterwards can change what is being written.
 
 A button appears at the **top right** while anything is in flight - `2
-exporting`, with the combined progress as a hairline underneath. Click it for
-the queue:
+exporting`, with a turning spinner in place of its download arrow and the
+combined progress as a hairline underneath. A toast slides in under the title
+bar when a job starts and again when it lands, so you can look away from the
+window and still know where things are. Click the button for the queue:
 
 - one row per export, newest first, with its own progress bar and phase;
 - **×** on a running or waiting job stops it and deletes the partial file;

@@ -32,6 +32,16 @@ const G = {
   customOnly: false,   // the ✎ chip: show saved customs only
 };
 
+/* Update state. Declared up here with G rather than beside the update code:
+   boot() runs while the script is still being parsed, and it paints the version
+   chip first, so a `const` further down the file is still in its dead zone. */
+const U = {
+  info: null,        // { version, packaged, platform, arch, ... }
+  latest: null,      // the last check result
+  busy: '',          // '', 'checking', 'downloading', 'installing'
+  staged: false,     // a verified download is sitting on disk
+};
+
 /* ── small persistence layer (localStorage) ─────────────────────────
    Favorites, collapsed families and the preview knobs survive restarts.
    Everything degrades to defaults if storage is unavailable or stale. */
@@ -101,6 +111,11 @@ const videoB = $('video-b'); // original
 // ── boot ────────────────────────────────────────────────────────────
 (async function boot() {
   loadStore();
+  // Before anything else: the version is a plain read in the main process and
+  // costs nothing, while checkEnv and schema each spawn Python and take about a
+  // second apiece. Painting the chip last meant it sat on "v-" for two seconds
+  // of every launch.
+  await loadVersion();
   const env = await window.aesth.checkEnv();
   if (!env.ok) {
     const w = $('env-warning');
@@ -658,12 +673,6 @@ function closeModal(result) {
    The main process owns the network and the install; this half owns when to
    ask and what to say about it. See app/updater.js for why the app updates
    itself rather than going through electron-updater.                       */
-const U = {
-  info: null,        // { version, packaged, platform, arch, ... }
-  latest: null,      // the last check result
-  busy: '',          // '', 'checking', 'downloading', 'installing'
-  staged: false,     // a verified download is sitting on disk
-};
 
 function setVersionChip() {
   $('btn-version').textContent = U.info ? `v${U.info.version}` : 'v-';
@@ -685,11 +694,16 @@ function syncUpdateButton() {
 /* Boot: show the version straight away, then check in the background if the
    last check has aged past a day. A failed check stays quiet - the button just
    does not appear. */
-async function initUpdates() {
+/* Just the version, as early as possible. */
+async function loadVersion() {
   try {
     U.info = await window.aesth.updateInfo();
   } catch (_) { /* leave the chip reading v- */ }
   setVersionChip();
+}
+
+async function initUpdates() {
+  if (!U.info) await loadVersion();
   window.aesth.onUpdateProgress(onUpdateProgress);
   if (!U.info || !U.info.stale) {
     if (U.info && U.info.last) { U.latest = U.info.last; syncUpdateButton(); }
@@ -2058,21 +2072,25 @@ async function startExport(job) {
   job.status = 'running';
   job.phase = 'starting';
   renderExports();
+  flash('Export started', { sub: `${job.label} · ${basename(job.req.output)}` });
   try {
     const res = await window.aesth.exportRender(job.req);
     job.status = 'done';
     job.progress = 1;
     setExportStatusLink('Exported ', res.output);
+    flash('Export finished', { sub: basename(res.output), kind: 'done', ms: 6000 });
   } catch (err) {
     const msg = String(err.message || '');
     if (msg.includes('superseded')) {
       // The only thing that kills an export mid-flight is our own cancel.
       job.status = 'canceled';
       setExportStatus(`Export canceled - the partial ${basename(job.req.output)} was removed.`);
+      flash('Export canceled', { sub: basename(job.req.output) });
     } else {
       job.status = 'failed';
       job.error = msg.slice(0, 300);
       setExportStatus(`Export failed: ${job.error}`, true);
+      flash('Export failed', { sub: basename(job.req.output), kind: 'error', ms: 8000 });
     }
   } finally {
     renderExports();
@@ -2227,6 +2245,36 @@ function toggleExportsPanel(show) {
   panel.classList.toggle('hidden', !open);
   $('btn-exports').classList.toggle('open', open);
   if (open) renderExports();
+}
+
+/* ── toasts ─────────────────────────────────────────────────────────
+   The export bar at the bottom already says what happened, but it is nowhere
+   near where the eye is and it says it silently. A toast covers the two moments
+   worth interrupting for: a job started, and a job landed. */
+function flash(text, { sub = '', kind = '', ms = 4200 } = {}) {
+  const host = $('toasts');
+  if (!host) return;
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`.trim();
+  const body = document.createElement('div');
+  body.textContent = text;
+  if (sub) {
+    const s = document.createElement('div');
+    s.className = 't-sub';
+    s.textContent = sub;
+    body.appendChild(s);
+  }
+  el.appendChild(body);
+  host.appendChild(el);
+
+  // Never let them stack past a handful - a batch of eight exports finishing
+  // should not wallpaper the window.
+  while (host.children.length > 4) host.removeChild(host.firstChild);
+
+  setTimeout(() => {
+    el.classList.add('leaving');
+    setTimeout(() => el.remove(), 240);
+  }, ms);
 }
 
 function setExportStatus(text, isError = false) {
