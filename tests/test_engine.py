@@ -242,6 +242,20 @@ def test_segmenting():
 
 
 if __name__ == "__main__":
+    # Several tests synthesise their fixtures with ffmpeg and probe them with
+    # ffprobe. Say so up front: without this it surfaces as a FileNotFoundError
+    # at the bottom of a subprocess traceback, which reads like a bug in the
+    # engine rather than a missing tool.
+    import shutil
+
+    missing = [tool for tool in ("ffmpeg", "ffprobe") if not shutil.which(tool)]
+    if missing:
+        raise SystemExit(
+            f"{' and '.join(missing)} not found on PATH - these tests need them to build "
+            "and read their fixtures. Install ffmpeg (`brew install ffmpeg`, "
+            "`apt-get install ffmpeg`) and try again."
+        )
+
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
         fn()

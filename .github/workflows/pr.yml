@@ -41,6 +41,11 @@ jobs:
         with:
           node-version: '22'
 
+      # test_engine.py synthesises its fixtures with ffmpeg, and the engine
+      # probes them with ffprobe. Neither is on the runner image.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
       - name: Install the engine
         run: |
           python -m pip install --upgrade pip
