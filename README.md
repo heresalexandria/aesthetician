@@ -16,7 +16,7 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 
 | | |
 |---|---|
-| **191 presets** | 12 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), decay (8), exhibition (6), print (6), stylized (5), transmission (5) |
+| **192 presets** | 12 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), decay (8), exhibition (6), print (6), stylized (6), transmission (5) |
 | **238 variants** | alternate states of each look: worn prints, fifth-generation dubs, storm reception, terminal decay |
 | **103 effects, 505 parameters** | every one exposed and documented, in the app and from the CLI |
 | **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
@@ -27,7 +27,7 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Session tabs.** Open as many clips as you like, each with its own aesthetic and knob positions. Try one clip several ways side by side; switching back is instant.
 - **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
 - **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
-- **Search, filters and favorites.** Family chips and an era dropdown narrow the 191 looks; star the keepers and they float to the top, across launches.
+- **Search, filters and favorites.** Family chips and an era dropdown narrow the 192 looks; star the keepers and they float to the top, across launches.
 - **Audition the catalog with ↑ / ↓.** Step through the list you filtered down to and every stop renders, so you can run a whole family past the player without touching the mouse.
 - **Save your own aesthetics.** Once a preset is dialled in, save the knobs, dials and seed under your own name. Saved looks sit at the top of the list with a ✎ badge, have their own filter, and name the files they export.
 - **Editable on-screen text.** Camcorder date stamps, security clocks, tape counters and channel labels are yours to set - a real date picker for the clock, and one switch to turn the whole overlay off.
