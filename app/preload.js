@@ -2,7 +2,16 @@
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
+/* Read off our own argv, set by main.js in webPreferences.additionalArguments.
+   Available before the page runs a line, so the renderer never has to wait. */
+function launchArg(flag) {
+  const hit = process.argv.find((a) => a.startsWith(`${flag}=`));
+  return hit ? hit.slice(flag.length + 1) : '';
+}
+
 contextBridge.exposeInMainWorld('aesth', {
+  version: launchArg('--aesth-version'),
+  packaged: launchArg('--aesth-packaged') === '1',
   checkEnv: () => ipcRenderer.invoke('aesth:check-env'),
   schema: () => ipcRenderer.invoke('aesth:schema'),
   probe: (file) => ipcRenderer.invoke('aesth:probe', file),

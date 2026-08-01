@@ -172,6 +172,13 @@ app.whenReady().then(() => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // The renderer paints the version chip on its first frame. Passing it as
+      // an argument means the preload can read it synchronously - an IPC round
+      // trip, however cheap, still costs a frame of showing a placeholder.
+      additionalArguments: [
+        `--aesth-version=${app.getVersion()}`,
+        `--aesth-packaged=${app.isPackaged ? '1' : '0'}`,
+      ],
     },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));

@@ -111,11 +111,11 @@ const videoB = $('video-b'); // original
 // ── boot ────────────────────────────────────────────────────────────
 (async function boot() {
   loadStore();
-  // Before anything else: the version is a plain read in the main process and
-  // costs nothing, while checkEnv and schema each spawn Python and take about a
-  // second apiece. Painting the chip last meant it sat on "v-" for two seconds
-  // of every launch.
-  await loadVersion();
+  // Synchronously, before the first await and before the first paint: the
+  // preload picks the version off our own argv, so there is no round trip to
+  // wait on and no placeholder to flash. Painting it last used to leave the chip
+  // empty for the ~2 s that checkEnv and schema spend spawning Python.
+  setVersionChip();
   const env = await window.aesth.checkEnv();
   if (!env.ok) {
     const w = $('env-warning');
@@ -675,9 +675,13 @@ function closeModal(result) {
    itself rather than going through electron-updater.                       */
 
 function setVersionChip() {
-  $('btn-version').textContent = U.info ? `v${U.info.version}` : 'v-';
-  $('btn-version').title = U.info && !U.info.packaged
-    ? `Aesthetician ${U.info.version} - running from a dev checkout`
+  // window.aesth.version is available before the page runs; U.info arrives
+  // later and carries the rest (last check time, platform, arch).
+  const version = (U.info && U.info.version) || window.aesth.version || '';
+  const packaged = U.info ? U.info.packaged : window.aesth.packaged;
+  $('btn-version').textContent = version ? `v${version}` : '';
+  $('btn-version').title = version && !packaged
+    ? `Aesthetician ${version} - running from a dev checkout`
     : 'About Aesthetician';
 }
 
