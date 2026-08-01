@@ -784,6 +784,88 @@ function setAboutStatus(text, tone = '') {
   el.className = `about-status ${tone || 'dim'}`;
 }
 
+/* ── release notes ───────────────────────────────────────────────────
+   Notes are text off the network, so nothing here ever goes near innerHTML.
+   Lines are turned into elements one at a time and every image URL is checked
+   against GitHub's own hosts before it becomes a src - which is why the raw
+   <img> tags used to sit there as literal markup, and why the fix is a parser
+   rather than "just render the HTML". */
+const NOTE_IMAGE_HOSTS = ['github.com', 'objects.githubusercontent.com'];
+
+function noteImageUrl(raw) {
+  let u;
+  try { u = new URL(String(raw).trim()); } catch (_) { return null; }
+  if (u.protocol !== 'https:') return null;
+  const ok = NOTE_IMAGE_HOSTS.includes(u.hostname) || u.hostname.endsWith('.githubusercontent.com');
+  if (!ok) return null;
+  // github.com hosts plenty that is not an image; only the attachment path is.
+  if (u.hostname === 'github.com' && !u.pathname.startsWith('/user-attachments/')) return null;
+  return u.toString();
+}
+
+const NOTE_MD_IMAGE = /!\[[^\]]*\]\(\s*<?(https:\/\/[^\s)>]+)>?[^)]*\)/g;
+const NOTE_HTML_IMAGE = /<img\b[^>]*\bsrc\s*=\s*["'](https:\/\/[^"']+)["'][^>]*>/gi;
+
+function renderNotes(text, host) {
+  host.innerHTML = '';
+  const lines = String(text || '').split('\n');
+  let buffer = [];
+
+  const flush = () => {
+    if (!buffer.length) return;
+    const para = document.createElement('div');
+    para.className = 'note-text';
+    para.textContent = buffer.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (para.textContent) host.appendChild(para);
+    buffer = [];
+  };
+
+  const addImage = (url) => {
+    const src = noteImageUrl(url);
+    if (!src) return;
+    flush();
+    const img = document.createElement('img');
+    img.className = 'note-img';
+    img.alt = 'Screenshot from the release notes';
+    img.title = 'Open full size';
+    img.onclick = () => window.aesth.openExternal(src);
+    host.appendChild(img);
+    // The bytes come back from the main process as a data: URL. The renderer
+    // never reaches out itself, so its CSP still forbids remote images - which
+    // matters here because user-attachments redirects onto an S3 host.
+    window.aesth.noteImage(src).then((data) => {
+      if (data) img.src = data;
+      else img.remove();          // no broken-image gap for one that will not load
+    }).catch(() => img.remove());
+  };
+
+  for (const line of lines) {
+    const urls = [];
+    let rest = line.replace(NOTE_HTML_IMAGE, (_m, u) => { urls.push(u); return ''; });
+    rest = rest.replace(NOTE_MD_IMAGE, (_m, u) => { urls.push(u); return ''; });
+    // A bare attachment URL on its own line is how GitHub itself renders one.
+    const bare = rest.trim();
+    if (!urls.length && noteImageUrl(bare)) { urls.push(bare); rest = ''; }
+
+    if (urls.length) {
+      if (rest.trim()) buffer.push(rest.trim());
+      urls.forEach(addImage);
+      continue;
+    }
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    if (heading) {
+      flush();
+      const h = document.createElement('div');
+      h.className = 'note-head';
+      h.textContent = heading[1].trim();
+      host.appendChild(h);
+      continue;
+    }
+    buffer.push(line);
+  }
+  flush();
+}
+
 function openAbout() {
   $('about-modal').classList.remove('hidden');
   $('about-version').textContent = U.info
@@ -830,8 +912,7 @@ function paintAbout() {
   }
 
   if (r.notes) {
-    // Release notes come off the network. Text only, never markup.
-    notes.textContent = r.notes;
+    renderNotes(r.notes, notes);
     notes.classList.remove('hidden');
   }
   if (!r.installable) {

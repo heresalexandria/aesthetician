@@ -108,6 +108,37 @@ function test_asset_selection_against_a_real_release() {
   assert.strictEqual(u.assetFor([{ name: 'SHA256SUMS.txt' }], 'win32', 'x64'), null);
 }
 
+function test_note_image_hosts() {
+  // Release notes carry screenshots. The main process fetches them so the
+  // renderer never makes a remote request, which means this list is the whole
+  // trust boundary for that fetch.
+  for (const ok of [
+    'https://github.com/user-attachments/assets/abc-123',
+    'https://objects.githubusercontent.com/x.png',
+    'https://user-images.githubusercontent.com/1/a.png',
+    'https://raw.githubusercontent.com/o/r/main/a.png',
+    // Where user-attachments actually 302s to - discovered the hard way, when
+    // CSP blocked the real load after the unit tests were already passing.
+    'https://github-production-user-asset-6210df.s3.amazonaws.com/70348962/x.png?X-Amz-Signature=a',
+  ]) {
+    assert.ok(u.noteImageAllowed(ok), ok);
+  }
+  for (const bad of [
+    'http://github.com/user-attachments/assets/x',   // plaintext
+    'https://github.com/heresalexandria/aesthetician',  // github, but not an attachment
+    'https://github.com.evil.test/user-attachments/assets/x',
+    'https://evil.s3.amazonaws.com/x.png',           // some other bucket
+    'https://github-production-user-asset.evil.test/x.png',
+    'https://githubusercontent.com.evil.test/x.png',
+    'https://evil.test/x.png',
+    'file:///etc/passwd',
+    '',
+    null,
+  ]) {
+    assert.ok(!u.noteImageAllowed(bad), `must refuse ${bad}`);
+  }
+}
+
 function test_allowed_urls() {
   for (const ok of [
     'https://api.github.com/repos/heresalexandria/aesthetician/releases/latest',
@@ -135,6 +166,7 @@ const tests = Object.entries({
   test_asset_selection,
   test_asset_selection_against_a_real_release,
   test_allowed_urls,
+  test_note_image_hosts,
 });
 
 for (const [name, fn] of tests) {

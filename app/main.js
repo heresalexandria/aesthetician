@@ -481,10 +481,17 @@ ipcMain.handle('aesth:update-reveal', () => {
   if (file) shell.showItemInFolder(file);
   return { file };
 });
+ipcMain.handle('aesth:note-image', (_e, url) => updater.noteImage(url));
 ipcMain.handle('aesth:open-external', (_e, url) => {
   // Only ever our own repo: a URL from a release payload does not get to pick
   // what the browser opens.
-  const ok = /^https:\/\/github\.com\/heresalexandria\/aesthetician(\/|$)/.test(String(url || ''));
+  const raw = String(url || '');
+  const ok = /^https:\/\/github\.com\/heresalexandria\/aesthetician(\/|$)/.test(raw)
+    // Screenshots in release notes live on GitHub's attachment host, not under
+    // the repo path. Still GitHub, still https, still only ever handed to the
+    // user's own browser.
+    || /^https:\/\/github\.com\/user-attachments\/assets\//.test(raw)
+    || /^https:\/\/[a-z0-9-]+\.githubusercontent\.com\//.test(raw);
   if (ok) shell.openExternal(url);
   return ok;
 });

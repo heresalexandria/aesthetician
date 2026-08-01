@@ -453,6 +453,72 @@ async function install() {
   return res;
 }
 
+/* ── release-note images ─────────────────────────────────────────────
+   Screenshots in release notes are served from github.com/user-attachments,
+   which 302s to a signed URL on GitHub's S3 asset bucket. Rather than widen the
+   renderer's CSP to cover that (and every other bucket on s3.amazonaws.com with
+   it), the main process fetches the bytes and hands back a data: URL. The
+   renderer then makes no network requests of its own at all, which is a tighter
+   position than it was in before any of this. */
+const NOTE_IMAGE_HOSTS = [
+  'github.com',
+  'objects.githubusercontent.com',
+  'raw.githubusercontent.com',
+  'user-images.githubusercontent.com',
+];
+const MAX_NOTE_IMAGE = 8 * 1024 * 1024;
+
+function noteImageAllowed(url) {
+  let u;
+  try { u = new URL(url); } catch (_) { return false; }
+  if (u.protocol !== 'https:') return false;
+  if (u.hostname === 'github.com') return u.pathname.startsWith('/user-attachments/');
+  if (NOTE_IMAGE_HOSTS.includes(u.hostname)) return true;
+  if (u.hostname.endsWith('.githubusercontent.com')) return true;
+  // Where user-attachments actually redirects to.
+  return /^github-production-user-asset-[a-z0-9]+\.s3\.amazonaws\.com$/.test(u.hostname);
+}
+
+function getImage(url, redirects = 4) {
+  return new Promise((resolve, reject) => {
+    if (!noteImageAllowed(url)) { reject(new Error('refused host')); return; }
+    const req = https.get(url, { headers: { 'User-Agent': userAgent() }, timeout: 20000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        if (redirects <= 0) { reject(new Error('too many redirects')); return; }
+        resolve(getImage(new URL(res.headers.location, url).toString(), redirects - 1));
+        return;
+      }
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+      const type = String(res.headers['content-type'] || '').split(';')[0].trim();
+      if (!/^image\/(png|jpeg|gif|webp)$/.test(type)) {
+        res.resume();
+        reject(new Error(`not an image (${type})`));
+        return;
+      }
+      const chunks = [];
+      let bytes = 0;
+      res.on('data', (c) => {
+        bytes += c.length;
+        if (bytes > MAX_NOTE_IMAGE) { req.destroy(new Error('image too large')); return; }
+        chunks.push(c);
+      });
+      res.on('error', reject);
+      res.on('end', () => resolve(`data:${type};base64,${Buffer.concat(chunks).toString('base64')}`));
+    });
+    req.on('timeout', () => req.destroy(new Error('timed out')));
+    req.on('error', reject);
+  });
+}
+
+async function noteImage(url) {
+  try {
+    return await getImage(String(url || ''));
+  } catch (_) {
+    return null;      // a screenshot that will not load is not worth an error
+  }
+}
+
 /* Where the download landed, for the "install it yourself" escape hatch. */
 function stagedFile() {
   const staged = readState().staged;
@@ -466,6 +532,8 @@ module.exports = {
   cancelDownload,
   install,
   stagedFile,
+  noteImage,
+  noteImageAllowed,
   // Pure helpers, exercised by tests/test_updater.js under plain node.
   isNewer,
   parseVersion,

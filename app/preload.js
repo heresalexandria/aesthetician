@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('aesth', {
   updateInstall: () => ipcRenderer.invoke('aesth:update-install'),
   updateReveal: () => ipcRenderer.invoke('aesth:update-reveal'),
   openExternal: (url) => ipcRenderer.invoke('aesth:open-external', url),
+  noteImage: (url) => ipcRenderer.invoke('aesth:note-image', url),
   onUpdateProgress: (cb) => {
     const listener = (_e, msg) => cb(msg);
     ipcRenderer.on('aesth:update-progress', listener);
