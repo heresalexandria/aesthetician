@@ -41,6 +41,26 @@ the rule and both workflows call it, which is why they cannot drift apart.
 So a good PR description is a good changelog. Write it for whoever reads the
 release page.
 
+### Lead with the bullets
+
+The description **must open with a flat bullet list of what changed**, one line
+per user-visible change, before any heading or prose. That list is the whole
+release note for most people: the app renders these notes in its own About
+dialog, where there is no room to scroll through reasoning to find out what is
+new.
+
+- One bullet per change, written from the outside in - what someone can now do,
+  or what stopped being broken. Not which function was touched.
+- Lead the line with the change in **bold**, then the detail.
+- Prefix a fix with **Fixed:** so the list separates at a glance.
+- Anything a user cannot see - refactors, test scaffolding, tooling - stays out
+  of the list. Put it under a later heading if it is worth saying at all.
+- Then `---`, and below it as much detail, reasoning and verification as the
+  reviewer needs. None of that competes with the summary.
+
+The bullets are for whoever installs the update; everything under the rule is
+for whoever reviews the diff.
+
 ## First-time setup
 
 None of this is automatic, and the release will fail in a specific way without
