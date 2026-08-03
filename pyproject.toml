@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aesthetician"
-version = "0.10.1"
+version = "0.11.0"
 description = "Premium archival-media aesthetic engine: apply era-authentic film, tape, broadcast, and digital looks (and sounds) to video."
 readme = "README.md"
 requires-python = ">=3.11"
