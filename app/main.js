@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -53,6 +53,19 @@ function childEnv() {
 }
 
 const CHILD_OPTS = () => ({ cwd: PACKAGED ? RES : REPO_ROOT, env: childEnv() });
+
+/* The dev harnesses get a profile of their own, set before anything reads
+   userData. `--shot-js` runs arbitrary code in the renderer, which is the point
+   of it, and that code can reach localStorage - where favorites, custom
+   aesthetics and saved stacks live. Sharing a profile with the real app means a
+   test script that seeds a few fixtures can overwrite work someone spent an
+   evening on, and localStorage keeps no history to restore from. Nothing about
+   these two flags is worth that risk, so they get a scratch profile: the only
+   cost is that a shot re-renders its preview instead of hitting a warm cache. */
+if (process.argv.includes('--smoke') || process.argv.some((a) => a.startsWith('--shot'))) {
+  app.setPath('userData', path.join(app.getPath('temp'), 'aesthetician-harness'));
+}
+
 const CACHE_DIR = path.join(app.getPath('userData'), 'preview-cache');
 // Layer specs are scratch handed to the CLI, not previews - keep them out of
 // the cache the footer reports and the Clear button empties.
@@ -401,6 +414,32 @@ ipcMain.handle('aesth:cancel-export', async (_e, jobId) => {
 ipcMain.handle('aesth:reveal', (_e, file) => {
   if (!file || !fs.existsSync(file)) return { ok: false };
   shell.showItemInFolder(file);
+  return { ok: true };
+});
+
+/* ── desktop notifications ───────────────────────────────────────────────
+   An export is the one thing here worth interrupting someone for: it takes
+   minutes, and the whole point is that you go and do something else. This
+   lives in main rather than the renderer because a renderer Notification is
+   tied to a page that may be backgrounded or throttled, which is exactly when
+   the notification matters most.
+
+   `reveal` carries the finished file, so clicking the banner shows it in the
+   Finder rather than just raising a window over whatever you moved on to. */
+ipcMain.handle('aesth:notify', (_e, opts = {}) => {
+  if (!Notification.isSupported()) return { ok: false };
+  const { title = '', body = '', reveal = '' } = opts;
+  if (!title) return { ok: false };
+  const note = new Notification({ title, body, silent: false });
+  note.on('click', () => {
+    if (reveal && fs.existsSync(reveal)) { shell.showItemInFolder(reveal); return; }
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+  });
+  note.show();
   return { ok: true };
 });
 

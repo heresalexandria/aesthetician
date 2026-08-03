@@ -397,6 +397,15 @@ aside { background: var(--bg2); overflow-y: auto; }
 .p-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .p-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preset-card .p-name { font-weight: 600; font-size: 12.5px; line-height: 1.25; }
+/* The corner controls float over the row, so the name has to stop short of them
+   or a long one runs straight under the +. The name only: the meta and tagline
+   lines sit below the buttons and can use the full width. Reserved constantly
+   rather than on hover, because text reflowing under the pointer is worse than
+   ellipsising a few characters early. Stock rows clear the star and the +; rows
+   of your own clear the wider rename/delete cluster and the +. */
+.preset-card .p-name { padding-right: 54px; }
+.preset-card.custom .p-name,
+.preset-card.stack .p-name { padding-right: 80px; }
 .preset-card .p-meta { font-size: 10.5px; color: var(--dim); line-height: 1.25; }
 .preset-card .p-tag {
   font-size: 10.5px; line-height: 1.3; font-style: italic;

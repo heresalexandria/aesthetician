@@ -612,6 +612,24 @@ async function saveCustom() {
   setExportStatus(`Saved “${name}”.`);
 }
 
+/* A custom as a fresh layer, carrying everything it was saved with. This exists
+   because there are two ways to reach for one - applying it to the selected
+   layer, and stacking it on top - and they were restoring different things:
+   stacking used to rebuild only the preset, variant and tweaks, so a custom
+   whose whole point was a dialled-back Intensity came back at 1.0 and rendered
+   as the plain preset. Both paths go through the same fields now. */
+function layerFromCustom(c) {
+  return newLayer({
+    presetId: c.base,
+    customId: c.id,
+    variant: c.variant || null,
+    sets: { ...(c.sets || {}) },
+    seed: typeof c.seed === 'number' ? c.seed : 1 + Math.floor(Math.random() * 99999),
+    intensity: typeof c.intensity === 'number' ? c.intensity : 1,
+    texture: typeof c.texture === 'number' ? c.texture : 1,
+  });
+}
+
 function applyCustom(cid, opts = {}) {
   const c = customById(cid);
   if (!c || !G.schema.presets[c.base]) return;
@@ -2034,14 +2052,12 @@ function addLayer(pid, opts = {}) {
   if (!pid) return;
   if (isStackId(pid)) { appendStack(pid, opts); return; }
   const custom = isCustomId(pid) ? customById(pid) : null;
-  state.layers.push(newLayer(custom
-    ? { presetId: custom.base, customId: custom.id, variant: custom.variant || null,
-        sets: { ...(custom.sets || {}) } }
-    : { presetId: pid }));
+  if (isCustomId(pid) && !custom) return;   // a row for a custom that just went away
+  state.layers.push(custom ? layerFromCustom(custom) : newLayer({ presetId: pid }));
   state.activeLayer = state.layers.length - 1;
   state.stackId = null;   // the arrangement has grown past the saved one
   buildLayersPanel();
-  buildParamPane();
+  buildParamPane();       // repaints the master dials onto the new layer
   syncSelection();
   renderTabs();
   schedulePreview(true, opts.previewDelay);
@@ -2849,6 +2865,20 @@ function wireControls() {
     desc: 'Master amount for grain, tape noise, RF snow, dust and speckle only. Drag to 0 for a perfectly clean version of the look; decay content like mould or water staining is left alone.',
     facts: ['range 0 – 2', 'grain and noise only'],
   }));
+  attachTip($('btn-save-stack'), () => {
+    const n = captureStackLayers().length;
+    return {
+      title: 'Save this stack',
+      desc: 'Keeps the whole arrangement: which aesthetics, the order they render in, '
+        + 'every knob on each one, and which layers you have switched off. Saved stacks '
+        + 'appear under MY STACKS at the top of the list. Clicking one rebuilds all of it; '
+        + 'its green + piles it on top of what you already have instead.',
+      facts: [
+        n ? `${n} layer${n === 1 ? '' : 's'} right now` : 'nothing to save yet',
+        'a custom saves one aesthetic, a stack saves the lot',
+      ],
+    };
+  });
   attachTip($('cache-row'), () => ({
     title: 'Preview cache',
     desc: 'Every preview render is kept on disk, keyed by its exact parameters, so returning to earlier settings is instant. It is safe to clear at any time - you only pay the re-render.',
@@ -2962,6 +2992,51 @@ function pumpExports() {
   syncExportsButton();
 }
 
+/* An export runs for minutes, so the point of it is that you go and do
+   something else - which is exactly when an in-app toast is no use. One banner
+   per *batch*, not per job: queueing ten exports and getting ten notifications
+   would be its own kind of rude, so only the job that empties the queue speaks,
+   and it speaks for all of them. */
+/* What the banner for a batch should say, or null if it should stay quiet.
+   Kept separate from sending it so the wording is a plain function of the
+   batch, with nothing to stub out to check it. */
+function exportNotice(batch) {
+  if (batch.some((j) => j.status === 'running' || j.status === 'queued')) return null;
+  const done = batch.filter((j) => j.status === 'done');
+  const failed = batch.filter((j) => j.status === 'failed');
+  if (!done.length && !failed.length) return null;   // a batch cancelled outright
+
+  let title;
+  let body;
+  if (!failed.length) {
+    title = done.length === 1 ? 'Export finished' : `${done.length} exports finished`;
+    body = done.length === 1
+      ? `${done[0].label} · ${basename(done[0].req.output)}`
+      : done.map((j) => basename(j.req.output)).join(', ');
+  } else if (!done.length) {
+    title = failed.length === 1 ? 'Export failed' : `${failed.length} exports failed`;
+    body = failed.length === 1
+      ? `${basename(failed[0].req.output)} · ${failed[0].error}`
+      : failed.map((j) => basename(j.req.output)).join(', ');
+  } else {
+    title = `${done.length} exported, ${failed.length} failed`;
+    body = `Failed: ${failed.map((j) => basename(j.req.output)).join(', ')}`;
+  }
+  // Clicking reveals the file, so the banner lands you where the work is. Only
+  // when there is exactly one, since a folder full is nobody's idea of a target.
+  return { title, body: body.slice(0, 300), reveal: done.length === 1 ? done[0].req.output : '' };
+}
+
+function notifyBatchDone(job) {
+  // Keyed off this job's own batch, not G.batchId: by the time a long export
+  // lands, the counter may already have moved on to a batch queued after it.
+  const notice = exportNotice(G.exports.filter((j) => j.batchId === job.batchId));
+  if (!notice) return;
+  try { window.aesth.notify(notice); } catch (_) {
+    /* notifications are a courtesy: never let one break the export flow */
+  }
+}
+
 async function startExport(job) {
   job.status = 'running';
   job.phase = 'starting';
@@ -2987,6 +3062,9 @@ async function startExport(job) {
       flash('Export failed', { sub: basename(job.req.output), kind: 'error', ms: 8000 });
     }
   } finally {
+    // Before pumpExports, so "is the queue empty" is asked of the queue as it
+    // stands now rather than after the next job has already claimed a slot.
+    if (job.status !== 'canceled') notifyBatchDone(job);
     renderExports();
     pumpExports();     // whatever happened, a slot just came free
   }
