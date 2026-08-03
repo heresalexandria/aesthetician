@@ -141,7 +141,11 @@
         <div class="lp-head">
           <span class="lp-title">Layers</span>
           <span id="lp-hint" class="dim"></span>
+          <button id="btn-save-stack" class="icon-btn" title="Save this whole stack: every layer, its order and its knobs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>
+          </button>
         </div>
+        <div id="lp-stack" class="hidden"></div>
         <div id="layers-list"></div>
         <div id="lp-warn" class="hidden"></div>
       </div>
@@ -176,6 +180,14 @@
         <button id="modal-cancel">Cancel</button>
         <button id="modal-ok" class="accent">Save</button>
       </div>
+    </div>
+  </div>
+
+  <div id="choice-modal" class="hidden">
+    <div class="modal-box">
+      <div class="modal-title" id="choice-title"></div>
+      <div class="modal-sub dim" id="choice-sub"></div>
+      <div class="modal-row" id="choice-row"></div>
     </div>
   </div>
 

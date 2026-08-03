@@ -332,6 +332,7 @@ aside { background: var(--bg2); overflow-y: auto; }
 .chip.sel { color: #cdbcff; border-color: var(--accent-dim); background: var(--accent-soft); }
 .chip.star-chip.sel { color: #ffd479; border-color: #8a6a2c; background: rgba(255,196,84,.10); }
 .chip.custom-chip.sel { color: #7ee0c0; border-color: #2f7a67; background: rgba(90,225,190,.10); }
+.chip.stack-chip.sel { color: #a8c6ff; border-color: #3a5a9a; background: rgba(90,140,255,.10); }
 
 #preset-list { flex: 1; overflow-y: auto; padding: 6px 8px 30px; }
 .family-label {
@@ -441,6 +442,29 @@ aside { background: var(--bg2); overflow-y: auto; }
 }
 .card-tools button:hover { color: var(--text); background: rgba(30,34,52,.95); }
 .card-tools button:last-child:hover { color: var(--danger); }
+
+/* ── saved stacks ─────────────────────────────
+   Blue, so the three kinds of row this user owns stay tellable apart at a
+   glance: amber favorites, teal customs, blue stacks. */
+.preset-card.stack { border-color: rgba(143,180,255,.22); }
+.preset-card.stack .p-thumb { box-shadow: inset 0 0 0 1px rgba(143,180,255,.35); }
+/* `worn` is not `sel`: it means every layer came from this stack, while `sel`
+   stays pinned to the one aesthetic in the layer you have selected. */
+.preset-card.stack.worn {
+  background: linear-gradient(120deg, rgba(90,140,255,.15), rgba(139,92,246,.12));
+  border-color: #3a5a9a;
+}
+.preset-card.stack.broken { opacity: .5; }
+.preset-card.stack.broken .p-name { text-decoration: line-through; }
+.s-badge {
+  position: absolute; z-index: 2; right: 2px; bottom: 2px;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: rgba(8,9,11,.92); color: #8fb4ff;
+  box-shadow: 0 0 0 1px rgba(143,180,255,.5);
+  font-size: 9px; line-height: 15px; text-align: center;
+}
+.family-label.stacks { color: #8fb4ff; }
+.tab .t-preset.stack { color: #8fb4ff; }
 .tab .t-preset.custom { color: #6fd7b8; }
 #btn-save-custom { flex: 0 0 auto; padding: 6px 8px; color: var(--dim); }
 #btn-save-custom:hover { color: #6fd7b8; border-color: #2f7a67; }
@@ -717,6 +741,18 @@ input[type="checkbox"] { accent-color: var(--accent); }
 #modal-input:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
 .modal-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
 
+/* ── "this would overwrite your work" question ──
+   Same box as the name prompt, but the way out is a choice rather than typing.
+   Cancel sits far left so the destructive answer is never the one your hand is
+   already over. */
+#choice-modal {
+  position: fixed; inset: 0; z-index: 61; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+}
+#choice-row { flex-wrap: wrap; }
+#choice-row button:last-child { margin-right: auto; order: -1; }
+
 /* ── about / update dialog ────────────────── */
 #about-modal {
   position: fixed; inset: 0; z-index: 60; display: flex;
@@ -768,6 +804,14 @@ body.audio-session #btn-ab { position: relative; }
 .lp-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
 .lp-title { font-size: 10px; letter-spacing: 2px; font-weight: 700; color: var(--dim); }
 #lp-hint { font-size: 10.5px; }
+#btn-save-stack { flex: 0 0 auto; margin-left: auto; padding: 4px 6px; color: var(--dim); align-self: center; }
+#btn-save-stack:hover { color: #8fb4ff; border-color: #3a5a9a; }
+/* Which saved stack this arrangement came from, and whether it still matches. */
+#lp-stack {
+  margin-bottom: 7px; font-size: 10.5px; color: #8fb4ff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#lp-stack.drifted { color: var(--dim); }
 #layers-list { display: flex; flex-direction: column; gap: 4px; }
 
 .layer-row {
@@ -809,14 +853,19 @@ body.audio-session #btn-ab { position: relative; }
 }
 
 /* The green + on a preset row: only once something is already applied, because
-   until then there is no stack to add to. */
+   until then there is no stack to add to. It clears whatever else lives in the
+   top-right corner - one 22px star on a stock row, and on a row of your own the
+   two-button rename/delete cluster, which is 50px wide and would otherwise sit
+   right on top of it. Same z-index as those, so hover order never buries it. */
 .card-add {
-  position: absolute; top: 6px; right: 30px;
+  position: absolute; top: 6px; right: 30px; z-index: 2;
   display: none; align-items: center; justify-content: center;
   width: 19px; height: 19px; border-radius: 50%;
   border: 1px solid rgba(109,219,160,.5); background: rgba(109,219,160,.14);
   color: #6ddba0; font-size: 14px; line-height: 1; padding: 0; cursor: pointer;
 }
+.preset-card.custom .card-add,
+.preset-card.stack .card-add { right: 56px; }
 body.has-layers .preset-card:hover .card-add { display: flex; }
 .card-add:hover { background: rgba(109,219,160,.3); border-color: #6ddba0; }
 
