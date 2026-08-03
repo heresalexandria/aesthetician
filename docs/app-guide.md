@@ -172,6 +172,13 @@ that is what keeps ↑/↓ usable for auditioning a whole family against the res
 your stack. **Enter** commits the highlighted aesthetic on its own, dropping
 everything else.
 
+Both of those write over what was there, so once the selected layer carries work
+of its own - a tweak, a variant, a moved dial, or a custom you saved - they stop
+and ask first, offering to **open the aesthetic you picked in a new tab** instead
+and leave this one alone. A layer holding nothing but a preset never asks, so
+running ↑/↓ down a family stays as quick as it ever was; the question comes back
+the moment you have something to lose.
+
 With more than one layer a **Layers** panel appears above the knobs:
 
 - rows are in **processing order**, top of the list rendered first;
@@ -215,6 +222,35 @@ from. The **✎** chip beside the search box shows only them.
 A custom stores the base preset's **id**, not a copy of its effect chain, so a
 preset that gains an effect in a later version carries your customs forward.
 They are kept with your favorites and survive restarts.
+
+## Saving a whole stack
+
+A custom is one aesthetic with your knobs on it. Once you are running more than
+one layer, the **Layers** panel grows a save button of its own, and that keeps
+the whole arrangement: which aesthetics, in what order, the knobs on each one,
+and which of them you had switched off.
+
+Saved stacks lead the browse list in a **MY STACKS** group, in blue, each with a
+**▤** badge, the layer count and the chain it renders (`VHS Standard Play →
+Cable News Desk`). The **▤** chip beside the search box shows only them.
+
+- Clicking one rebuilds every layer exactly as you saved it, replacing whatever
+  the tab was wearing - which is the one pick that always asks first.
+- The green **+** on a stack row *piles it on top* of what you already have
+  instead of replacing it.
+- While a tab is wearing a stack the Layers panel names it, and adds
+  **· edited** as soon as anything moves. Save again to keep both.
+- Hover for **✎** to rename and **×** to delete. Deleting discards only the
+  arrangement; the aesthetics it was built from are untouched.
+- Exports name the file after the stack (`clip.third-generation.mp4`).
+
+Stacks stay out of ↑/↓ on purpose. Arrowing auditions one aesthetic against the
+rest of your stack, and applying a saved one replaces every layer - not
+something a held-down arrow key should be able to do.
+
+Like a custom, a stack stores preset **ids** rather than copies of their chains.
+If a build no longer has one of them that layer is skipped and the rest still
+apply, and a stack with nothing left standing is shown struck through.
 
 ## Understanding the knobs
 

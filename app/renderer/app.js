@@ -27,10 +27,13 @@ const G = {
   favs: new Set(),     // favorited preset ids (persisted)
   customs: [],         // saved custom aesthetics (persisted), newest last
   customSeq: 0,
+  stacks: [],          // saved layer stacks (persisted), newest last
+  stackSeq: 0,
   filterFamilies: new Set(),  // family chips currently selected (empty = all)
   filterEra: '',       // decade string like "1980s" (empty = any)
   favOnly: false,      // the ★ chip: show favorites only
   customOnly: false,   // the ✎ chip: show saved customs only
+  stackOnly: false,    // the ▤ chip: show saved stacks only
 };
 
 /* Update state. Declared up here with G rather than beside the update code:
@@ -64,6 +67,13 @@ function loadStore() {
       G.customs = s.customs.filter((c) => c && c.id && c.base && c.name);
       G.customSeq = G.customs.reduce((n, c) => Math.max(n, parseInt(c.id.slice(7), 10) || 0), 0);
     }
+    if (Array.isArray(s.stacks)) {
+      // Same rule as customs: a save with no layers left standing cannot wedge
+      // the list. Individual layers are vetted at apply time, when we know which
+      // base presets this build actually has.
+      G.stacks = s.stacks.filter((k) => k && k.id && k.name && Array.isArray(k.layers) && k.layers.length);
+      G.stackSeq = G.stacks.reduce((n, k) => Math.max(n, parseInt(k.id.slice(6), 10) || 0), 0);
+    }
   } catch (_) { /* first run, or corrupted store: defaults are fine */ }
 }
 
@@ -78,6 +88,7 @@ function saveStore() {
       muted: G.muted,
       paused: G.paused,
       customs: G.customs,
+      stacks: G.stacks,
     }));
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
@@ -116,6 +127,10 @@ function newSession(info) {
     audioSource: info.has_video === false,  // a WAV/MP3/stem: no picture to treat
     layers: [newLayer()],
     activeLayer: 0,
+    // Which saved stack this whole session is wearing, if any. It lives on the
+    // session rather than a layer because a stack *is* the arrangement - the one
+    // thing no single layer can describe.
+    stackId: null,
     previewT: Math.max((info.duration - G.duration) / 2, 0),
     treatedSrc: null,
     originalSrc: null,
@@ -349,7 +364,7 @@ function renderTabs() {
   for (const sess of G.sessions) {
     const tab = document.createElement('div');
     tab.className = 'tab' + (sess.id === G.activeId ? ' active' : '');
-    const wearing = sess.customId ? customName(sess.customId) : (sess.presetId ? presetName(sess.presetId) : null);
+    const wearing = wearingName(sess);
     tab.title = `${sess.file.path}\n${wearing || 'no aesthetic yet'}`;
 
     const name = document.createElement('span');
@@ -358,9 +373,10 @@ function renderTabs() {
     tab.appendChild(name);
 
     if (wearing) {
+      const kind = sess.stackId ? 'stack' : (sess.customId ? 'custom' : '');
       const badge = document.createElement('span');
-      badge.className = 't-preset' + (sess.customId ? ' custom' : '');
-      badge.textContent = (sess.customId ? '✎ ' : '') + wearing;
+      badge.className = 't-preset' + (kind ? ` ${kind}` : '');
+      badge.textContent = (sess.stackId ? '▤ ' : (sess.customId ? '✎ ' : '')) + wearing;
       tab.appendChild(badge);
     }
 
@@ -541,7 +557,10 @@ function customById(cid) {
   return G.customs.find((c) => c.id === cid) || null;
 }
 
-/* What the list highlights and ↑/↓ walk: a custom masquerades as a preset id. */
+/* What the list highlights and ↑/↓ walk: a custom masquerades as a preset id.
+   A saved stack deliberately stays out of it - `sel` means "the aesthetic in the
+   layer you have selected", and a stack is every layer at once. It gets its own
+   `worn` marker instead, so editing layer 2 still lights layer 2's row. */
 function selectionId() {
   return state.customId || state.presetId;
 }
@@ -596,6 +615,7 @@ async function saveCustom() {
 function applyCustom(cid, opts = {}) {
   const c = customById(cid);
   if (!c || !G.schema.presets[c.base]) return;
+  state.stackId = null;    // a layer just changed what it is: no longer that stack
   state.presetId = c.base;
   state.customId = c.id;
   state.variant = c.variant || null;
@@ -672,6 +692,192 @@ function slugify(s) {
     || 'custom';
 }
 
+/* ── saved stacks ────────────────────────────────────────────────────
+   A custom is one aesthetic with your knobs on it. A stack is the whole
+   arrangement: which aesthetics, in what order, each with its own knobs, and
+   which of them are switched off. Same storage rule as customs - every layer
+   holds a base preset *id*, never a copy of the chain, so a preset that gains
+   an effect in a later version carries every stack that uses it forward. */
+
+function stackById(sid) {
+  return G.stacks.find((k) => k.id === sid) || null;
+}
+
+function isStackId(id) {
+  return typeof id === 'string' && id.startsWith('stack:');
+}
+
+function stackName(sid) {
+  const k = stackById(sid);
+  return k ? k.name : sid;
+}
+
+/* The session's layers in saved form. Empty slots are dropped - an unfilled
+   layer is not part of the arrangement - but disabled ones are kept, because
+   "off for now" is a decision worth restoring. */
+function captureStackLayers(sess = state) {
+  return (sess.layers || []).filter((l) => l.presetId).map((l) => ({
+    base: l.presetId,
+    customId: l.customId || null,
+    variant: l.variant || null,
+    sets: { ...(l.sets || {}) },
+    seed: l.seed,
+    intensity: l.intensity,
+    texture: l.texture,
+    enabled: l.enabled !== false,
+  }));
+}
+
+function savedLayerLabel(sl) {
+  if (sl.customId && customById(sl.customId)) return customName(sl.customId);
+  const p = G.schema && G.schema.presets[sl.base];
+  return p ? p.name : sl.base;
+}
+
+/* "VHS Standard Play → Co-Channel Ghost" - the order they actually render in. */
+function stackChain(k) {
+  return (k.layers || []).map(savedLayerLabel).join(' → ');
+}
+
+function defaultStackName() {
+  const names = captureStackLayers().map(savedLayerLabel);
+  if (!names.length) return 'Stack';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} + ${names[1]}`;
+  return `${names[0]} +${names.length - 1} more`;
+}
+
+async function saveStack() {
+  const layers = captureStackLayers();
+  if (!layers.length) return;
+  const name = await askName({
+    title: 'Save this stack',
+    sub: `Keeps all ${layers.length} layers, their order and every knob on each one.`,
+    value: defaultStackName(),
+  });
+  if (!name) return;
+  const stack = { id: `stack:${++G.stackSeq}`, name, layers, created: Date.now() };
+  G.stacks.push(stack);
+  saveStore();
+  state.stackId = stack.id;
+  buildFilterBar();
+  buildPresetList();
+  buildLayersPanel();
+  renderTabs();
+  setExportStatus(`Saved “${name}”.`);
+}
+
+/* One saved layer back into a live one. Seed included: "the version I made"
+   means the noise landed where it landed. */
+function layerFromSaved(sl) {
+  return newLayer({
+    presetId: sl.base,
+    // A custom the user has since deleted leaves the numbers intact and just
+    // stops claiming its name.
+    customId: sl.customId && customById(sl.customId) ? sl.customId : null,
+    variant: sl.variant || null,
+    sets: { ...(sl.sets || {}) },
+    seed: typeof sl.seed === 'number' ? sl.seed : 1 + Math.floor(Math.random() * 99999),
+    intensity: typeof sl.intensity === 'number' ? sl.intensity : 1,
+    texture: typeof sl.texture === 'number' ? sl.texture : 1,
+    enabled: sl.enabled !== false,
+  });
+}
+
+/* Layers whose base preset still exists in this build. */
+function usableStackLayers(k) {
+  return (k.layers || []).filter((sl) => G.schema.presets[sl.base]);
+}
+
+function applyStack(sid, opts = {}) {
+  const k = stackById(sid);
+  if (!k) return;
+  const usable = usableStackLayers(k);
+  if (!usable.length) {
+    setExportStatus(`“${k.name}” uses aesthetics this build does not have.`, true);
+    return;
+  }
+  state.layers = usable.map(layerFromSaved);
+  state.activeLayer = state.layers.length - 1;
+  state.stackId = k.id;
+  syncMasterDials();
+  syncSelection();
+  renderTabs();
+  buildParamPane();
+  buildLayersPanel();
+  schedulePreview(true, opts.previewDelay);
+  const lost = (k.layers || []).length - usable.length;
+  if (lost) setExportStatus(`Applied “${k.name}” without ${lost} missing layer${lost === 1 ? '' : 's'}.`, true);
+}
+
+/* The green + on a stack row: pile the whole arrangement on top of what is
+   already there, rather than replacing it. */
+function appendStack(sid, opts = {}) {
+  const k = stackById(sid);
+  if (!k) return;
+  const usable = usableStackLayers(k);
+  if (!usable.length) return;
+  // An untouched empty slot would otherwise sit under the stack doing nothing.
+  if (state.layers.length === 1 && !state.layers[0].presetId) state.layers = [];
+  for (const sl of usable) state.layers.push(layerFromSaved(sl));
+  state.activeLayer = state.layers.length - 1;
+  state.stackId = null;   // it is no longer that stack, it contains it
+  syncMasterDials();
+  syncSelection();
+  renderTabs();
+  buildParamPane();
+  buildLayersPanel();
+  schedulePreview(true, opts.previewDelay);
+}
+
+async function renameStack(sid) {
+  const k = stackById(sid);
+  if (!k) return;
+  const name = await askName({
+    title: 'Rename this stack',
+    sub: stackChain(k),
+    value: k.name,
+    okLabel: 'Rename',
+  });
+  if (!name) return;
+  k.name = name;
+  saveStore();
+  buildPresetList();
+  buildLayersPanel();
+  renderTabs();
+}
+
+function deleteStack(sid) {
+  const k = stackById(sid);
+  if (!k) return;
+  if (!confirm(`Delete “${k.name}”?\n\nThe aesthetics it was built from are untouched.`)) return;
+  G.stacks = G.stacks.filter((x) => x.id !== sid);
+  if (!G.stacks.length) G.stackOnly = false;
+  saveStore();
+  // Any tab wearing it keeps its layers, it just stops claiming the name.
+  for (const s of G.sessions) if (s.stackId === sid) s.stackId = null;
+  buildFilterBar();
+  buildPresetList();
+  buildLayersPanel();
+  renderTabs();
+}
+
+/* Has the arrangement drifted from the stack it was loaded from? Picking a
+   different aesthetic into a layer drops the name outright (see selectPreset);
+   this catches the quieter kind - a knob moved, a layer switched off. */
+function stackDrifted() {
+  const k = state.stackId ? stackById(state.stackId) : null;
+  if (!k) return false;
+  return JSON.stringify(captureStackLayers()) !== JSON.stringify(usableStackLayers(k));
+}
+
+/* What the session is wearing, for tabs and export filenames. */
+function wearingName(sess = state) {
+  if (sess.stackId) return stackName(sess.stackId);
+  if (sess.customId) return customName(sess.customId);
+  return sess.presetId ? presetName(sess.presetId) : null;
+}
+
 /* The header's second line reports drift, and drift changes on every knob. */
 function syncPresetSub() {
   if (!state.presetId) return;
@@ -703,6 +909,43 @@ function closeModal(result) {
   const r = modalResolve;
   modalResolve = null;
   if (r) r(result);
+}
+
+/* The other kind of question: no text to type, just a choice between named
+   ways out. Resolves with the chosen key, or null for cancel. */
+let choiceResolve = null;
+
+function askChoice({ title, sub = '', choices }) {
+  // Holding ↓ on a layer worth protecting would otherwise queue one of these
+  // per keypress. The first question wins and the rest are dropped.
+  if (choiceResolve) return Promise.resolve(null);
+  $('choice-title').textContent = title;
+  $('choice-sub').textContent = sub;
+  const row = $('choice-row');
+  row.innerHTML = '';
+  for (const c of choices) {
+    const b = document.createElement('button');
+    b.textContent = c.label;
+    if (c.className) b.className = c.className;
+    if (c.title) b.title = c.title;
+    b.onclick = () => closeChoice(c.key);
+    row.appendChild(b);
+  }
+  $('choice-modal').classList.remove('hidden');
+  const preferred = row.querySelector('button.accent');
+  if (preferred) preferred.focus();
+  return new Promise((resolve) => { choiceResolve = resolve; });
+}
+
+function closeChoice(key) {
+  $('choice-modal').classList.add('hidden');
+  const r = choiceResolve;
+  choiceResolve = null;
+  if (r) r(key || null);
+}
+
+function choiceOpen() {
+  return Boolean(choiceResolve);
 }
 
 /* ── updates ─────────────────────────────────────────────────────────
@@ -1076,18 +1319,31 @@ function buildFilterBar() {
     cc.title = 'Show my custom aesthetics only';
     cc.onclick = () => {
       G.customOnly = !G.customOnly;
-      if (G.customOnly) G.favOnly = false;
+      if (G.customOnly) { G.favOnly = false; G.stackOnly = false; }
       buildFilterBar(); buildPresetList();
     };
     chips.appendChild(cc);
   }
+  if (G.stacks.length) {
+    const sc = document.createElement('span');
+    sc.className = 'chip stack-chip' + (G.stackOnly ? ' sel' : '');
+    sc.textContent = `▤ ${G.stacks.length}`;
+    sc.title = 'Show my saved stacks only';
+    sc.onclick = () => {
+      G.stackOnly = !G.stackOnly;
+      if (G.stackOnly) { G.favOnly = false; G.customOnly = false; }
+      buildFilterBar(); buildPresetList();
+    };
+    chips.appendChild(sc);
+  }
   const all = document.createElement('span');
-  all.className = 'chip' + (G.filterFamilies.size || G.favOnly || G.customOnly ? '' : ' sel');
+  all.className = 'chip' + (G.filterFamilies.size || G.favOnly || G.customOnly || G.stackOnly ? '' : ' sel');
   all.textContent = 'All';
   all.onclick = () => {
     G.filterFamilies.clear();
     G.favOnly = false;
     G.customOnly = false;
+    G.stackOnly = false;
     buildFilterBar(); buildPresetList();
   };
   chips.appendChild(all);
@@ -1133,12 +1389,14 @@ function passesFilters(p) {
 }
 
 function anyFilterActive() {
-  return G.favOnly || G.customOnly || G.filterFamilies.size > 0 || !!G.filterEra || !!$('preset-search').value;
+  return G.favOnly || G.customOnly || G.stackOnly || G.filterFamilies.size > 0
+    || !!G.filterEra || !!$('preset-search').value;
 }
 
 function clearFilters() {
   G.favOnly = false;
   G.customOnly = false;
+  G.stackOnly = false;
   G.filterFamilies.clear();
   G.filterEra = '';
   $('preset-search').value = '';
@@ -1309,7 +1567,7 @@ function presetCard(p) {
 
   const t = G.thumbs[p.id];
   if (t && t.anim && !isAudioOnly(p)) armHoverAnim(card, holder, t.anim);
-  card.onclick = () => selectPreset(p.id);
+  card.onclick = () => pickFromList(p.id);
   return card;
 }
 
@@ -1362,7 +1620,77 @@ function customCard(c) {
   card.appendChild(tools);
 
   card.appendChild(addLayerButton(c.id));
-  card.onclick = () => applyCustom(c.id);
+  card.onclick = () => pickFromList(c.id);
+  return card;
+}
+
+/* A saved stack borrows the thumbnail of its *last* layer - the one applied
+   last, so the one that dominates what you actually end up looking at - and
+   carries a ▤ badge with the layer count so it never reads as a single
+   aesthetic. */
+function stackCard(k) {
+  const usable = usableStackLayers(k);
+  const top = usable[usable.length - 1];
+  const base = top && G.schema.presets[top.base];
+  const card = document.createElement('div');
+  card.className = 'preset-card stack'
+    + (k.id === state.stackId ? ' worn' : '')
+    + (usable.length ? '' : ' broken');
+  card.dataset.pid = k.id;
+  card.title = usable.length
+    ? `Saved stack · ${stackChain(k)}`
+    : 'This stack uses aesthetics that are not in this build.';
+
+  let holder;
+  if (base) {
+    holder = thumbFor(base);
+  } else {
+    // Nothing left to borrow a picture from: an empty slot beats mislabelling
+    // the row as audio-only, which is what thumbFor infers from a bare object.
+    holder = document.createElement('div');
+    holder.className = 'p-thumb empty';
+  }
+  const badge = document.createElement('span');
+  badge.className = 's-badge';
+  badge.textContent = '▤';
+  badge.title = 'Your saved stack';
+  holder.appendChild(badge);
+  card.appendChild(holder);
+
+  const text = document.createElement('div');
+  text.className = 'p-text';
+  const name = document.createElement('span');
+  name.className = 'p-name';
+  name.textContent = k.name;
+  const meta = document.createElement('span');
+  meta.className = 'p-meta';
+  const n = usable.length;
+  const off = usable.filter((sl) => sl.enabled === false).length;
+  meta.textContent = `stack · ${n} layer${n === 1 ? '' : 's'}${off ? ` · ${off} off` : ''}`;
+  const tl = document.createElement('span');
+  tl.className = 'p-tag';
+  tl.textContent = stackChain(k);
+  text.appendChild(name);
+  text.appendChild(meta);
+  text.appendChild(tl);
+  card.appendChild(text);
+
+  const tools = document.createElement('div');
+  tools.className = 'card-tools';
+  const ren = document.createElement('button');
+  ren.textContent = '✎';
+  ren.title = 'Rename';
+  ren.onclick = (e) => { e.stopPropagation(); renameStack(k.id); };
+  const del = document.createElement('button');
+  del.textContent = '×';
+  del.title = 'Delete this stack';
+  del.onclick = (e) => { e.stopPropagation(); deleteStack(k.id); };
+  tools.appendChild(ren);
+  tools.appendChild(del);
+  card.appendChild(tools);
+
+  if (usable.length) card.appendChild(addLayerButton(k.id));
+  card.onclick = () => pickFromList(k.id);
   return card;
 }
 
@@ -1388,7 +1716,41 @@ function buildPresetList() {
   const navSeen = new Set();
   const addNav = (pid) => { if (!navSeen.has(pid)) { navSeen.add(pid); nav.push(pid); } };
 
-  /* Saved customs sit above everything: they are the things this user made. */
+  /* Saved stacks lead, then saved customs: the things this user made, biggest
+     arrangement first. Stacks stay out of `nav` on purpose - ↑/↓ auditions one
+     aesthetic against the rest of your stack, and applying a saved stack
+     replaces every layer, which is not something a held-down arrow key should
+     be able to do. */
+  const stackRows = G.stacks.filter((k) => {
+    if (G.favOnly || G.customOnly) return false;
+    if (!q) return true;
+    return `${k.name} ${stackChain(k)}`.toLowerCase().includes(q);
+  });
+  if (stackRows.length) {
+    const sl = document.createElement('div');
+    sl.className = 'family-label stacks';
+    sl.innerHTML = `▤ MY STACKS <span class="count">${stackRows.length}</span>`;
+    list.appendChild(sl);
+    for (const k of stackRows) list.appendChild(stackCard(k));
+  }
+
+  if (G.stackOnly) {
+    G.navOrder = [];
+    if (!stackRows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'list-empty';
+      empty.textContent = 'No stacks match.';
+      const btn = document.createElement('button');
+      btn.textContent = 'Clear filters';
+      btn.onclick = clearFilters;
+      empty.appendChild(document.createElement('br'));
+      empty.appendChild(btn);
+      list.appendChild(empty);
+    }
+    return;
+  }
+
+  /* Saved customs sit above the stock library: they are this user's too. */
   const customRows = G.customs.filter((c) => {
     if (G.favOnly) return false;
     if (!G.schema.presets[c.base]) return false;   // base preset went away
@@ -1435,7 +1797,7 @@ function buildPresetList() {
   let family = null;
   let familyBody = null;
   let familyHidden = false;
-  let shown = favRows.length + customRows.length;
+  let shown = favRows.length + customRows.length + stackRows.length;
   for (const p of presets) {
     if (!matches(p)) continue;
     shown++;
@@ -1513,6 +1875,18 @@ function buildLayersPanel() {
 
   const live = liveLayers(state).length;
   $('lp-hint').textContent = `${live} of ${layers.length} rendering, in order`;
+  // Nothing to save until at least one layer has an aesthetic in it.
+  $('btn-save-stack').classList.toggle('hidden', !captureStackLayers().length);
+
+  /* Which saved stack this arrangement came from, and whether it still matches.
+     Same honesty as a custom's "· edited": the panel never claims you are
+     looking at the saved version when you are not. */
+  const worn = $('lp-stack');
+  worn.classList.toggle('hidden', !state.stackId);
+  if (state.stackId) {
+    worn.textContent = `▤ ${stackName(state.stackId)}${stackDrifted() ? ' · edited' : ''}`;
+    worn.classList.toggle('drifted', stackDrifted());
+  }
   list.innerHTML = '';
 
   layers.forEach((l, i) => {
@@ -1621,6 +1995,7 @@ function moveLayer(from, to) {
   layers.splice(to, 0, moved);
   // Keep the selection on the layer the user was holding, wherever it landed.
   state.activeLayer = to;
+  syncSelection();
   buildLayersPanel();
   buildParamPane();
   schedulePreview();
@@ -1657,12 +2032,14 @@ function removeLayer(i) {
    stacked on itself - two passes of the same tape is a real thing. */
 function addLayer(pid, opts = {}) {
   if (!pid) return;
+  if (isStackId(pid)) { appendStack(pid, opts); return; }
   const custom = isCustomId(pid) ? customById(pid) : null;
   state.layers.push(newLayer(custom
     ? { presetId: custom.base, customId: custom.id, variant: custom.variant || null,
         sets: { ...(custom.sets || {}) } }
     : { presetId: pid }));
   state.activeLayer = state.layers.length - 1;
+  state.stackId = null;   // the arrangement has grown past the saved one
   buildLayersPanel();
   buildParamPane();
   syncSelection();
@@ -1681,6 +2058,7 @@ function applyOnly(id) {
 function selectPreset(pid, opts = {}) {
   state.presetId = pid;
   state.customId = null;   // picking a stock preset leaves any custom behind
+  state.stackId = null;    // and the arrangement is no longer the saved one
   state.variant = null;
   state.sets = {};
   syncSelection();       // the rows themselves have not changed, only which one is lit
@@ -1692,8 +2070,124 @@ function selectPreset(pid, opts = {}) {
 
 /* One entry point for both kinds of row, so ↑/↓ does not care which it lands on. */
 function selectById(id, opts = {}) {
-  if (isCustomId(id)) applyCustom(id, opts);
+  if (isStackId(id)) applyStack(id, opts);
+  else if (isCustomId(id)) applyCustom(id, opts);
   else selectPreset(id, opts);
+}
+
+/* ── guarding a pick ─────────────────────────────────────────────────
+   Picking from the list writes over the selected layer. Usually that costs
+   nothing and has to stay instant - swapping one untouched preset for another
+   is exactly what arrowing the list is for. But a layer you have actually
+   worked on is worth a question first, because there is no undo.
+
+   The predicate is the whole design: ask only when something would be lost.
+   Once a swap has happened the fresh layer carries no work, so the next arrow
+   press is silent again. */
+function layerHasWork(l) {
+  if (!l || !l.presetId) return false;
+  return Boolean(l.customId)
+    || Boolean(l.variant)
+    || Object.keys(l.sets || {}).length > 0
+    || l.intensity !== 1
+    || l.texture !== 1;
+}
+
+/* Applying a saved stack, or committing one aesthetic with Enter, replaces
+   every layer - so the stakes are the whole arrangement, not one layer. */
+function sessionHasWork(sess = state) {
+  const filled = (sess.layers || []).filter((l) => l.presetId);
+  return filled.length > 1 || filled.some(layerHasWork);
+}
+
+function pickLabel(id) {
+  if (isStackId(id)) return stackName(id);
+  if (isCustomId(id)) return customName(id);
+  return presetName(id);
+}
+
+/* What the selected layer is about to lose, in words. */
+function describeLayerWork(l) {
+  const bits = [];
+  const n = Object.keys(l.sets || {}).length;
+  if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
+  if (l.variant) bits.push(`the ${l.variant} variant`);
+  if (l.intensity !== 1) bits.push(`intensity ${l.intensity.toFixed(2)}`);
+  if (l.texture !== 1) bits.push(`texture ${l.texture.toFixed(2)}`);
+  if (!bits.length) return '';
+  if (bits.length === 1) return bits[0];
+  return `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
+}
+
+/* Open the same clip again in its own tab, wearing the thing that was just
+   picked - the way out of the dialog that loses nothing at all. */
+function openInNewTab(id) {
+  const src = activeSession();
+  if (!src) return;
+  const sess = newSession(src.file);
+  sess.previewT = src.previewT;
+  G.sessions.push(sess);
+  activateSession(sess.id);   // `state` now points at the new tab
+  selectById(id);             // a fresh session: one empty layer, nothing to guard
+}
+
+/* Every pick that comes from the browse list goes through here - clicks and
+   ↑/↓ alike, so both obey the same rule. */
+async function pickFromList(id, opts = {}) {
+  if (!id) return;
+  const stack = isStackId(id);
+  const atRisk = stack ? sessionHasWork() : layerHasWork(activeLayer(state));
+  if (!atRisk) { selectById(id, opts); return; }
+
+  const layer = activeLayer(state);
+  const lost = describeLayerWork(layer);
+  const many = (state.layers || []).filter((l) => l.presetId).length;
+  // A layer can be worth protecting purely because it is a saved custom, with
+  // nothing moved on top of it - so there is no list of tweaks to recite.
+  const carries = lost
+    ? `${layerLabel(layer)} carries ${lost}.`
+    : `${layerLabel(layer)} is one of your saved aesthetics.`;
+  const choice = await askChoice({
+    title: stack ? `Apply “${pickLabel(id)}” over this stack?` : `Replace ${layerLabel(layer)}?`,
+    sub: stack
+      ? `This tab has ${many} layer${many === 1 ? '' : 's'} set up. Applying a saved stack `
+        + 'replaces all of them.'
+      : `${carries} Picking ${pickLabel(id)} writes over it, `
+        + 'and the other layers stay as they are.',
+    choices: [
+      { key: 'tab', label: 'Open in a new tab', title: 'Leave this tab exactly as it is' },
+      { key: 'go', label: stack ? 'Replace stack' : 'Replace layer', className: 'accent' },
+      { key: null, label: 'Cancel' },
+    ],
+  });
+  if (choice === 'tab') openInNewTab(id);
+  else if (choice === 'go') selectById(id, opts);
+}
+
+/* Enter collapses everything to one aesthetic, so it asks about the whole
+   arrangement rather than the selected layer. */
+async function pickOnly(id) {
+  if (!id) return;
+  if (!sessionHasWork()) { applyOnly(id); return; }
+  const many = (state.layers || []).filter((l) => l.presetId).length;
+  const layer = activeLayer(state);
+  const lost = describeLayerWork(layer);
+  const choice = await askChoice({
+    title: `Commit ${pickLabel(id)} on its own?`,
+    // With a single layer there is nothing to drop - what is at stake is the
+    // work sitting on that one layer.
+    sub: many > 1
+      ? `This drops the other ${many - 1} layer${many === 2 ? '' : 's'} and every tweak on them.`
+      : `${lost ? `${layerLabel(layer)} carries ${lost}` : `${layerLabel(layer)} is one of your saved aesthetics`}, `
+        + 'and this writes over it.',
+    choices: [
+      { key: 'tab', label: 'Open in a new tab', title: 'Leave this tab exactly as it is' },
+      { key: 'go', label: 'Drop the rest', className: 'accent' },
+      { key: null, label: 'Cancel' },
+    ],
+  });
+  if (choice === 'tab') openInNewTab(id);
+  else if (choice === 'go') applyOnly(id);
 }
 
 /* Moving the highlight is a class flip, not a rebuild of 192 rows - which is
@@ -1702,7 +2196,9 @@ function selectById(id, opts = {}) {
 function syncSelection() {
   const id = selectionId();
   for (const card of $('preset-list').querySelectorAll('.preset-card')) {
-    card.classList.toggle('sel', card.dataset.pid === id);
+    const pid = card.dataset.pid;
+    card.classList.toggle('sel', pid === id && !isStackId(pid));
+    card.classList.toggle('worn', isStackId(pid) && pid === state.stackId);
   }
 }
 
@@ -1711,7 +2207,7 @@ function syncSelection() {
    actually settle on is rendered. */
 const NAV_PREVIEW_MS = 260;
 
-function navPreset(delta) {
+async function navPreset(delta) {
   const order = G.navOrder;
   if (!order.length) return;
   const at = order.indexOf(selectionId());
@@ -1721,7 +2217,9 @@ function navPreset(delta) {
     ? (delta > 0 ? 0 : order.length - 1)
     : Math.max(0, Math.min(order.length - 1, at + delta));
   if (order[next] === selectionId()) return;   // already against the end
-  selectById(order[next], { previewDelay: NAV_PREVIEW_MS });
+  // Same guard as a click: a layer carrying work asks first. Cancelling leaves
+  // the highlight where it was, and scrolling to it is a no-op.
+  await pickFromList(order[next], { previewDelay: NAV_PREVIEW_MS });
   const card = $('preset-list').querySelector('.preset-card.sel');
   if (card) card.scrollIntoView({ block: 'nearest' });
 }
@@ -2092,6 +2590,13 @@ function typingTarget(e) {
 function wireShortcuts() {
   window.addEventListener('keydown', (e) => {
     const meta = e.metaKey || e.ctrlKey;
+    // A pending "this would overwrite your work" question owns the keyboard
+    // outright: the answer is a click, and Escape means leave it alone.
+    if (choiceOpen()) {
+      if (e.code === 'Escape') closeChoice(null);
+      e.preventDefault();
+      return;
+    }
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
     // The about dialog owns the keyboard while it is up, the same way the name
     // prompt does - Cmd+O behind a modal is nobody's intent.
@@ -2121,7 +2626,7 @@ function wireShortcuts() {
         && (!typingTarget(e) || e.target === $('preset-search'))) {
       if (e.code === 'Enter' && !meta) {
         e.preventDefault();
-        applyOnly(selectionId());
+        pickOnly(selectionId());
         return;
       }
       if ((e.key === '+' || e.key === '=') && !meta && liveLayers(state).length) {
@@ -2263,6 +2768,7 @@ function wireControls() {
 
   $('btn-fav').addEventListener('click', () => { if (state.presetId) toggleFav(state.presetId); });
   $('btn-save-custom').addEventListener('click', saveCustom);
+  $('btn-save-stack').addEventListener('click', saveStack);
 
   $('modal-cancel').addEventListener('click', () => closeModal(null));
   $('modal-ok').addEventListener('click', () => closeModal($('modal-input').value.trim() || null));
@@ -2272,6 +2778,11 @@ function wireControls() {
     e.stopPropagation();   // the modal owns the keyboard while it is up
   });
   $('modal').addEventListener('mousedown', (e) => { if (e.target === $('modal')) closeModal(null); });
+  // Clicking the backdrop of a "this would overwrite your work" question is a
+  // cancel, same as Escape: the safe answer is always the default.
+  $('choice-modal').addEventListener('mousedown', (e) => {
+    if (e.target === $('choice-modal')) closeChoice(null);
+  });
   $('btn-reset-overrides').addEventListener('click', () => {
     state.sets = {};
     buildParamPane();
@@ -2400,11 +2911,13 @@ async function doExport() {
   const variantTag = sess.variant ? `-${sess.variant}` : '';
   const srcExt = (sess.file.path.match(/\.[^.\/]+$/) || ['.mp4'])[0];
   const outExt = sess.audioSource ? srcExt : '.mp4';
-  // A custom names the file after itself; the base preset id is still what the
-  // engine renders, but "my-look" beats "vhs-1985-sp" on disk.
-  const tag = sess.customId
-    ? slugify(customName(sess.customId))
-    : sess.presetId.replace('/', '-') + variantTag;
+  // A custom or a stack names the file after itself; the base presets are still
+  // what the engine renders, but "my-look" beats "vhs-1985-sp" on disk.
+  const tag = sess.stackId
+    ? slugify(stackName(sess.stackId))
+    : (sess.customId
+      ? slugify(customName(sess.customId))
+      : sess.presetId.replace('/', '-') + variantTag);
   const suggestion = `${base}.${tag}${outExt}`;
   const out = await window.aesth.pickExportPath(suggestion, sess.audioSource);
   if (!out) return;
@@ -2423,8 +2936,7 @@ async function doExport() {
   const job = {
     id: `job${++G.jobCounter}`,
     batchId: G.batchId,
-    label: (sess.customId ? customName(sess.customId) : presetName(sess.presetId))
-      + (sess.variant ? ` · ${sess.variant}` : ''),
+    label: wearingName(sess) + (sess.stackId ? '' : (sess.variant ? ` · ${sess.variant}` : '')),
     source: basename(sess.file.path),
     status: 'queued',
     phase: '',
