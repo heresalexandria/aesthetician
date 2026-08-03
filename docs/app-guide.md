@@ -137,6 +137,18 @@ slot*. A full-length pass is CPU-bound, so a third in parallel would only make
 the first two slower. Exporting the same destination twice is refused rather
 than letting two jobs race over one file.
 
+### When it lands
+
+A full export takes minutes, so the app posts a **desktop notification** when
+one finishes - the point of a long render is that you go and do something else,
+and an in-app toast is no use behind another window. Clicking the notification
+shows the finished file in the Finder.
+
+You get **one notification per batch, not one per export**: queue eight and the
+banner arrives once, when the last of them lands, and says how many finished.
+Failures are reported the same way, with the reason, and a mixed batch gives you
+both numbers. Cancelling everything you queued stays silent.
+
 ### Reading the progress
 
 A render is three passes - picture, then sound, then muxing the two together -
