@@ -25,8 +25,10 @@ from ...engine.graph import Context, Effect, Param, register
 
 _LUMA_W = np.array([0.299, 0.587, 0.114], dtype=np.float32)
 
+# Tags restored on the way back to an editable intermediate; the MJPEG
+# generations in between lose them but never convert the matrix.
 _X264_444 = ["-c:v", "libx264", "-preset", "fast", "-crf", "8",
-             "-pix_fmt", "yuv444p", "-an"]
+             "-pix_fmt", "yuv444p", *media.BT709_TAGS, "-an"]
 
 
 def _even(x: float) -> int:

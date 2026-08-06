@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 from ...engine import color
@@ -107,6 +108,30 @@ class Saturation(Effect):
             x = y + (x - y) * boost
         if self.v["amount"] != 1.0:
             x = color.saturate(x, self.v["amount"])
+        return np.clip(x, 0.0, 1.0).astype(np.float32)
+
+
+@register
+class Sharpen(Effect):
+    eid = "sharpen"
+    label = "Sharpness"
+    kind = "frame"
+    desc = "Unsharp-mask detail control: positive crispens edges, negative softens toward a blur."
+    PARAMS = (
+        Param("amount", "Amount", "float", 0.0, -1.0, 2.0,
+              desc="0 leaves the frame alone; negative blends toward the blur."),
+        Param("radius", "Radius", "float", 1.0, 0.3, 5.0, unit="px",
+              desc="Detail size the mask works at."),
+    )
+
+    def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
+        a = self.v["amount"]
+        if a == 0.0:
+            return frame
+        blur = cv2.GaussianBlur(frame, (0, 0), max(self.v["radius"], 0.3))
+        # One expression covers both directions: a > 0 adds the edge mask,
+        # a < 0 walks the same line toward the blur (a = -1 lands exactly on it).
+        x = frame + (frame - blur) * a
         return np.clip(x, 0.0, 1.0).astype(np.float32)
 
 

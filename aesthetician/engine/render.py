@@ -280,10 +280,11 @@ def render(
         report = _PhasedProgress(progress, _phase_weights(bool(video_chain), info.has_audio))
 
         # ── video ─────────────────────────────────────────────────────
+        src_matrix = media.source_matrix(info)
         if video_chain:
             video_out = _render_video(
                 input_path, tmp_root, video_chain, ctx, fps, n_frames,
-                proc_w, proc_h, out_w, out_h, opts, preset, duration, report,
+                proc_w, proc_h, out_w, out_h, opts, preset, duration, report, src_matrix,
             )
         else:
             # A straight copy still costs a transcode, and ffmpeg reports nothing
@@ -291,7 +292,7 @@ def render(
             # parked at zero.
             report("video", 0.0)
             video_out = os.path.join(tmp_root, "video_copy.mp4")
-            _plain_video(input_path, video_out, out_w, out_h, fps, opts.t0, duration, opts.crf)
+            _plain_video(input_path, video_out, out_w, out_h, fps, opts.t0, duration, opts.crf, src_matrix)
             report("video", 1.0)
 
         # ── audio ─────────────────────────────────────────────────────
@@ -404,14 +405,21 @@ def _render_audio_only(
             shutil.rmtree(tmp_root, ignore_errors=True)
 
 
-def _plain_video(src: str, dst: str, w: int, h: int, fps: float, t0: float, duration: float, crf: int) -> None:
+def _plain_video(src: str, dst: str, w: int, h: int, fps: float, t0: float, duration: float, crf: int,
+                 src_matrix: str = "auto") -> None:
+    """Scale/trim without frame processing, normalized to tagged BT.709.
+
+    Downscaling alone used to flip how players read the result: an untagged HD
+    source (shown as BT.709) became an untagged SD file (shown as BT.601).
+    Converting to BT.709 and saying so keeps the colors identical at any size.
+    """
     cmd = [media.FFMPEG, "-v", "error", "-nostdin", "-y"]
     if t0 > 0:
         cmd += ["-ss", f"{t0:.6f}"]
     cmd += ["-i", src, "-t", f"{duration:.6f}",
-            "-vf", f"scale={w}:{h}:flags=lanczos,fps={fps:.6f}",
+            "-vf", f"scale={w}:{h}:flags=lanczos:in_color_matrix={src_matrix}:out_color_matrix=bt709:out_range=tv,fps={fps:.6f}",
             "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
-            "-pix_fmt", "yuv420p", "-an", dst]
+            "-pix_fmt", "yuv420p", *media.BT709_TAGS, "-an", dst]
     media._run(cmd)
 
 
@@ -430,6 +438,7 @@ def _render_video(
     preset: Preset,
     duration: float,
     report: ProgressCb,
+    src_matrix: str = "auto",
 ) -> str:
     segments = _segment_chain(chain)
     src_map = _compose_src_map(chain, ctx, n_frames)
@@ -448,7 +457,7 @@ def _render_video(
         if seg and seg[0].kind == "filepass":
             if cur_is_source:
                 inter = os.path.join(tmp_root, "seg_src.mp4")
-                _plain_video(input_path, inter, proc_w, proc_h, fps, opts.t0, duration, 8)
+                _plain_video(input_path, inter, proc_w, proc_h, fps, opts.t0, duration, 8, src_matrix)
                 cur_input, cur_is_source = inter, False
             nxt = os.path.join(tmp_root, f"seg_{si}.mp4")
             seg[0].file_pass(cur_input, nxt, ctx)
@@ -469,6 +478,7 @@ def _render_video(
             cur_input, proc_w, proc_h, fps,
             t0=opts.t0 if cur_is_source else 0.0,
             duration=duration if cur_is_source else None,
+            matrix=src_matrix if cur_is_source else "auto",
         )
         use_map = not map_consumed and not map_identity
         cur_frame: Optional[np.ndarray] = None
@@ -509,7 +519,7 @@ def _render_video(
                 media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", cur_input,
                 "-vf", f"scale={out_w}:{out_h}:flags={flags}",
                 "-c:v", "libx264", "-preset", "medium", "-crf", str(opts.crf),
-                "-pix_fmt", "yuv420p", "-an", final,
+                "-pix_fmt", "yuv420p", *media.BT709_TAGS, "-an", final,
             ]
         )
         cur_input = final

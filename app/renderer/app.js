@@ -1425,10 +1425,11 @@ function clearFilters() {
 // ── preset list ─────────────────────────────────────────────────────
 const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-/* Families lead with the looks people reach for most; audio-only sits last
+/* Adjust leads: plain corrections are reached for in a hurry when they are
+   wanted at all. Then the looks people reach for most; audio-only sits last
    because those rows leave the picture untouched (their thumbnails are all the
    same untreated frame, so alphabetical order opened the app on 29 of them). */
-const FAMILY_ORDER = ['vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
+const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
   'decay', 'exhibition', 'print', 'transmission', 'stylized', 'audio'];
 
 function famRank(f) {

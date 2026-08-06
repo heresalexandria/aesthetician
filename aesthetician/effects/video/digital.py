@@ -68,7 +68,10 @@ _ILACE_CODECS = frozenset({"mpeg2video", "mpeg4"})
 # MPEG-1 only accepts the broadcast frame rates.
 _MPEG1_FPS = (23.976, 24.0, 25.0, 29.97, 30.0, 50.0, 59.94, 60.0)
 
-_INTERMEDIATE = ["-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p", "-an"]
+# Era codecs drop the color tags but never touch the matrix, so the return leg
+# relabels what is still BT.709 data.
+_INTERMEDIATE = ["-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p",
+                 *media.BT709_TAGS, "-an"]
 
 
 def _even(x: int) -> int:

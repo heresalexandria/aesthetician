@@ -396,7 +396,10 @@ def snippet(input_path: str, output: str, start: float, duration: float, scale: 
         click.echo(json.dumps({"output": output, "audio_only": True}))
         return
     w, h = _even(int(info.width * scale)), _even(int(info.height * scale))
-    _plain_video(input_path, output, w, h, info.fps, start, duration, crf=17)
+    from .engine.media import source_matrix
+
+    _plain_video(input_path, output, w, h, info.fps, start, duration, crf=17,
+                 src_matrix=source_matrix(info))
     if info.has_audio:
         import subprocess
 
