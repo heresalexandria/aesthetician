@@ -154,6 +154,10 @@ function renderArgs(req, outputPath) {
 function cacheKey(req) {
   const h = crypto.createHash('sha1');
   h.update(JSON.stringify({ ...req, jobId: undefined }));
+  // A cached preview is "what the engine renders for these params", and the
+  // engine's output changes across releases (the BT.709 color fix did), so the
+  // version is part of the identity.
+  h.update(app.getVersion());
   let stat = null;
   try { stat = fs.statSync(req.input); } catch (_) {}
   h.update(String(stat ? stat.mtimeMs : 0));

@@ -31,6 +31,34 @@ class MediaInfo:
     has_audio: bool
     sr: int
     channels: int
+    color_space: str = ""  # ffprobe color_space tag, "" when the file is untagged
+
+
+# Every YUV encode the engine produces is BT.709, and says so. Untagged output
+# is what made exports drift: swscale converts RGB with BT.601 coefficients by
+# default, players guess BT.709 for anything HD, and the preview (small, so
+# guessed BT.601) was the only place the colors looked right.
+BT709_TAGS = [
+    "-colorspace", "bt709", "-color_primaries", "bt709",
+    "-color_trc", "bt709", "-color_range", "tv",
+]
+
+# ffprobe color_space values mapped onto vf_scale's in_color_matrix names.
+_MATRIX_NAMES = {
+    "bt709": "bt709",
+    "bt601": "bt601", "bt470bg": "bt601", "smpte170m": "bt601",
+    "smpte240m": "smpte240m", "fcc": "fcc",
+    "bt2020nc": "bt2020", "bt2020c": "bt2020",
+}
+
+
+def source_matrix(info: MediaInfo) -> str:
+    """The YUV matrix a player would decode this file with: its tag when it has
+    a usable one, else the SD/HD guess (untagged HD is shown as BT.709)."""
+    tagged = _MATRIX_NAMES.get((info.color_space or "").lower())
+    if tagged:
+        return tagged
+    return "bt709" if info.height >= 720 or info.width >= 1280 else "bt601"
 
 
 def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -105,6 +133,7 @@ def probe(path: str) -> MediaInfo:
         has_audio=a is not None,
         sr=int(a["sample_rate"]) if a else 48000,
         channels=int(a.get("channels", 2)) if a else 2,
+        color_space=v.get("color_space") or "",
     )
 
 
@@ -115,8 +144,15 @@ def read_frames(
     fps: float,
     t0: float = 0.0,
     duration: Optional[float] = None,
+    matrix: str = "auto",
 ) -> Iterator[np.ndarray]:
-    """Stream frames as float32 RGB HxWx3 in [0,1], scaled to width x height."""
+    """Stream frames as float32 RGB HxWx3 in [0,1], scaled to width x height.
+
+    `matrix` is the YUV matrix used for the RGB conversion. "auto" honors the
+    file's tag and suits engine intermediates (always tagged); pass
+    source_matrix(info) when reading user files, so untagged HD decodes the way
+    a player would show it instead of falling back to swscale's BT.601.
+    """
     cmd = [FFMPEG, "-v", "error", "-nostdin"]
     if t0 > 0:
         cmd += ["-ss", f"{t0:.6f}"]
@@ -124,7 +160,7 @@ def read_frames(
     if duration is not None:
         cmd += ["-t", f"{duration:.6f}"]
     cmd += [
-        "-vf", f"scale={width}:{height}:flags=lanczos,fps={fps:.6f}",
+        "-vf", f"scale={width}:{height}:flags=lanczos:in_color_matrix={matrix},fps={fps:.6f}",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
     ]
     frame_bytes = width * height * 3
@@ -171,17 +207,21 @@ class FrameWriter:
         self.path = path
         self.width = width
         self.height = height
-        vf = []
+        chain = []
         if pix_fmt == "yuv420p" and (width % 2 or height % 2):
-            vf = ["-vf", f"pad={width + width % 2}:{height + height % 2}"]
+            chain.append(f"pad={width + width % 2}:{height + height % 2}")
+        # The format filter downstream makes this scale instance perform the
+        # RGB->YUV conversion itself; without it the encoder inserts its own
+        # with BT.601 coefficients.
+        chain += ["scale=out_color_matrix=bt709:out_range=tv", f"format={pix_fmt}"]
         cmd = [
             FFMPEG, "-v", "error", "-nostdin", "-y",
             "-f", "rawvideo", "-pix_fmt", "rgb24",
             "-s", f"{width}x{height}", "-r", f"{fps:.6f}",
             "-i", "-",
-            *vf,
+            "-vf", ",".join(chain),
             "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
-            "-pix_fmt", pix_fmt, "-movflags", "+faststart",
+            *BT709_TAGS, "-movflags", "+faststart",
             path,
         ]
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -282,10 +322,13 @@ def video_roundtrip(in_path: str, out_path: str, vcodec_args: list[str], scale: 
     tmp = out_path + ".rt.nut"
     vf = ["-vf", scale] if scale else []
     _run([FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path, *vf, *vcodec_args, "-an", tmp])
+    # Era codecs drop the color tags but never touch the matrix, so the
+    # intermediate coming back is still BT.709 data; relabel it as such.
     _run(
         [
             FFMPEG, "-v", "error", "-nostdin", "-y", "-i", tmp,
-            "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p", "-an",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p",
+            *BT709_TAGS, "-an",
             out_path,
         ]
     )
@@ -306,7 +349,8 @@ def extract_intermediate(in_path: str, out_path: str, width: int, height: int, f
         [
             FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path,
             "-vf", f"scale={width}:{height}:flags=lanczos,fps={fps:.6f}",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p", "-an",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p",
+            *BT709_TAGS, "-an",
             out_path,
         ]
     )
