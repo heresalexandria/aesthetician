@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('aesth', {
   probe: (file) => ipcRenderer.invoke('aesth:probe', file),
   pickInput: () => ipcRenderer.invoke('aesth:pick-input'),
   preview: (req) => ipcRenderer.invoke('aesth:preview', req),
+  still: (req) => ipcRenderer.invoke('aesth:still', req),
   snippet: (req) => ipcRenderer.invoke('aesth:snippet', req),
   pickExportPath: (suggestion, audioOnly) => ipcRenderer.invoke('aesth:pick-export-path', suggestion, audioOnly),
   exportRender: (req) => ipcRenderer.invoke('aesth:export', req),

@@ -105,8 +105,13 @@ class CodecEra(Effect):
               desc="mpeg2video = DVD/broadcast, mpeg1video = VCD, mpeg4 = DivX era, "
                    "msmpeg4 = late-90s web/WMV, flv1 = 2005 Flash video, "
                    "h263p = videoconferencing, mjpeg = motion-JPEG cameras."),
-        Param("kbps", "Bitrate", "int", 900, 100, 8000, unit="kbps", group="Quality",
-              desc="Target bitrate. Low values starve the encoder into classic blocks."),
+        # A 100 kbps floor assumed broadband. The presets that exist for the era
+        # before it - RealPlayer over a 56k modem, a 2007 cameraphone - were
+        # written at 60-96 and silently pulled back up to 100, which is precisely
+        # the starvation they were built to show.
+        Param("kbps", "Bitrate", "int", 900, 8, 8000, unit="kbps", group="Quality",
+              desc="Target bitrate. Low values starve the encoder into classic blocks; "
+                   "under ~100 is modem territory."),
         Param("qscale", "Quantizer", "int", 0, 0, 31, group="Quality",
               desc="Fixed quantizer 2–31 (31 = worst). When > 0 it replaces the bitrate."),
         Param("res", "Resolution", "enum", "native",

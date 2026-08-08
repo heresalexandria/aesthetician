@@ -16,6 +16,27 @@ from aesthetician.engine.graph import Context, build_chain
 from aesthetician.engine.presets import all_presets, parse_override_paths
 
 
+def _out_of_range(eff, params: dict) -> list[str]:
+    """Values a preset writes that its own parameter will not accept.
+
+    `Param.coerce` clips to the declared bounds, silently, so a preset asking for
+    a 4.2 s reverb tail on a dial that stops at 1.5 renders at 1.5 and says 4.2
+    forever. Nothing sounds broken, so nothing gets reported - twelve of these
+    had accumulated before anyone went looking. Either the value is wrong or the
+    range is too tight, and both are worth being made to choose between.
+    """
+    byname = {p.name: p for p in type(eff).PARAMS}
+    bad = []
+    for name, val in params.items():
+        prm = byname.get(name)
+        if prm is None or prm.kind not in ("float", "int"):
+            continue
+        if not (prm.lo <= float(val) <= prm.hi):
+            bad.append(f"{eff.key}.{name} = {val} is outside {prm.lo}..{prm.hi} "
+                       f"(renders as {max(prm.lo, min(prm.hi, float(val)))})")
+    return bad
+
+
 def validate() -> int:
     ctx = Context(704, 1280, 30.0, 90, seed=3)
     problems: list[str] = []
@@ -34,6 +55,9 @@ def validate() -> int:
                     eff.resolve(ctx)
             except Exception as e:
                 problems.append(f"{pid}: {which} resolve failed: {e}")
+            for eff, (_, written) in zip(chain, spec):
+                for bad in _out_of_range(eff, written):
+                    problems.append(f"{pid}: {which} {bad}")
             for v in preset.variants:
                 over = parse_override_paths(getattr(v, which))
                 for ekey, params in over.items():
@@ -41,6 +65,8 @@ def validate() -> int:
                         problems.append(f"{pid}[{v.id}]: {which} override targets missing effect '{ekey}'")
                         continue
                     eff = next(e for e in chain if e.key == ekey)
+                    for bad in _out_of_range(eff, params):
+                        problems.append(f"{pid}[{v.id}]: {which} {bad}")
                     try:
                         merged = dict(eff.overrides)
                         merged.update(params)
