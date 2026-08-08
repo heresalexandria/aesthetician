@@ -348,6 +348,47 @@ def preview(input_path, output, at, scale, **kw) -> None:
     _run_render(input_path, output, scale=scale, suffix=".preview", **kw)
 
 
+@main.command("still")
+@click.argument("input_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--output", "-o", required=True, help="PNG to write.")
+@click.option("--scale", type=float, default=0.5)
+@_with(_render_options)
+def still_cmd(input_path, output, scale, **kw) -> None:
+    """Render frame 0 of what `preview` would produce, and nothing else.
+
+    Roughly a tenth of the cost of the clip, because it does one frame's worth
+    of pixel work rather than ninety - but the *whole* clip's worth of setup, so
+    the frame it produces is the one the clip opens on. Prints JSON with an
+    `exact` flag: false means the chain has a real codec pass (or is a stack),
+    where one frame cannot stand in for the clip and the picture will shift
+    slightly once the clip lands.
+    """
+    from .engine.presets import get_preset
+    from .engine.render import RenderOptions, render_still, render_still_layers
+
+    stack = _parse_layers(kw.get("layers_json")) if kw.get("layers_json") else None
+    if not stack and not kw.get("preset_id"):
+        raise click.UsageError("give --preset, or --layers for a stack")
+    video_over, audio_over = _split_overrides(kw.get("sets") or ())
+    opts = RenderOptions(
+        seed=kw.get("seed") if kw.get("seed") is not None else 1,
+        intensity=kw.get("intensity", 1.0),
+        texture=kw.get("texture", 1.0),
+        variant=kw.get("variant"),
+        video_overrides=video_over,
+        audio_overrides=audio_over,
+        t0=kw.get("start") or 0.0,
+        duration=kw.get("duration"),
+        scale=scale,
+        crf=kw.get("crf", 17),
+    )
+    if stack:
+        got = render_still_layers(input_path, output, stack, opts)
+    else:
+        got = render_still(input_path, output, get_preset(kw["preset_id"]), opts)
+    click.echo(json.dumps({"output": got.path, "exact": got.exact}))
+
+
 @main.command("probe")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False))
 def probe_cmd(input_path: str) -> None:

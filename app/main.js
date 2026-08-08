@@ -94,6 +94,7 @@ function dropLayerSpec(req) {
 
 let win = null;
 let previewProc = null; // superseded previews get killed
+let stillProc = null;   // and so does the still that was racing alongside one
 const exportProcs = new Map();
 
 function ensureCacheDir() {
@@ -148,6 +149,32 @@ function renderArgs(req, outputPath) {
   if (!(Array.isArray(req.layers) && req.layers.length)) {
     for (const [k, v] of Object.entries(req.sets || {})) args.push('--set', `${k}=${v}`);
   }
+  return args;
+}
+
+/* Frame 0 of the same render, for the paused player to show while the clip is
+   still encoding. Deliberately not `renderArgs`: a still has no progress to
+   report, no audio to treat and no crf to honour, and folding those into one
+   builder would mean four flags that only apply to one of the two callers. */
+function stillArgs(req, outputPath) {
+  const args = ['-m', 'aesthetician.cli', 'still', req.input, '-o', outputPath];
+  if (Array.isArray(req.layers) && req.layers.length) {
+    fs.mkdirSync(LAYER_SPEC_DIR, { recursive: true });
+    const spec = path.join(LAYER_SPEC_DIR, `${req.jobId || 'still'}-${process.hrtime.bigint()}.json`);
+    fs.writeFileSync(spec, JSON.stringify(req.layers));
+    args.push('--layers', `@${spec}`);
+    req._layerSpec = spec;
+  } else {
+    args.push('-p', req.presetId,
+      '--seed', String(req.seed ?? 1),
+      '--intensity', String(req.intensity ?? 1.0),
+      '--texture', String(req.texture ?? 1.0));
+    if (req.variant) args.push('--variant', req.variant);
+    for (const [k, v] of Object.entries(req.sets || {})) args.push('--set', `${k}=${v}`);
+  }
+  if (req.start != null) args.push('--start', String(req.start));
+  if (req.duration != null) args.push('--duration', String(req.duration));
+  if (req.scale != null) args.push('--scale', String(req.scale));
   return args;
 }
 
@@ -246,6 +273,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (previewProc) previewProc.kill('SIGKILL');
+  if (stillProc) stillProc.kill('SIGKILL');
   for (const p of exportProcs.values()) p.kill('SIGKILL');
   app.quit();
 });
@@ -350,8 +378,16 @@ ipcMain.handle('aesth:preview', async (e, req) => {
   // An audio source produces audio: keep the cache honest about that.
   const ext = req.audioSource ? '.m4a' : '.mp4';
   const output = path.join(CACHE_DIR, `${key}${ext}`);
-  if (fs.existsSync(output)) return { output, cached: true };
+  // Whatever is in flight was asked for by a state the user has since left, so
+  // it goes - and it goes before the cache is consulted. Letting a cache hit
+  // return without stopping it left the old render running to completion and
+  // reporting back *after* the answer the user is looking at, which is one
+  // knob-flick away any time a preview takes longer than the next tweak.
   if (previewProc) { try { previewProc.kill('SIGKILL'); } catch (_) {} previewProc = null; }
+  // The still is not this render's predecessor, it is its partner: the renderer
+  // asks for both at once and the still is the half that answers first. Killing
+  // it here killed it every time, roughly a millisecond after it started.
+  if (fs.existsSync(output)) return { output, cached: true };
   const args = renderArgs(req, output + '.part' + ext);
   try {
     await spawnRender(args, req.jobId, e.sender, 'preview');
@@ -360,6 +396,47 @@ ipcMain.handle('aesth:preview', async (e, req) => {
   }
   fs.renameSync(output + '.part' + ext, output);
   return { output, cached: false };
+});
+
+/* The paused player's fast first look. Same cache directory as the clips, keyed
+   the same way, so a still costs nothing the second time you land on a setting. */
+ipcMain.handle('aesth:still', async (_e, req) => {
+  const key = cacheKey({ ...req, kind: 'still' });
+  const output = path.join(CACHE_DIR, `${key}.png`);
+  const meta = `${output}.json`;
+  if (stillProc) { try { stillProc.kill('SIGKILL'); } catch (_) {} stillProc = null; }
+  if (fs.existsSync(output) && fs.existsSync(meta)) {
+    try { return { output, ...JSON.parse(fs.readFileSync(meta, 'utf8')), cached: true }; } catch (_) { /* rewrite it */ }
+  }
+  const part = `${output}.part.png`;
+  const args = stillArgs(req, part);
+  let out = '';
+  try {
+    out = await new Promise((resolve, reject) => {
+      const p = spawn(PYTHON, args, CHILD_OPTS());
+      stillProc = p;
+      let so = '';
+      let se = '';
+      p.stdout.on('data', (d) => (so += d));
+      p.stderr.on('data', (d) => (se += d));
+      p.on('close', (code) => {
+        if (stillProc === p) stillProc = null;
+        if (code === 0) resolve(so);
+        else if (p.killed) reject(new Error('superseded'));
+        else reject(new Error(se.slice(-2000) || `exit ${code}`));
+      });
+      p.on('error', reject);
+    });
+  } catch (err) {
+    try { fs.unlinkSync(part); } catch (_) { /* never written */ }
+    throw err;
+  } finally {
+    dropLayerSpec(req);
+  }
+  const info = JSON.parse(out.trim().split('\n').pop());
+  fs.renameSync(part, output);
+  fs.writeFileSync(meta, JSON.stringify({ exact: info.exact }));
+  return { output, exact: info.exact, cached: false };
 });
 
 ipcMain.handle('aesth:snippet', async (_e, req) => {

@@ -60,6 +60,10 @@ jobs:
       - name: Updater unit tests
         run: node tests/test_updater.js
 
+      # Needs the engine's schema, which the install step above provides.
+      - name: Renderer unit tests
+        run: node tests/test_renderer.js
+
       - name: Preset validation
         run: python scripts/validate_presets.py
 

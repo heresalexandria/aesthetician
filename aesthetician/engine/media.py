@@ -354,3 +354,41 @@ def extract_intermediate(in_path: str, out_path: str, width: int, height: int, f
             out_path,
         ]
     )
+
+
+def write_image(path: str, frame: np.ndarray, out_w: int, out_h: int, flags: str = "bicubic") -> None:
+    """Write one float32 RGB frame as a PNG, scaled the way the clip would be.
+
+    The scale filter mirrors the final upscale in render.py so a still and the
+    clip it previews are the same picture at the same size. What the still does
+    not carry is the clip's own H.264 pass, so it is the render one step before
+    the preview's compression rather than a copy of the compressed result.
+    """
+    h, w = frame.shape[:2]
+    buf = (np.clip(frame, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8).tobytes()
+    vf = [] if (w, h) == (out_w, out_h) else ["-vf", f"scale={out_w}:{out_h}:flags={flags}"]
+    proc = subprocess.Popen(
+        [FFMPEG, "-v", "error", "-nostdin", "-y",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-i", "-",
+         *vf, "-frames:v", "1", path],
+        stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    _, err = proc.communicate(buf)
+    if proc.returncode != 0:
+        raise MediaError(f"still encode failed ({proc.returncode}): {err.decode(errors='replace')[-1500:]}")
+
+
+def write_one_frame_video(path: str, frame: np.ndarray, fps: float) -> None:
+    """A one-frame clip, so a file-pass effect has a file to chew on."""
+    h, w = frame.shape[:2]
+    buf = (np.clip(frame, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8).tobytes()
+    proc = subprocess.Popen(
+        [FFMPEG, "-v", "error", "-nostdin", "-y",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", f"{fps:.6f}", "-i", "-",
+         "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p",
+         *BT709_TAGS, "-an", path],
+        stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    _, err = proc.communicate(buf)
+    if proc.returncode != 0:
+        raise MediaError(f"one-frame encode failed ({proc.returncode}): {err.decode(errors='replace')[-1500:]}")

@@ -18,7 +18,7 @@ The full correction toolkit on one panel: exposure, contrast, gamma, white balan
 - **Saturation & Hue** - (defaults)
 - **Sharpness** - (defaults)
 
-*17 adjustable parameters in this preset.*
+*21 adjustable parameters in this preset.*
 
 ### `brightness-contrast` - Brightness & Contrast (any)
 
@@ -29,7 +29,7 @@ Tone controls alone: exposure in stops, contrast around a pivot, midtone gamma, 
 **Picture:**
 - **Tone Curve** - (defaults)
 
-*6 adjustable parameters in this preset.*
+*7 adjustable parameters in this preset.*
 
 ### `color-balance` - Color Balance (any)
 
@@ -41,7 +41,7 @@ White balance and color controls: warmth, tint, shadow and highlight split tones
 - **Color Balance** - (defaults)
 - **Saturation & Hue** - (defaults)
 
-*9 adjustable parameters in this preset.*
+*11 adjustable parameters in this preset.*
 
 ### `sharpness` - Sharpness (any)
 
@@ -52,7 +52,7 @@ Unsharp-mask sharpening with an adjustable radius; negative amounts soften towar
 **Picture:**
 - **Sharpness** - (defaults)
 
-*2 adjustable parameters in this preset.*
+*3 adjustable parameters in this preset.*
 
 ## AUDIO
 
@@ -67,7 +67,7 @@ A jukebox single that earned its keep: groove-worn brightness loss, steady crack
 - **Speaker Sim** - `a_speaker.device=jukebox_1955`, `a_speaker.strength=0.5`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*25 adjustable parameters in this preset.*
+*30 adjustable parameters in this preset.*
 
 ### `audio-8track-1974` - 8-Track Cartridge (1974)
 
@@ -80,7 +80,7 @@ Stereo 8 in the dashboard: syrupy wow, the next program ghosting up from under t
 - **8-Track Cartridge** - `a_8track.wow=0.6`, `a_8track.crosstalk_db=-24.0`, `a_8track.program_clunk=True`, `a_8track.clunk_at_s=4.0`, `a_8track.hiss_db=-42.0`
 - **Speaker Sim** - `a_speaker.device=car_dash_1978`, `a_speaker.strength=0.55`
 
-*13 adjustable parameters in this preset.*
+*16 adjustable parameters in this preset.*
 
 ### `audio-am-1948` - AM Radio (1948)
 
@@ -93,7 +93,7 @@ The wireless after dinner: narrow, compressed, atmospheric static breathing with
 - **Speaker Sim** - `a_speaker.device=portable_radio_1975`, `a_speaker.strength=0.7`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`
 
-*14 adjustable parameters in this preset.*
+*17 adjustable parameters in this preset.*
 
 ### `audio-answering-machine-1988` - Answering Machine (1988)
 
@@ -106,7 +106,7 @@ Microcassette memo of a missed call: telephone band squeezed onto slow tape, war
 - **Tape Saturation** - `a_tape_sat.drive=2.2`
 - **Speaker Sim** - `a_speaker.device=clock_radio_1988`, `a_speaker.strength=0.6`
 
-*22 adjustable parameters in this preset.*
+*27 adjustable parameters in this preset.*
 
 ### `audio-atc-1969` - Air Traffic Radio (1969)
 
@@ -119,7 +119,7 @@ Cleared to land two-niner: a tight 300–2500 carrier, AGC riding every syllable
 - **Vintage AGC** - `a_agc.target_db=-16.0`, `a_agc.attack_ms=15.0`, `a_agc.release_ms=250.0`, `a_agc.amount=1.0`
 - **CB Radio** - `a_cb_radio.drive=2.6`, `a_cb_radio.squelch_tails=True`, `a_cb_radio.bleed=0.0`, `a_cb_radio.het_db=-66.0`, `a_cb_radio.hiss_db=-46.0`
 
-*13 adjustable parameters in this preset.*
+*16 adjustable parameters in this preset.*
 
 ### `audio-cassette-1984` - Cassette (1984)
 
@@ -134,7 +134,7 @@ A Type I mixtape, dubbed with love: head-bump warmth, honest hiss, azimuth smear
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`, `a_tape_hiss.type=cassette`
 - **Tape Dropouts** - `a_tape_dropouts.rate=1.0`, `a_tape_dropouts.azimuth=0.4`
 
-*21 adjustable parameters in this preset.*
+*26 adjustable parameters in this preset.*
 
 ### `audio-cb-1977` - CB Radio (1977)
 
@@ -146,7 +146,7 @@ Breaker one-nine on a wound-up mic: clipped to a bark, squelch kshhh-chk on both
 - **CB Radio** - `a_cb_radio.drive=5.0`, `a_cb_radio.squelch_tails=True`, `a_cb_radio.bleed=0.45`, `a_cb_radio.het_db=-48.0`, `a_cb_radio.hiss_db=-40.0`
 - **Speaker Sim** - `a_speaker.device=transistor_pocket_1965`, `a_speaker.strength=0.5`
 
-*8 adjustable parameters in this preset.*
+*10 adjustable parameters in this preset.*
 
 ### `audio-cd-skip-1999` - Discman Skip (1999)
 
@@ -158,7 +158,7 @@ Anti-shock in name only: forty milliseconds of the chorus, six times in a row, t
 - **CD Skip** - `a_cd_skip.rate=12.0`
 - **Speaker Sim** - `a_speaker.device=earbud_2005`, `a_speaker.strength=0.45`
 
-*4 adjustable parameters in this preset.*
+*6 adjustable parameters in this preset.*
 
 ### `audio-church-pa-1972` - Church PA (1972)
 
@@ -173,7 +173,7 @@ A column speaker bolted to limestone: horn midrange arriving twice, three second
 - **Small Room** - `a_room.mode=chamber`, `a_room.size=1.8`, `a_room.decay_s=2.6`, `a_room.mix=0.38`, `a_room.damp=0.55`, `a_room.predelay_ms=25.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`, `a_hum.buzz=0.35`
 
-*19 adjustable parameters in this preset.*
+*24 adjustable parameters in this preset.*
 
 ### `audio-dat-1994` - DAT Dropout (1994)
 
@@ -185,7 +185,7 @@ The demo master, digital and dying: pristine audio that freezes for a heartbeat,
 - **Compressor** - `a_compressor.ratio=2.0`
 - **DAT Errors** - `a_dat_error.error_rate=30.0`, `a_dat_error.mute_rate=4.0`
 
-*9 adjustable parameters in this preset.*
+*11 adjustable parameters in this preset.*
 
 ### `audio-dolby-mistrack-1979` - Dolby Mistrack (1979)
 
@@ -199,7 +199,7 @@ Recorded with Dolby, played without: quiet passages hiss bright, loud ones dull 
 - **Tape Saturation** - `a_tape_sat.drive=1.8`, `a_tape_sat.bump_db=2.0`, `a_tape_sat.eq_era=nab_mismatch`, `a_tape_sat.dolby_mistrack=0.85`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`, `a_tape_hiss.type=cassette`
 
-*18 adjustable parameters in this preset.*
+*22 adjustable parameters in this preset.*
 
 ### `audio-drive-thru-1988` - Drive-Thru Speaker (1988)
 
@@ -213,7 +213,7 @@ Would you like fries with the distortion? Phone-grade wiring into a gravel-lot s
 - **PA / Bullhorn** - `a_pa_bullhorn.device=drive_thru`, `a_pa_bullhorn.drive=3.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`, `a_hum.buzz=0.5`
 
-*16 adjustable parameters in this preset.*
+*20 adjustable parameters in this preset.*
 
 ### `audio-fm-1978` - FM Late Night (1978)
 
@@ -224,7 +224,7 @@ Album-rock FM with the lights off: full-range but compressed to velvet, pilot hi
 - **Compressor** - `a_compressor.ratio=3.5`
 - **Speaker Sim** - `a_speaker.device=car_dash_1978`, `a_speaker.strength=0.45`
 
-*13 adjustable parameters in this preset.*
+*16 adjustable parameters in this preset.*
 
 ### `audio-gramophone-1915` - Gramophone Horn (1915)
 
@@ -239,7 +239,7 @@ Acoustic-era shellac through a brass horn: a fist of midrange, wow from a hand-w
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=2.8`
 - **Needle Events** - `a_needle.drop_at_start=True`
 
-*25 adjustable parameters in this preset.*
+*32 adjustable parameters in this preset.*
 
 ### `audio-hold-music-1993` - On Hold (1993)
 
@@ -253,7 +253,7 @@ Your call is important: a worn tape loop wandering flat and sharp under phone-ba
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`, `a_tape_hiss.type=cassette`
 - **Telephone** - `a_telephone.era=touchtone_1985`, `a_telephone.line_noise_db=-44.0`, `a_telephone.exchange_noise=0.6`
 
-*19 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `audio-karaoke-1989` - Karaoke Night (1989)
 
@@ -270,7 +270,7 @@ Cassette backing track with the echo knob at maximum: every line answered by its
 - **Small Room** - `a_room.mode=spring_amp`, `a_room.size=0.9`, `a_room.decay_s=1.1`, `a_room.mix=0.4`
 - **Speaker Sim** - `a_speaker.device=boombox_1985`, `a_speaker.strength=0.55`
 
-*31 adjustable parameters in this preset.*
+*38 adjustable parameters in this preset.*
 
 ### `audio-microcassette-1986` - Microcassette Memo (1986)
 
@@ -284,7 +284,7 @@ Note to self at 2.4 centimeters per second: the AGC gulping air between words, f
 - **Tape Saturation** - `a_tape_sat.drive=2.2`, `a_tape_sat.bump_db=0.0`, `a_tape_sat.hf_loss=0.5`
 - **Speaker Sim** - `a_speaker.device=clock_radio_1988`, `a_speaker.strength=0.65`
 
-*19 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `audio-mp3-2002` - Napster MP3 (2002)
 
@@ -295,7 +295,7 @@ A 56k trophy: real low-bitrate MP3 swirl, cymbals turned to watercolor, stereo f
 **Sound:**
 - **MP3 Codec** - `a_codec_mp3.kbps=48`
 
-*2 adjustable parameters in this preset.*
+*3 adjustable parameters in this preset.*
 
 ### `audio-optical-1942` - Optical Soundtrack (1942)
 
@@ -306,7 +306,7 @@ Variable-area film sound on its own: academy rolloff, cell-noise crackle, sprock
 - **Mono Fold** - `a_mono.amount=1.0`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*14 adjustable parameters in this preset.*
+*17 adjustable parameters in this preset.*
 
 ### `audio-pa-1970` - PA Announcement (1970)
 
@@ -318,7 +318,7 @@ Attention, shoppers: horn-loaded midrange, gentle clipping, a slap of room echo 
 - **PA / Bullhorn** - `a_pa_bullhorn.device=pa_hall`, `a_pa_bullhorn.drive=2.5`, `a_pa_bullhorn.slap_ms=140.0`, `a_pa_bullhorn.slap_gain_db=-14.0`, `a_pa_bullhorn.slap_repeats=1`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`
 
-*9 adjustable parameters in this preset.*
+*11 adjustable parameters in this preset.*
 
 ### `audio-shellac-1935` - 78 rpm Shellac (1935)
 
@@ -334,7 +334,7 @@ Electrically recorded 78: fuller than the horn era but still boxed in, riding a 
 - **Needle Events** - (defaults)
 - **Compressor** - `a_compressor.ratio=3.0`
 
-*26 adjustable parameters in this preset.*
+*32 adjustable parameters in this preset.*
 
 ### `audio-shortwave-1962` - Shortwave (1962)
 
@@ -347,7 +347,7 @@ Somewhere east of the dial: the signal breathes away mid-word, RTTY chatters und
 - **Speaker Sim** - `a_speaker.device=portable_radio_1975`, `a_speaker.strength=0.7`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-54.0`
 
-*12 adjustable parameters in this preset.*
+*15 adjustable parameters in this preset.*
 
 ### `audio-subway-pa-1975` - Subway PA (1975)
 
@@ -363,7 +363,7 @@ The next-train announcement, shredded by horn speakers and flung down a tiled tu
 - **Small Room** - `a_room.mode=chamber`, `a_room.size=2.0`, `a_room.decay_s=3.2`, `a_room.mix=0.42`, `a_room.damp=0.7`, `a_room.predelay_ms=40.0`
 - **Ambience Bed** - `a_bed.bed=air_handler_hall`, `a_bed.level_db=-27.0`, `a_bed.duck=0.35`
 
-*23 adjustable parameters in this preset.*
+*29 adjustable parameters in this preset.*
 
 ### `audio-telephone-1955` - Telephone (1955)
 
@@ -374,7 +374,7 @@ A rotary line call: 300–3400 Hz of Bakelite intimacy, carbon-mic grit, the hum
 **Sound:**
 - **Telephone** - `a_telephone.era=rotary_1955`, `a_telephone.line_noise_db=-46.0`
 
-*4 adjustable parameters in this preset.*
+*5 adjustable parameters in this preset.*
 
 ### `audio-transcription-1938` - Transcription Disc (1938)
 
@@ -389,7 +389,7 @@ Sixteen inches of lacquer at 33⅓: wider and calmer than any 78, the surface br
 - **Tube Amplifier** - `a_tube_amp.drive=1.6`, `a_tube_amp.sag=0.3`, `a_tube_amp.hum_db=-54.0`
 - **Compressor** - `a_compressor.ratio=3.0`
 
-*18 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `audio-tube-console-1948` - Tube Console (1948)
 
@@ -404,7 +404,7 @@ The good radiogram after supper: tubes warm as toast, the transformer sagging on
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.7`, `a_speaker.cabinet_knock=0.3`
 - **Small Room** - `a_room.size=1.1`, `a_room.decay_s=0.5`, `a_room.mix=0.16`, `a_room.damp=0.6`
 
-*17 adjustable parameters in this preset.*
+*22 adjustable parameters in this preset.*
 
 ### `audio-tv-speaker-1975` - TV Speaker (1975)
 
@@ -416,7 +416,7 @@ The sound of television before soundbars: one paper cone in a particleboard cabi
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.7`
 - **Small Room** - `a_room.size=0.75`, `a_room.decay_s=0.4`, `a_room.mix=0.18`
 
-*14 adjustable parameters in this preset.*
+*18 adjustable parameters in this preset.*
 
 ### `audio-vinyl-lp-1965` - Vinyl LP (1965)
 
@@ -431,7 +431,7 @@ A well-played 33⅓ on a decent table: warm and intact, with soft crackle, an of
 - **Tape Saturation** - `a_tape_sat.drive=1.4`
 - **Needle Events** - `a_needle.drop_at_start=True`, `a_needle.lift_at_end=True`
 
-*23 adjustable parameters in this preset.*
+*28 adjustable parameters in this preset.*
 
 ### `audio-wire-1945` - Wire Recorder (1945)
 
@@ -444,7 +444,7 @@ A memo on a spool of steel: highs shimmering underwater, the wire's 2.8 kHz twan
 - **Tube Amplifier** - `a_tube_amp.drive=1.7`, `a_tube_amp.sag=0.35`, `a_tube_amp.hum_db=-52.0`
 - **Compressor** - `a_compressor.ratio=3.0`
 
-*16 adjustable parameters in this preset.*
+*19 adjustable parameters in this preset.*
 
 ## BROADCAST
 
@@ -469,7 +469,7 @@ The 24-hour desk during the big story: clean studio cameras, a satellite window'
 - **Compressor** - `a_compressor.ratio=4.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 
-*87 adjustable parameters in this preset.*
+*98 adjustable parameters in this preset.*
 
 ### `car-dealer-ad-1986` - Car Dealer Spot (1986)
 
@@ -493,7 +493,7 @@ Thirty seconds of NO MONEY DOWN: chroma cranked past legal, edges sharpened to a
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=1.8`
 - **Vintage AGC** - `a_agc.amount=0.6`
 
-*89 adjustable parameters in this preset.*
+*101 adjustable parameters in this preset.*
 
 ### `closed-circuit-1970` - Closed-Circuit Feed (1970)
 
@@ -519,7 +519,7 @@ The building's own channel: vidicon gray with a rumor of color, flyback lines gh
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.5`, `a_hum.level_db=-42.0`
 - **Ambience Bed** - `a_bed.bed=fluorescent_office`, `a_bed.level_db=-36.0`, `a_bed.duck=0.3`
 
-*88 adjustable parameters in this preset.*
+*102 adjustable parameters in this preset.*
 
 ### `color-premiere-1966` - Color Spectacular (1966)
 
@@ -543,7 +543,7 @@ The night the peacock spread its tail: showroom saturation, bright faces driftin
 - **Tube Amplifier** - `a_tube_amp.drive=2.0`, `a_tube_amp.sag=0.4`, `a_tube_amp.hum_db=-56.0`
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.6`
 
-*69 adjustable parameters in this preset.*
+*81 adjustable parameters in this preset.*
 
 ### `dx-tv-1963` - TV DX Catch (1963)
 
@@ -568,7 +568,7 @@ A station five hundred miles past the horizon: the picture surfaces out of the s
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.7`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`
 
-*80 adjustable parameters in this preset.*
+*93 adjustable parameters in this preset.*
 
 ### `early-color-1967` - Early Color Broadcast (1967)
 
@@ -590,7 +590,7 @@ When color arrived and nobody's set agreed on hue: glowing NTSC rainbow edges, d
 - **Mono Fold** - `a_mono.amount=1.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.55`
 
-*74 adjustable parameters in this preset.*
+*86 adjustable parameters in this preset.*
 
 ### `golf-sunday-1977` - Sunday Golf (1977)
 
@@ -617,7 +617,7 @@ Whispered commentary over eight acres of noisy green: tube cameras on long soft 
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.5`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*108 adjustable parameters in this preset.*
+*123 adjustable parameters in this preset.*
 
 ### `kinescope-1953` - Kinescope (1953)
 
@@ -645,7 +645,7 @@ Live TV preserved by filming a monitor: silvery blown highlights, scanline ghost
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`
 
-*87 adjustable parameters in this preset.*
+*103 adjustable parameters in this preset.*
 
 ### `local-morning-1985` - Local Morning Show (1985)
 
@@ -671,7 +671,7 @@ Rise and shine with Channel 8: cream-warm studio light, gentle diffusion on the 
 - **Vintage AGC** - `a_agc.amount=0.5`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.45`
 
-*90 adjustable parameters in this preset.*
+*104 adjustable parameters in this preset.*
 
 ### `morning-block-1990` - Syndicated Morning (1990)
 
@@ -696,7 +696,7 @@ Cheap and cheerful at 7 AM: bright pumped color, comet trails on the mascot suit
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.3`
 
-*92 adjustable parameters in this preset.*
+*105 adjustable parameters in this preset.*
 
 ### `network-bw-1959` - Network Studio (1959)
 
@@ -718,7 +718,7 @@ Big-three studio B&W: crisp orthicon cameras with comet-tail glow, velvet grays,
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.5`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`
 
-*62 adjustable parameters in this preset.*
+*74 adjustable parameters in this preset.*
 
 ### `network-feed-raw-1988` - Network Backhaul (1988)
 
@@ -740,7 +740,7 @@ The bird feed before the affiliate dresses it: pristine studio color, comms-clea
 - **DAT Errors** - `a_dat_error.error_rate=2.0`, `a_dat_error.mute_rate=0.2`
 - **Tape Hiss** - `a_tape_hiss.level_db=-54.0`
 
-*72 adjustable parameters in this preset.*
+*82 adjustable parameters in this preset.*
 
 ### `news-film-1975` - Eyewitness News Film (1975)
 
@@ -769,7 +769,7 @@ The bird feed before the affiliate dresses it: pristine studio color, comms-clea
 - **Vintage AGC** - `a_agc.amount=0.5`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-50.0`
 
-*96 adjustable parameters in this preset.*
+*113 adjustable parameters in this preset.*
 
 ### `pbs-pledge-1983` - Pledge Drive (1983)
 
@@ -795,7 +795,7 @@ Channel 13 at hour four: soft patient cameras, folding tables and phone voluntee
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.4`, `a_hum.level_db=-48.0`
 - **Ambience Bed** - `a_bed.bed=fluorescent_office`, `a_bed.level_db=-38.0`, `a_bed.duck=0.4`
 
-*99 adjustable parameters in this preset.*
+*113 adjustable parameters in this preset.*
 
 ### `portable-bw-1963` - Portable B&W Set (1963)
 
@@ -818,7 +818,7 @@ A rabbit-eared portable in the kitchen: swimming snow, ghosting from the neighbo
 - **Speaker Sim** - `a_speaker.device=transistor_pocket_1965`, `a_speaker.strength=0.7`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-40.0`
 
-*59 adjustable parameters in this preset.*
+*70 adjustable parameters in this preset.*
 
 ### `public-access-1989` - Public Access (1989)
 
@@ -840,7 +840,7 @@ Channel 19 after midnight: one tired camera, fluorescent hum, black that never q
 - **Small Room** - `a_room.size=0.4`, `a_room.decay_s=0.5`, `a_room.mix=0.25`
 - **Vintage AGC** - `a_agc.amount=0.7`
 
-*93 adjustable parameters in this preset.*
+*105 adjustable parameters in this preset.*
 
 ### `satellite-feed-1991` - Satellite News Feed (1991)
 
@@ -859,7 +859,7 @@ A raw bird feed grabbed between commercials: analog sparklies, slight smear, com
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=0.5`, `a_digital_glitch.mute_rate=0.3`
 
-*71 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `sign-off-1979` - Sign-Off (1979)
 
@@ -885,7 +885,7 @@ After the anthem: the transmitter left breathing on its own - color AGC sighing,
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`
 
-*81 adjustable parameters in this preset.*
+*95 adjustable parameters in this preset.*
 
 ### `sitcom-1993` - Multi-Cam Sitcom (1993)
 
@@ -907,7 +907,7 @@ Warm, soft, forgiving studio video with that Friday-night glow: gentle bloom, ea
 - **Vintage AGC** - `a_agc.amount=0.35`
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 
-*102 adjustable parameters in this preset.*
+*114 adjustable parameters in this preset.*
 
 ### `talk-show-1984` - Daytime Talk Show (1984)
 
@@ -931,7 +931,7 @@ Studio cameras under hot lights: waxy skin, smeared reds, comet trails on the se
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.35`
 
-*98 adjustable parameters in this preset.*
+*112 adjustable parameters in this preset.*
 
 ### `uhf-horror-host-1971` - UHF Creature Feature (1971)
 
@@ -957,7 +957,7 @@ Channel 62 at midnight: snow that never melts, a herringbone weave from the next
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.75`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.4`, `a_hum.level_db=-44.0`
 
-*81 adjustable parameters in this preset.*
+*95 adjustable parameters in this preset.*
 
 ## CARTOON
 
@@ -984,7 +984,7 @@ Direct-to-video cel anime sheen: fine 16mm grain over lush painted cels, warm hi
 - **Tape Hiss** - `a_tape_hiss.level_db=-52.0`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*81 adjustable parameters in this preset.*
+*96 adjustable parameters in this preset.*
 
 ### `cartoon-anime-fansub-1992` - Fansub Third Gen (1992)
 
@@ -1012,7 +1012,7 @@ The tape that toured the club: anime cels under three generations of VHS, record
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`, `a_tape_hiss.type=cassette`
 - **Tape Dropouts** - `a_tape_dropouts.rate=2.0`, `a_tape_dropouts.azimuth=0.4`
 
-*114 adjustable parameters in this preset.*
+*130 adjustable parameters in this preset.*
 
 ### `cartoon-anime-tv-1979` - TV Anime Cel (1979)
 
@@ -1045,7 +1045,7 @@ Weeknight TV anime: warm-brown trace lines on banked cels, a taped seam gliding 
 - **Compressor** - `a_compressor.ratio=3.5`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.5`
 
-*118 adjustable parameters in this preset.*
+*139 adjustable parameters in this preset.*
 
 ### `cartoon-cereal-mascot-1962` - Cereal Mascot Spot (1962)
 
@@ -1077,7 +1077,7 @@ A minute of pure breakfast: three-strip-bright mascot colors on immaculate cels,
 - **Compressor** - `a_compressor.ratio=6.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.5`
 
-*109 adjustable parameters in this preset.*
+*129 adjustable parameters in this preset.*
 
 ### `cartoon-euro-short-1965` - European Festival Short (1965)
 
@@ -1110,7 +1110,7 @@ A quiet prize-winner from a small studio: painterly texture in every field, mute
 - **Small Room** - `a_room.mode=chamber`, `a_room.size=1.2`, `a_room.decay_s=1.1`, `a_room.mix=0.15`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*97 adjustable parameters in this preset.*
+*118 adjustable parameters in this preset.*
 
 ### `cartoon-filmation-1975` - Filmation Economy (1975)
 
@@ -1141,7 +1141,7 @@ The economy plan: heroic four-frame holds, the same run cycle you saw last week,
 - **Compressor** - `a_compressor.ratio=4.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.55`
 
-*108 adjustable parameters in this preset.*
+*127 adjustable parameters in this preset.*
 
 ### `cartoon-fleischer-1936` - Fleischer New York (1936)
 
@@ -1173,7 +1173,7 @@ Inkwell-to-nitrate NYC animation: two stacked cels drifting apart, blacks like w
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=7.0`, `a_wow_flutter.flutter_depth=5.0`
 - **Compressor** - `a_compressor.ratio=4.5`
 
-*101 adjustable parameters in this preset.*
+*121 adjustable parameters in this preset.*
 
 ### `cartoon-mtv-1994` - MTV Animation (1994)
 
@@ -1203,7 +1203,7 @@ Liquid-television grunge: acid palette, a line that shakes like it's nervous, 16
 - **Compressor** - `a_compressor.ratio=3.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`
 
-*105 adjustable parameters in this preset.*
+*123 adjustable parameters in this preset.*
 
 ### `cartoon-nick-90s` - 90s Cable Cartoon (1995)
 
@@ -1229,7 +1229,7 @@ Orange-and-slime palette pushed through an S-VHS master: sharp-ish edges, hummin
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.35`
 
-*101 adjustable parameters in this preset.*
+*115 adjustable parameters in this preset.*
 
 ### `cartoon-pencil-test-1968` - Pencil Test Reel (1968)
 
@@ -1256,7 +1256,7 @@ The animator's rough pass shot on the down-shooter: blue construction lines unde
 - **Ambience Bed** - `a_bed.bed=projector_16mm_run`, `a_bed.level_db=-26.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*62 adjustable parameters in this preset.*
+*77 adjustable parameters in this preset.*
 
 ### `cartoon-rubberhose-1932` - Rubber Hose (1932)
 
@@ -1285,7 +1285,7 @@ Pre-code black-and-white bounce: heavy grain and flicker over inky cels, everyth
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=8.0`, `a_wow_flutter.flutter_depth=6.0`
 - **Compressor** - `a_compressor.ratio=5.0`
 
-*95 adjustable parameters in this preset.*
+*114 adjustable parameters in this preset.*
 
 ### `cartoon-saturday-1969` - Saturday Morning 1969 (1969)
 
@@ -1316,7 +1316,7 @@ The Hanna-Barbera chain complete: cels on twos with wobbling registration, dirt 
 - **Compressor** - `a_compressor.ratio=3.5`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.45`
 
-*104 adjustable parameters in this preset.*
+*123 adjustable parameters in this preset.*
 
 ### `cartoon-sunday-comic-1972` - Sunday Funnies (1972)
 
@@ -1336,7 +1336,7 @@ The cartoon as a printed page: four rotated CMYK screens blooming into rosettes 
 - **Speaker Sim** - `a_speaker.device=portable_radio_1975`, `a_speaker.strength=0.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*32 adjustable parameters in this preset.*
+*40 adjustable parameters in this preset.*
 
 ### `cartoon-technicolor-1944` - Golden Age Technicolor (1944)
 
@@ -1362,7 +1362,7 @@ Full-animation splendor on nitrate: rich three-strip inks, painterly backgrounds
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-52.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*74 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `cartoon-toy-ad-1985` - Saturday Toy Spot (1985)
 
@@ -1393,7 +1393,7 @@ Thirty seconds between cartoons: candy-bright cels on crisp 16mm, everything ani
 - **Vintage AGC** - `a_agc.amount=0.7`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.4`
 
-*106 adjustable parameters in this preset.*
+*125 adjustable parameters in this preset.*
 
 ### `cartoon-upa-1957` - UPA Modernist (1957)
 
@@ -1426,7 +1426,7 @@ Flat-planes-of-color modernism: shading snapped to poster paint, a live brush li
 - **Small Room** - `a_room.size=1.0`, `a_room.decay_s=0.6`, `a_room.mix=0.12`
 - **Compressor** - `a_compressor.ratio=3.0`
 
-*99 adjustable parameters in this preset.*
+*120 adjustable parameters in this preset.*
 
 ### `cartoon-vhs-1985` - Cartoon VHS Rip (1985)
 
@@ -1451,7 +1451,7 @@ Saturday's cartoons taped for Sunday: the cel-print look smeared through consume
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.4`
 
-*103 adjustable parameters in this preset.*
+*118 adjustable parameters in this preset.*
 
 ## DECAY
 
@@ -1483,7 +1483,7 @@ The take-up jammed and the lamp did the rest: scorch-bleached color, burn scars 
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-26.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`
 
-*87 adjustable parameters in this preset.*
+*105 adjustable parameters in this preset.*
 
 ### `moldy-basement-16mm-1958` - Basement Mold 16mm (1958)
 
@@ -1512,7 +1512,7 @@ Twenty damp winters under the stairs: mold blooming in from the reel edge, a mil
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-27.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`, `a_hum.buzz=0.3`
 
-*85 adjustable parameters in this preset.*
+*102 adjustable parameters in this preset.*
 
 ### `nitrate-terminal-1929` - The Melting Reel (1929)
 
@@ -1541,7 +1541,7 @@ Terminal nitrate, projected one last time: emulsion bubbling into honey-rimmed v
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-26.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-50.0`
 
-*81 adjustable parameters in this preset.*
+*98 adjustable parameters in this preset.*
 
 ### `nitrate-vault-1937` - Vault Nitrate (1937)
 
@@ -1570,7 +1570,7 @@ A studio vault reel gone amber at the edges: honey fog creeping in, emulsion sta
 - **Compressor** - `a_compressor.ratio=4.5`
 - **Tube Amplifier** - `a_tube_amp.drive=1.8`, `a_tube_amp.sag=0.5`, `a_tube_amp.hum_db=-50.0`
 
-*82 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `rescued-scan-2019` - Rescued Nitrate Scan (2019)
 
@@ -1599,7 +1599,7 @@ A dying reel, pin-registered and scanned with love: the amber stain and mottle p
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-52.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **MP3 Codec** - `a_codec_mp3.kbps=96`, `a_codec_mp3.mono=True`
 
-*73 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `sticky-shed-umatic-1981` - Sticky-Shed U-matic (1981)
 
@@ -1626,7 +1626,7 @@ The binder is coming off on the heads: bands of smeared dropout clot the picture
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`
 
-*99 adjustable parameters in this preset.*
+*114 adjustable parameters in this preset.*
 
 ### `vinegar-ektachrome-1974` - Vinegar Reel (1974)
 
@@ -1653,7 +1653,7 @@ You smell it before you thread it: acetate buckling in slow waves, dye layers sl
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=18.0`, `a_wow_flutter.flutter_depth=10.0`, `a_wow_flutter.scrape=0.3`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-50.0`
 
-*69 adjustable parameters in this preset.*
+*84 adjustable parameters in this preset.*
 
 ### `water-damaged-attic-1965` - Attic Flood Reel (1965)
 
@@ -1680,7 +1680,7 @@ The roof leaked onto the Kodachrome: tide marks ring every winter, emulsion blis
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-25.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*76 adjustable parameters in this preset.*
+*91 adjustable parameters in this preset.*
 
 ## DIGITAL
 
@@ -1705,7 +1705,7 @@ A camcorder smuggled past the usher, pressed to shiny silver discs: hot screen c
 - **MP3 Codec** - `a_codec_mp3.kbps=64`, `a_codec_mp3.mono=True`
 - **Ambience Bed** - `a_bed.bed=air_handler_hall`, `a_bed.level_db=-34.0`, `a_bed.duck=0.3`
 
-*52 adjustable parameters in this preset.*
+*63 adjustable parameters in this preset.*
 
 ### `cameraphone-2007` - Flip Phone Clip (2007)
 
@@ -1720,7 +1720,7 @@ A camcorder smuggled past the usher, pressed to shiny silver discs: hot screen c
 - **Speech Codec** - (defaults)
 - **Vintage AGC** - `a_agc.amount=0.8`
 
-*23 adjustable parameters in this preset.*
+*28 adjustable parameters in this preset.*
 
 ### `datamosh` - Datamosh (2009)
 
@@ -1735,7 +1735,7 @@ Real bitstream corruption, decoded with error concealment: motion drags the worl
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=6.0`, `a_digital_glitch.mute_rate=2.0`, `a_digital_glitch.crackle_rate=4.0`
 - **Bitcrush** - `a_bitcrush.bits=10`, `a_bitcrush.sr_hz=22050.0`
 
-*16 adjustable parameters in this preset.*
+*19 adjustable parameters in this preset.*
 
 ### `dvd-2001` - Early DVD (2001)
 
@@ -1753,7 +1753,7 @@ A first-wave DVD authoring job: real MPEG-2 at modest bitrate - gentle macrobloc
 - **Compressor** - `a_compressor.ratio=2.5`
 - **MP3 Codec** - `a_codec_mp3.kbps=128`
 
-*29 adjustable parameters in this preset.*
+*35 adjustable parameters in this preset.*
 
 ### `dvdr-home-transfer-2005` - Tapes-to-DVD (2005)
 
@@ -1776,7 +1776,7 @@ Dad's VHS archive 'digitized': the noise reducer wipes away the tape grain and h
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`
 - **MP3 Codec** - `a_codec_mp3.kbps=128`, `a_codec_mp3.mono=False`
 
-*74 adjustable parameters in this preset.*
+*85 adjustable parameters in this preset.*
 
 ### `first-vertical-2013` - First Vertical (2013)
 
@@ -1798,7 +1798,7 @@ Shot tall on a phone before that was allowed: pillarboxed 9:16, exposure pumping
 - **Vintage AGC** - `a_agc.amount=0.65`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*51 adjustable parameters in this preset.*
+*61 adjustable parameters in this preset.*
 
 ### `hd-1080i-2008` - Early 1080i (2008)
 
@@ -1817,7 +1817,7 @@ HD at last, interlaced anyway: razor edges and pumped broadcast color, weave com
 - **Compressor** - `a_compressor.ratio=5.0`, `a_compressor.threshold_db=-20.0`, `a_compressor.makeup_db=3.0`
 - **MP3 Codec** - `a_codec_mp3.kbps=128`, `a_codec_mp3.mono=False`
 
-*31 adjustable parameters in this preset.*
+*38 adjustable parameters in this preset.*
 
 ### `ipod-video-2005` - iPod Video (2005)
 
@@ -1834,7 +1834,7 @@ The 320-line pocket theater: a clean careful little encode, soft but composed, w
 - **MP3 Codec** - `a_codec_mp3.kbps=128`, `a_codec_mp3.mono=False`
 - **Speaker Sim** - `a_speaker.device=earbud_2005`, `a_speaker.strength=0.5`
 
-*22 adjustable parameters in this preset.*
+*27 adjustable parameters in this preset.*
 
 ### `minidv-2000` - MiniDV Handycam (2000)
 
@@ -1853,7 +1853,7 @@ The millennium home format: crisp but over-sharpened edges, 4:1:1 chroma stair-s
 - **Compressor** - `a_compressor.ratio=2.0`
 - **Vintage AGC** - `a_agc.amount=0.4`
 
-*41 adjustable parameters in this preset.*
+*48 adjustable parameters in this preset.*
 
 ### `myspace-2006` - MySpace Clip (2006)
 
@@ -1872,7 +1872,7 @@ Embedded in a glitter profile: FLV re-crunched from someone else's re-upload, gr
 - **MP3 Codec** - `a_codec_mp3.kbps=32`, `a_codec_mp3.mono=True`
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=1.0`, `a_digital_glitch.mute_rate=0.5`, `a_digital_glitch.crackle_rate=1.0`
 
-*26 adjustable parameters in this preset.*
+*33 adjustable parameters in this preset.*
 
 ### `nightshot-2001` - Camcorder NightShot (2001)
 
@@ -1892,7 +1892,7 @@ Infrared home video: phosphor-green faces with glowing eyes, blooming highlights
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 - **Bandwidth** - `a_bandlimit.low_hz=120.0`, `a_bandlimit.high_hz=8000.0`
 
-*72 adjustable parameters in this preset.*
+*82 adjustable parameters in this preset.*
 
 ### `pixel-1990` - PC Game Capture (1990)
 
@@ -1909,7 +1909,7 @@ Infrared home video: phosphor-green faces with glowing eyes, blooming highlights
 - **Bitcrush** - `a_bitcrush.bits=8`, `a_bitcrush.sr_hz=11025.0`, `a_bitcrush.antialias=False`
 - **Speaker Sim** - `a_speaker.device=clock_radio_1988`, `a_speaker.strength=0.6`
 
-*37 adjustable parameters in this preset.*
+*42 adjustable parameters in this preset.*
 
 ### `psp-ripped-2006` - PSP Rip (2006)
 
@@ -1927,7 +1927,7 @@ Converted for the bus ride: widescreen crushed to Memory Stick bitrates, edges o
 - **MP3 Codec** - `a_codec_mp3.kbps=96`, `a_codec_mp3.mono=False`
 - **Speaker Sim** - `a_speaker.device=earbud_2005`, `a_speaker.strength=0.6`
 
-*28 adjustable parameters in this preset.*
+*34 adjustable parameters in this preset.*
 
 ### `realplayer-1999` - RealPlayer Stream (1999)
 
@@ -1946,7 +1946,7 @@ Buffering... buffering: a postage stamp of smeared blocks that freezes mid-gestu
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=4.0`, `a_digital_glitch.mute_rate=2.0`, `a_digital_glitch.crackle_rate=2.0`
 - **Speaker Sim** - `a_speaker.device=pc_speaker_1992`, `a_speaker.strength=0.45`
 
-*31 adjustable parameters in this preset.*
+*38 adjustable parameters in this preset.*
 
 ### `screen-recording-2009` - Filmed Off the Monitor (2009)
 
@@ -1969,7 +1969,7 @@ No capture card, no problem: a camera aimed at an LCD - moiré bands breathing o
 - **Small Room** - `a_room.size=0.8`, `a_room.decay_s=0.4`, `a_room.mix=0.25`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*62 adjustable parameters in this preset.*
+*73 adjustable parameters in this preset.*
 
 ### `security-vcr-1994` - Security VCR (1994)
 
@@ -1994,7 +1994,7 @@ Camera 3, aisle 5: cool drained color, time-lapse stutter, phosphor smear on mov
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.3`, `a_hum.level_db=-40.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`, `a_tape_hiss.type=dictaphone`
 
-*89 adjustable parameters in this preset.*
+*102 adjustable parameters in this preset.*
 
 ### `vcd-1997` - Video CD (1997)
 
@@ -2010,7 +2010,7 @@ The bootleg standard of the 90s: real MPEG-1 at 352 lines and 1150 kbps, blocks 
 - **Bandwidth** - `a_bandlimit.low_hz=60.0`, `a_bandlimit.high_hz=10000.0`
 - **MP3 Codec** - `a_codec_mp3.kbps=64`, `a_codec_mp3.mono=False`
 
-*19 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `webcam-2004` - MSN Webcam (2004)
 
@@ -2030,7 +2030,7 @@ A ball-shaped webcam on a CRT bezel: tiny sensor smear, frame stutter, blocky mo
 - **Bitcrush** - `a_bitcrush.bits=12`, `a_bitcrush.sr_hz=11025.0`
 - **Vintage AGC** - `a_agc.amount=0.7`
 
-*50 adjustable parameters in this preset.*
+*60 adjustable parameters in this preset.*
 
 ### `webcam-stream-2012` - Late Webcam (2012)
 
@@ -2052,7 +2052,7 @@ The laptop lid's eye: sharper than the ball-cam era but pumping white balance at
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=1.5`, `a_digital_glitch.mute_rate=0.5`, `a_digital_glitch.crackle_rate=1.0`
 - **Small Room** - `a_room.size=0.7`, `a_room.decay_s=0.35`, `a_room.mix=0.18`
 
-*51 adjustable parameters in this preset.*
+*61 adjustable parameters in this preset.*
 
 ### `webvideo-2006` - Early Web Video (2006)
 
@@ -2067,7 +2067,7 @@ The laptop lid's eye: sharper than the ball-cam era but pumping white balance at
 - **Mono Fold** - `a_mono.amount=1.0`
 - **MP3 Codec** - `a_codec_mp3.kbps=32`, `a_codec_mp3.mono=True`
 
-*11 adjustable parameters in this preset.*
+*14 adjustable parameters in this preset.*
 
 ## EXHIBITION
 
@@ -2100,7 +2100,7 @@ A bedsheet on the clothesline, Super 8 after dark: hotspot glowing through the w
 - **Ambience Bed** - `a_bed.bed=air_handler_hall`, `a_bed.level_db=-42.0`, `a_bed.duck=0.1`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-56.0`
 
-*92 adjustable parameters in this preset.*
+*111 adjustable parameters in this preset.*
 
 ### `booth-changeover-1957` - Changeover Booth (1957)
 
@@ -2131,7 +2131,7 @@ Two projectors, one feature: cue dots blink in the corner, the splice bumps thro
 - **Small Room** - `a_room.size=1.4`, `a_room.decay_s=0.9`, `a_room.mix=0.16`, `a_room.mode=chamber`
 - **Ambience Bed** - `a_bed.bed=projector_35mm_booth`, `a_bed.level_db=-28.0`
 
-*96 adjustable parameters in this preset.*
+*115 adjustable parameters in this preset.*
 
 ### `drive-in-dusk-1961` - Drive-In Windshield (1961)
 
@@ -2160,7 +2160,7 @@ Scope through a windshield at dusk: the screen ghosting in the glass, dashboard 
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=2.4`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`
 
-*72 adjustable parameters in this preset.*
+*89 adjustable parameters in this preset.*
 
 ### `home-8mm-wall-1966` - Living-Room Wall Show (1966)
 
@@ -2189,7 +2189,7 @@ No screen tonight - straight onto the wall: roller-mottle under the picture, key
 - **Ambience Bed** - `a_bed.bed=projector_8mm_run`, `a_bed.level_db=-22.0`, `a_bed.duck=0.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-50.0`
 
-*87 adjustable parameters in this preset.*
+*104 adjustable parameters in this preset.*
 
 ### `matinee-scope-1955` - Saturday Matinee Scope (1955)
 
@@ -2223,7 +2223,7 @@ A scope print that has met every projector in the county: pink-leaning color, sp
 - **Small Room** - `a_room.size=1.5`, `a_room.decay_s=1.0`, `a_room.mix=0.2`, `a_room.mode=chamber`
 - **Ambience Bed** - `a_bed.bed=projector_35mm_booth`, `a_bed.level_db=-32.0`
 
-*116 adjustable parameters in this preset.*
+*138 adjustable parameters in this preset.*
 
 ### `rptv-superbowl-1993` - Rec-Room Big Screen (1993)
 
@@ -2247,7 +2247,7 @@ The neighborhood's first big screen: three CRT guns drifting apart at the corner
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.55`
 - **Small Room** - `a_room.size=1.1`, `a_room.decay_s=0.5`, `a_room.mix=0.2`
 
-*62 adjustable parameters in this preset.*
+*74 adjustable parameters in this preset.*
 
 ## FILM
 
@@ -2276,7 +2276,7 @@ Cinema's first decade: blue-blind emulsion that turns skies to milk and lips to 
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-26.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-54.0`
 
-*77 adjustable parameters in this preset.*
+*92 adjustable parameters in this preset.*
 
 ### `bolex-diary-1968` - Bolex Diary (1968)
 
@@ -2302,7 +2302,7 @@ A wound-by-hand life: black-and-white reversal boiling with grain, the spring ru
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-27.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*69 adjustable parameters in this preset.*
+*83 adjustable parameters in this preset.*
 
 ### `bw-home-16mm-1938` - Prewar Home 16mm (1938)
 
@@ -2329,7 +2329,7 @@ Sixteen-frame Sundays on reversal stock: boiling silver grain, a lens gone gentl
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-27.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*75 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `classroom-1976` - Classroom Print (1976)
 
@@ -2358,7 +2358,7 @@ The AV-cart filmstrip look: a 16mm print gone pink, splices that jump, scratches
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-26.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.5`
 
-*96 adjustable parameters in this preset.*
+*115 adjustable parameters in this preset.*
 
 ### `doc-16mm-1968` - 16mm Documentary (1968)
 
@@ -2381,7 +2381,7 @@ Vérité 16mm: muted Eastman color, honest grain, handheld gate weave - history 
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-49.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 - **Vintage AGC** - `a_agc.amount=0.4`
 
-*63 adjustable parameters in this preset.*
+*76 adjustable parameters in this preset.*
 
 ### `drive-in-1959` - Drive-In Feature (1959)
 
@@ -2406,7 +2406,7 @@ Dusk, a windshield, a tinny door-hung speaker: cheap saturated print, projection
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=2.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`
 
-*65 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `eastman-faded-1979` - Faded Eastman Print (1979)
 
@@ -2426,7 +2426,7 @@ The signature pink apocalypse of 70s color stock: cyan dye gone, magenta marchin
 - **Bandwidth** - `a_bandlimit.low_hz=100.0`, `a_bandlimit.high_hz=7000.0`
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-48.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 
-*48 adjustable parameters in this preset.*
+*58 adjustable parameters in this preset.*
 
 ### `ektachrome-news-1972` - Ektachrome Film News (1972)
 
@@ -2454,7 +2454,7 @@ The reversal reel the station never returned: chrome-blue shadows going pink at 
 - **Vintage AGC** - `a_agc.amount=0.6`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*79 adjustable parameters in this preset.*
+*95 adjustable parameters in this preset.*
 
 ### `fuji-8mm-1983` - Fuji Single-8 (1983)
 
@@ -2482,7 +2482,7 @@ The other cartridge: Fujichrome greens cool as pond water, tighter grain than th
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-28.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*77 adjustable parameters in this preset.*
+*93 adjustable parameters in this preset.*
 
 ### `grindhouse-1973` - Grindhouse Print (1973)
 
@@ -2510,7 +2510,7 @@ The other cartridge: Fujichrome greens cool as pond water, tighter grain than th
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=2.5`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`
 
-*87 adjustable parameters in this preset.*
+*105 adjustable parameters in this preset.*
 
 ### `home-95mm-1928` - Pathé Baby 9.5mm (1928)
 
@@ -2537,7 +2537,7 @@ The gauge with the hole in the middle: center-perf flashes when a splice lifts, 
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-25.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-52.0`
 
-*75 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `kinemacolor-1912` - Kinemacolor (1912)
 
@@ -2566,7 +2566,7 @@ Two-colour wonder of the Empire: red and green exposed a heartbeat apart, so eve
 - **Ambience Bed** - `a_bed.bed=projector_35mm_booth`, `a_bed.level_db=-30.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-54.0`
 
-*84 adjustable parameters in this preset.*
+*101 adjustable parameters in this preset.*
 
 ### `kodachrome-1964` - Kodachrome Home Movie (1964)
 
@@ -2595,7 +2595,7 @@ Two-colour wonder of the Empire: red and green exposed a heartbeat apart, so eve
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-24.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*84 adjustable parameters in this preset.*
+*101 adjustable parameters in this preset.*
 
 ### `music-16mm-1991` - Grunge Promo 16mm (1991)
 
@@ -2624,7 +2624,7 @@ Label money, film-school hands: pushed 16 printed hot, blacks crawling with grai
 - **Compressor** - `a_compressor.ratio=3.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`, `a_tape_hiss.type=reel_15ips`
 
-*84 adjustable parameters in this preset.*
+*101 adjustable parameters in this preset.*
 
 ### `musical-1952` - Technicolor Musical (1952)
 
@@ -2651,7 +2651,7 @@ MGM soundstage sunshine: saturated primaries, gentle diffusion on the close-ups,
 - **Compressor** - `a_compressor.ratio=3.0`
 - **Small Room** - `a_room.size=0.8`, `a_room.decay_s=0.6`, `a_room.mix=0.12`
 
-*79 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ### `newsreel-1942` - Wartime Newsreel (1942)
 
@@ -2676,7 +2676,7 @@ Movietone urgency: contrasty B&W, colder silver tone, dupey grain, the optical t
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-38.0`, `a_optical_track.academy_rolloff=newsreel_1930s`, `a_optical_track.drive=2.0`
 - **Compressor** - `a_compressor.ratio=5.0`
 
-*75 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `newsreel-sound-1930` - First Sound Newsreel (1930)
 
@@ -2704,7 +2704,7 @@ The news learns to talk: a squarish frame beside the new soundtrack stripe, hot 
 - **Compressor** - `a_compressor.ratio=6.0`
 - **Tube Amplifier** - `a_tube_amp.drive=1.8`, `a_tube_amp.sag=0.4`, `a_tube_amp.hum_db=-52.0`
 
-*83 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `noir-1947` - Film Noir (1947)
 
@@ -2726,7 +2726,7 @@ Panchromatic shadows you could drown in: hard contrast, halation blooming off we
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-50.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*60 adjustable parameters in this preset.*
+*72 adjustable parameters in this preset.*
 
 ### `pathe-stencil-1923` - Pathé Stencil Color (1923)
 
@@ -2755,7 +2755,7 @@ Stencil-coloured photoplay: flat dye washes cut by hand in Vincennes, drifting a
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-28.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-54.0`
 
-*79 adjustable parameters in this preset.*
+*96 adjustable parameters in this preset.*
 
 ### `press-reel-pool-1963` - Press Pool 16mm (1963)
 
@@ -2783,7 +2783,7 @@ The pool camera's negative, printed before dawn: hard silver contrast, sprocket-
 - **Vintage AGC** - `a_agc.amount=0.7`
 - **Compressor** - `a_compressor.ratio=5.0`
 
-*84 adjustable parameters in this preset.*
+*100 adjustable parameters in this preset.*
 
 ### `safety-print-1952` - Fresh Safety Print (1952)
 
@@ -2810,7 +2810,7 @@ First-generation acetate off a good negative: fine quiet grain, velvet mids, a f
 - **Compressor** - `a_compressor.ratio=3.0`
 - **Small Room** - `a_room.size=1.0`, `a_room.decay_s=0.6`, `a_room.mix=0.1`, `a_room.mode=chamber`
 
-*77 adjustable parameters in this preset.*
+*92 adjustable parameters in this preset.*
 
 ### `scope-1958` - CinemaScope Epic (1958)
 
@@ -2834,7 +2834,7 @@ Widescreen Eastman grandeur: 2.35 letterbox, anamorphic oval falloff, warm roads
 - **Compressor** - `a_compressor.ratio=3.0`
 - **Small Room** - `a_room.size=1.1`, `a_room.decay_s=0.8`, `a_room.mix=0.14`
 
-*80 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ### `silent-1918` - Silent Nitrate (1918)
 
@@ -2860,7 +2860,7 @@ Hand-cranked orthochromatic nitrate: dark lips and white skies, violent flicker,
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-28.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-52.0`
 
-*66 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `stag-loop-1959` - Arcade Loop Machine (1959)
 
@@ -2887,7 +2887,7 @@ A coin-op loop viewer's only reel, spliced back together a hundred times: hooded
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-22.0`, `a_projector.distance=0.1`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`, `a_hum.buzz=0.4`
 
-*76 adjustable parameters in this preset.*
+*91 adjustable parameters in this preset.*
 
 ### `super16-indie-1994` - Super 16 Blowup (1994)
 
@@ -2915,7 +2915,7 @@ Credit-card cinema at altitude: Super 16 blown to 35, grain enlarged along with 
 - **Compressor** - `a_compressor.ratio=2.5`
 - **Small Room** - `a_room.size=1.2`, `a_room.decay_s=0.7`, `a_room.mix=0.1`, `a_room.mode=chamber`
 
-*84 adjustable parameters in this preset.*
+*100 adjustable parameters in this preset.*
 
 ### `super8-1974` - Super 8 Family Reel (1974)
 
@@ -2944,7 +2944,7 @@ Birthday cakes and back yards on Super 8: warm faded color, big soft grain, that
 - **Projector Bed** - `a_projector.machine=proj_8mm`, `a_projector.level_db=-30.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 
-*91 adjustable parameters in this preset.*
+*110 adjustable parameters in this preset.*
 
 ### `three-strip-worn-1946` - Touring Technicolor Print (1946)
 
@@ -2973,7 +2973,7 @@ A dye-transfer print on its fortieth town: dupe contrast stacked on, blacks brea
 - **Compressor** - `a_compressor.ratio=4.0`
 - **Tube Amplifier** - `a_tube_amp.drive=1.7`, `a_tube_amp.sag=0.4`, `a_tube_amp.hum_db=-55.0`
 
-*92 adjustable parameters in this preset.*
+*109 adjustable parameters in this preset.*
 
 ### `threestrip-1939` - Glorious Technicolor (1939)
 
@@ -2998,7 +2998,7 @@ The full three-strip miracle: jewel saturation, creamy highlights with red halos
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-50.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*70 adjustable parameters in this preset.*
+*83 adjustable parameters in this preset.*
 
 ### `tv-movie-1977` - Made-for-TV Movie (1977)
 
@@ -3023,7 +3023,7 @@ Shot on 35, seen through the tube: film grain under NTSC softness, telecine cade
 - **Mono Fold** - `a_mono.amount=1.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.5`
 
-*91 adjustable parameters in this preset.*
+*106 adjustable parameters in this preset.*
 
 ### `two-reeler-chase-1926` - Two-Reel Chase (1926)
 
@@ -3049,7 +3049,7 @@ Undercranked pursuit picture: shot slow to play fast, so the cops corner like bi
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-27.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*66 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `twostrip-1929` - Two-Strip Technicolor (1929)
 
@@ -3074,7 +3074,7 @@ Red and green glued back to back: peach skies, seafoam shadows, colors that neve
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-42.0`, `a_optical_track.academy_rolloff=newsreel_1930s`, `a_optical_track.drive=1.8`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*79 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ## PRINT
 
@@ -3097,7 +3097,7 @@ Above the fold: one coarse 45-degree screen, ink gaining into gray newsprint, co
 - **Tube Amplifier** - `a_tube_amp.drive=1.8`, `a_tube_amp.sag=0.4`, `a_tube_amp.hum_db=-54.0`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*35 adjustable parameters in this preset.*
+*44 adjustable parameters in this preset.*
 
 ### `magazine-gloss-1967` - Glossy Spread (1967)
 
@@ -3120,7 +3120,7 @@ Coated-stock confidence: a fine rosette you need a loupe to catch, colors rich a
 - **Tube Amplifier** - `a_tube_amp.drive=1.5`, `a_tube_amp.sag=0.3`, `a_tube_amp.hum_db=-60.0`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*59 adjustable parameters in this preset.*
+*70 adjustable parameters in this preset.*
 
 ### `microfilm-morgue-1958` - Microfilm Morgue (1958)
 
@@ -3139,7 +3139,7 @@ The newspaper morgue at reading speed: red-blind document film, a glare blob wan
 - **Ambience Bed** - `a_bed.bed=fluorescent_office`, `a_bed.level_db=-30.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-46.0`, `a_hum.buzz=0.3`
 
-*26 adjustable parameters in this preset.*
+*33 adjustable parameters in this preset.*
 
 ### `riso-flyer-1985` - Riso Gig Flyer (1985)
 
@@ -3159,7 +3159,7 @@ Two drums, one basement: blue doing the drawing, red arriving two pixels late, s
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Speaker Sim** - `a_speaker.device=boombox_1985`, `a_speaker.strength=0.6`
 
-*33 adjustable parameters in this preset.*
+*41 adjustable parameters in this preset.*
 
 ### `sunday-comics-1972` - Sunday Funnies (1972)
 
@@ -3179,7 +3179,7 @@ Four fat rosettes of CMYK on butcher-grade paper: the yellow plate a hair east o
 - **Speaker Sim** - `a_speaker.device=portable_radio_1975`, `a_speaker.strength=0.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*31 adjustable parameters in this preset.*
+*39 adjustable parameters in this preset.*
 
 ### `zine-photocopy-1981` - Xerox Zine (1981)
 
@@ -3201,7 +3201,7 @@ Fourth-generation Xerox gospel: detail clogged to pure black and white, toner st
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`, `a_tape_hiss.type=cassette`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*51 adjustable parameters in this preset.*
+*61 adjustable parameters in this preset.*
 
 ## STYLIZED
 
@@ -3231,7 +3231,7 @@ Nothing is wrong with your television set: EP-speed fog with crushed blacks, a t
 - **Ambience Bed** - `a_bed#2.bed=air_handler_hall`, `a_bed#2.level_db=-40.0`, `a_bed#2.duck=0.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`, `a_hum.buzz=0.3`
 
-*111 adjustable parameters in this preset.*
+*127 adjustable parameters in this preset.*
 
 ### `liminal-cctv-2002` - Liminal CCTV (2002)
 
@@ -3259,7 +3259,7 @@ Camera 7, food court, 3:12 AM: drained color under fluorescent green, three-fram
 - **Ambience Bed** - `a_bed#2.bed=air_handler_hall`, `a_bed#2.level_db=-34.0`, `a_bed#2.duck=0.2`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.35`, `a_hum.level_db=-44.0`
 
-*85 adjustable parameters in this preset.*
+*101 adjustable parameters in this preset.*
 
 ### `mall-tv-wall-1989` - TV Wall (1989)
 
@@ -3284,7 +3284,7 @@ Forty screens, one signal: aperture-grille stripes and beam bloom up close, show
 - **Ambience Bed** - `a_bed.bed=tv_shop_wall`, `a_bed.level_db=-27.0`, `a_bed.duck=0.35`
 - **Ambience Bed** - `a_bed#2.bed=fluorescent_office`, `a_bed#2.level_db=-38.0`, `a_bed#2.duck=0.2`
 
-*77 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `retro-grain-1968` - Retro Grain (1968)
 
@@ -3300,7 +3300,7 @@ The look a colour outside-broadcast camera left on tape before anyone went near 
 - **Film Grain** - `grain.amount=0.3`, `grain.size=0.8`, `grain.roughness=1.0`, `grain.chroma_grain=0.12`, `grain.stock=fine_35`, `grain.layers=color_neg`
 - **Vignette** - `vignette.amount=0.55`, `vignette.radius=0.68`, `vignette.softness=0.55`
 
-*42 adjustable parameters in this preset.*
+*48 adjustable parameters in this preset.*
 
 ### `vaporwave-vhs-1986` - Vaporwave, Physically (1986)
 
@@ -3326,7 +3326,7 @@ The aesthetic with its receipts: a pristine tape of a composite source - teal sh
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=9.0`, `a_wow_flutter.flutter_depth=4.0`, `a_wow_flutter.drift_long=0.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 
-*108 adjustable parameters in this preset.*
+*122 adjustable parameters in this preset.*
 
 ### `webcore-2007` - Webcore (2007)
 
@@ -3347,7 +3347,7 @@ Early-YouTube amber: FLV blocks twice re-uploaded, the subpixel stripes of a han
 - **Digital Glitch** - `a_digital_glitch.stutter_rate=0.8`, `a_digital_glitch.mute_rate=0.3`, `a_digital_glitch.crackle_rate=0.5`
 - **Speaker Sim** - `a_speaker.device=laptop_2006`, `a_speaker.strength=0.5`
 
-*37 adjustable parameters in this preset.*
+*46 adjustable parameters in this preset.*
 
 ## TRANSMISSION
 
@@ -3374,7 +3374,7 @@ A thousand-mile freak of the ionosphere: the picture heaves in and out of the sn
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.8`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-42.0`
 
-*83 adjustable parameters in this preset.*
+*96 adjustable parameters in this preset.*
 
 ### `jammed-broadcast-1984` - Jammed Channel (1984)
 
@@ -3398,7 +3398,7 @@ Somebody doesn't want you watching: dark bars roll through the picture and tear 
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.7`, `a_hum.level_db=-38.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.5`
 
-*71 adjustable parameters in this preset.*
+*83 adjustable parameters in this preset.*
 
 ### `microwave-remote-1978` - Microwave Remote (1978)
 
@@ -3423,7 +3423,7 @@ Live from the parking lot via the mast on the truck: a decent picture that shatt
 - **Distortion** - `a_distortion.type=soft`, `a_distortion.drive=1.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-48.0`
 
-*79 adjustable parameters in this preset.*
+*92 adjustable parameters in this preset.*
 
 ### `pirate-uhf-1987` - Pirate UHF (1987)
 
@@ -3449,7 +3449,7 @@ Forty watts from a tower-block roof: a second-generation tape through an off-spe
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.buzz=0.5`, `a_hum.level_db=-40.0`
 
-*101 adjustable parameters in this preset.*
+*115 adjustable parameters in this preset.*
 
 ### `storm-antenna-1966` - Thunderstorm Reception (1966)
 
@@ -3476,7 +3476,7 @@ The movie versus the weather: every strike lashes a line of sparks across the sc
 - **Speaker Sim** - `a_speaker.device=tv_console_1972`, `a_speaker.strength=0.6`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-44.0`
 
-*91 adjustable parameters in this preset.*
+*106 adjustable parameters in this preset.*
 
 ## VHS
 
@@ -3499,7 +3499,7 @@ The news crew's component workhorse: crisp, controlled, colors staying in their 
 - **Vintage AGC** - `a_agc.amount=0.3`
 - **Tape Hiss** - `a_tape_hiss.level_db=-52.0`
 
-*65 adjustable parameters in this preset.*
+*74 adjustable parameters in this preset.*
 
 ### `betamax-1978` - Betamax (1978)
 
@@ -3520,7 +3520,7 @@ The better format that lost: slightly crisper luma than VHS, earlier-era color e
 - **Tape Saturation** - `a_tape_sat.drive=2.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 
-*86 adjustable parameters in this preset.*
+*97 adjustable parameters in this preset.*
 
 ### `camcorder-slp-1999` - VHS-C at SLP (1999)
 
@@ -3544,7 +3544,7 @@ The last tape in the bag on the slowest speed: mud-luma, skew tears off the top,
 - **Tape Hiss** - `a_tape_hiss.level_db=-40.0`
 - **Ambience Bed** - `a_bed.bed=vcr_transport`, `a_bed.level_db=-40.0`, `a_bed.duck=0.4`
 
-*87 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `ced-videodisc-1983` - CED VideoDisc (1983)
 
@@ -3567,7 +3567,7 @@ RCA's needle-in-a-caddy gamble: a steady composite picture until the stylus ride
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*83 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ### `laserdisc-1985` - LaserDisc (1985)
 
@@ -3589,7 +3589,7 @@ Composite on its best behavior: no tape noise anywhere, just subcarrier dots cra
 - **Compressor** - `a_compressor.ratio=1.8`
 - **CD Skip** - `a_cd_skip.rate=0.0`
 
-*68 adjustable parameters in this preset.*
+*78 adjustable parameters in this preset.*
 
 ### `late-night-timer-rec-1987` - Timer Recording (1987)
 
@@ -3614,7 +3614,7 @@ The VCR woke at 2 AM to tape it for you, half a tracking notch off: EP fog, a hu
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.4`
 - **Ambience Bed** - `a_bed.bed=vcr_transport`, `a_bed.level_db=-42.0`, `a_bed.duck=0.5`
 
-*100 adjustable parameters in this preset.*
+*113 adjustable parameters in this preset.*
 
 ### `pal-vhs-1988` - PAL VHS (1988)
 
@@ -3637,7 +3637,7 @@ The European tape: 50 fields of Hanover-bar calm - hue that never twists, color 
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`
 - **Mains Hum** - `a_hum.hz=50`, `a_hum.level_db=-52.0`
 
-*88 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `pixelvision-1989` - PXL2000 (1989)
 
@@ -3662,7 +3662,7 @@ Fisher-Price's audio-cassette camcorder: ninety lines of smeared charcoal-and-ch
 - **Tape Saturation** - `a_tape_sat.drive=3.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-34.0`, `a_tape_hiss.type=dictaphone`
 
-*71 adjustable parameters in this preset.*
+*84 adjustable parameters in this preset.*
 
 ### `skate-hi8-1996` - Skate Hi8 (1996)
 
@@ -3685,7 +3685,7 @@ Fisheye at ankle height: barrel-bent curbs, auto-iris slamming between sun and s
 - **Speaker Sim** - `a_speaker.device=boombox_1985`, `a_speaker.strength=0.35`
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 
-*86 adjustable parameters in this preset.*
+*97 adjustable parameters in this preset.*
 
 ### `svhs-1992` - S-VHS (1992)
 
@@ -3706,7 +3706,7 @@ The prosumer flex: 400 lines of luma down an S-video cable, color still color-un
 - **Tape Saturation** - `a_tape_sat.drive=1.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-54.0`
 
-*83 adjustable parameters in this preset.*
+*92 adjustable parameters in this preset.*
 
 ### `tape-swap-4th-gen-1994` - Fansub Fourth Gen (1994)
 
@@ -3730,7 +3730,7 @@ Mail-traded anime four VCRs deep: chroma bleeding past its lines, the top of fra
 - **Tape Hiss** - `a_tape_hiss.level_db=-36.0`
 - **Ambience Bed** - `a_bed.bed=vcr_transport`, `a_bed.level_db=-42.0`, `a_bed.duck=0.4`
 
-*92 adjustable parameters in this preset.*
+*104 adjustable parameters in this preset.*
 
 ### `umatic-news-1982` - U-matic Field Tape (1982)
 
@@ -3750,7 +3750,7 @@ Broadcast ¾-inch tape from a news van: professional bandwidth, still analog to 
 - **Compressor** - `a_compressor.ratio=3.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`
 
-*80 adjustable parameters in this preset.*
+*90 adjustable parameters in this preset.*
 
 ### `vhs-1985-sp` - VHS Standard Play (1985)
 
@@ -3772,7 +3772,7 @@ A well-kept SP recording on a good deck: soft but stable, gentle chroma smear, f
 - **Tape Saturation** - `a_tape_sat.drive=1.8`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`
 
-*85 adjustable parameters in this preset.*
+*95 adjustable parameters in this preset.*
 
 ### `vhs-camcorder-1989` - Shoulder Camcorder (1989)
 
@@ -3798,7 +3798,7 @@ Full-size VHS camcorder with the orange date stamp: auto-iris pumping, autofocus
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.25`
 
-*99 adjustable parameters in this preset.*
+*113 adjustable parameters in this preset.*
 
 ### `vhs-camcorder-1996` - Palmcorder (1996)
 
@@ -3819,7 +3819,7 @@ Compact VHS-C/Video8 era: tighter image, cleaner color, white date stamp, still 
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=3.0`, `a_wow_flutter.flutter_depth=2.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`
 
-*93 adjustable parameters in this preset.*
+*104 adjustable parameters in this preset.*
 
 ### `vhs-dub-generation` - Dubbed Copy (1990)
 
@@ -3842,7 +3842,7 @@ A copy of a copy of a copy: every generation smears chroma further, stacks noise
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 - **Tape Dropouts** - `a_tape_dropouts.rate=1.5`, `a_tape_dropouts.azimuth=0.45`
 
-*88 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `vhs-ep-longplay` - VHS Extended Play (1987)
 
@@ -3865,7 +3865,7 @@ Six hours on a T-120: half the tape speed, twice the misery. Muddy luma, boiling
 - **Tape Hiss** - `a_tape_hiss.level_db=-40.0`
 - **Tape Dropouts** - `a_tape_dropouts.rate=3.0`, `a_tape_dropouts.azimuth=0.35`
 
-*88 adjustable parameters in this preset.*
+*99 adjustable parameters in this preset.*
 
 ### `vhs-rental-1992` - Rental Tape (1992)
 
@@ -3890,7 +3890,7 @@ A video-store workhorse: tracking storms, crease dropouts, a transport that take
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Tape Dropouts** - `a_tape_dropouts.rate=2.0`, `a_tape_dropouts.azimuth=0.3`
 
-*103 adjustable parameters in this preset.*
+*116 adjustable parameters in this preset.*
 
 ### `vhs-tape-start` - Tape Start (1988)
 
@@ -3912,7 +3912,7 @@ The first seconds after PLAY: rainbow junk, a vertical roll, then the picture st
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=6.0`, `a_wow_flutter.flutter_depth=5.0`, `a_wow_flutter.start_wobble=True`
 - **Tape Hiss** - `a_tape_hiss.level_db=-42.0`
 
-*86 adjustable parameters in this preset.*
+*96 adjustable parameters in this preset.*
 
 ### `vhs-taped-off-air-1987` - Taped Off Air (1987)
 
@@ -3937,7 +3937,7 @@ A broadcast caught on tape: antenna ghosting and snow under the VHS wash, channe
 - **Tape Hiss** - `a_tape_hiss.level_db=-44.0`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.4`
 
-*114 adjustable parameters in this preset.*
+*127 adjustable parameters in this preset.*
 
 ### `vhs-tracking-nightmare` - Bad Tracking (1991)
 
@@ -3957,7 +3957,7 @@ The tape that never locks: rolling noise bands, shredded lines, a transport figh
 - **Tape Dropouts** - `a_tape_dropouts.rate=8.0`, `a_tape_dropouts.azimuth=0.6`
 - **Tape Hiss** - `a_tape_hiss.level_db=-38.0`
 
-*86 adjustable parameters in this preset.*
+*96 adjustable parameters in this preset.*
 
 ### `video8-holiday-1990` - Video8 Holiday (1990)
 
@@ -3981,7 +3981,7 @@ A palm-size Handycam at the shore: tighter luma than VHS, a hair of azimuth shim
 - **Wow & Flutter** - `a_wow_flutter.wow_depth=3.0`, `a_wow_flutter.flutter_depth=2.5`
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 
-*94 adjustable parameters in this preset.*
+*106 adjustable parameters in this preset.*
 
 ### `wedding-master-1991` - Wedding Master (1991)
 
@@ -4005,7 +4005,7 @@ The videographer's S-VHS master: Pro-Mist dove-white gowns shouldering softly in
 - **Tape Hiss** - `a_tape_hiss.level_db=-50.0`
 - **Small Room** - `a_room.size=1.3`, `a_room.decay_s=0.9`, `a_room.mix=0.16`, `a_room.damp=0.6`
 
-*103 adjustable parameters in this preset.*
+*115 adjustable parameters in this preset.*
 
 ## WORLD
 
@@ -4027,7 +4027,7 @@ Silver retained in the print: crushed desaturated shadows, chrome highlights, th
 - **Bandwidth** - `a_bandlimit.low_hz=50.0`, `a_bandlimit.high_hz=14000.0`
 - **Compressor** - `a_compressor.ratio=2.5`
 
-*50 adjustable parameters in this preset.*
+*60 adjustable parameters in this preset.*
 
 ### `bollywood-1969` - Bombay Technicolor (1969)
 
@@ -4052,7 +4052,7 @@ Eastmancolor spectacle with a decade of tropical storage: blazing saturation up 
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-44.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 - **Compressor** - `a_compressor.ratio=4.5`
 
-*71 adjustable parameters in this preset.*
+*86 adjustable parameters in this preset.*
 
 ### `cross-process-1996` - Cross-Processed (1996)
 
@@ -4071,7 +4071,7 @@ Slide film through the wrong chemicals: cyan skies gone acid, green shadows, blo
 - **Bandwidth** - `a_bandlimit.low_hz=45.0`, `a_bandlimit.high_hz=15000.0`
 - **Compressor** - `a_compressor.ratio=3.0`
 
-*49 adjustable parameters in this preset.*
+*58 adjustable parameters in this preset.*
 
 ### `drama-kitchen-sink-1961` - Kitchen Sink Drama (1961)
 
@@ -4093,7 +4093,7 @@ British new-wave realism: damp gray B&W, coal-smoke midtones, rain promised in e
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-50.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*60 adjustable parameters in this preset.*
+*72 adjustable parameters in this preset.*
 
 ### `game-show-1978` - Game Show Floor (1978)
 
@@ -4116,7 +4116,7 @@ Chroma cranked to prize-wall levels: glowing orange flesh, buzzing saturated set
 - **Vintage AGC** - `a_agc.amount=0.6`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1985`, `a_speaker.strength=0.45`
 
-*72 adjustable parameters in this preset.*
+*85 adjustable parameters in this preset.*
 
 ### `giallo-1972` - Giallo Thriller (1972)
 
@@ -4139,7 +4139,7 @@ Italian thriller Technicolor: venomous saturated primaries, hard shadows, a prin
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-50.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*64 adjustable parameters in this preset.*
+*77 adjustable parameters in this preset.*
 
 ### `hk-action-1988` - Hong Kong Action Print (1988)
 
@@ -4164,7 +4164,7 @@ A hard-run 35mm action print: hot contrast, slightly lifted blacks, dye fade lic
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-46.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*74 adjustable parameters in this preset.*
+*89 adjustable parameters in this preset.*
 
 ### `mexico-golden-1948` - Época de Oro (1948)
 
@@ -4186,7 +4186,7 @@ Golden-age Mexican cinema: silvery panchromatic glamour, deep romantic blacks, h
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-50.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*60 adjustable parameters in this preset.*
+*72 adjustable parameters in this preset.*
 
 ### `music-promo-1967` - Music Promo Film (1967)
 
@@ -4210,7 +4210,7 @@ A band miming in a field for the cameras: sun-flared 35mm, popping color, optica
 - **Compressor** - `a_compressor.ratio=4.0`
 - **Tape Hiss** - `a_tape_hiss.level_db=-46.0`, `a_tape_hiss.type=reel_15ips`
 
-*74 adjustable parameters in this preset.*
+*88 adjustable parameters in this preset.*
 
 ### `nouvelle-vague-1962` - Nouvelle Vague (1962)
 
@@ -4232,7 +4232,7 @@ Handheld Paris on fast B&W stock: pushed grain, natural light contrast, jump-cut
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-52.0`, `a_optical_track.academy_rolloff=feature_1940s`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*60 adjustable parameters in this preset.*
+*72 adjustable parameters in this preset.*
 
 ### `propaganda-1943` - War Bond Reel (1943)
 
@@ -4257,7 +4257,7 @@ Why-we-fight urgency: contrasty dupe stock, heavy optical soundtrack, a print th
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-40.0`, `a_optical_track.academy_rolloff=newsreel_1930s`
 - **Compressor** - `a_compressor.ratio=5.0`
 
-*76 adjustable parameters in this preset.*
+*91 adjustable parameters in this preset.*
 
 ### `serial-western-1938` - Saturday Serial (1938)
 
@@ -4282,7 +4282,7 @@ Chapter Seven: PERIL AT RED ROCK - cheap fast stock, blazing skies, a print worn
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-40.0`, `a_optical_track.academy_rolloff=newsreel_1930s`
 - **Compressor** - `a_compressor.ratio=5.0`
 
-*79 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*
 
 ### `silent-comedy-1925` - Silent Two-Reeler (1925)
 
@@ -4308,7 +4308,7 @@ Custard-pie physics at sixteen frames a second: crisp orthochromatic sunshine, b
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-27.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-54.0`
 
-*66 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `soap-opera-1982` - Daytime Drama (1982)
 
@@ -4330,7 +4330,7 @@ The soap-opera effect itself: gauzy diffusion over crisp studio video, flowers i
 - **Small Room** - `a_room.size=0.8`, `a_room.decay_s=0.45`, `a_room.mix=0.15`
 - **Tape Hiss** - `a_tape_hiss.level_db=-48.0`
 
-*83 adjustable parameters in this preset.*
+*95 adjustable parameters in this preset.*
 
 ### `soviet-color-1975` - Soviet Color Film (1975)
 
@@ -4354,7 +4354,7 @@ Svema/ORWO stock behind the curtain: muted cyan-leaning color, gentle contrast, 
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-46.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*68 adjustable parameters in this preset.*
+*82 adjustable parameters in this preset.*
 
 ### `student-film-1971` - Student Film (1971)
 
@@ -4379,7 +4379,7 @@ B&W 16mm reversal shot on a borrowed Bolex: uneven exposure, honest grain, more 
 - **Tape Hiss** - `a_tape_hiss.level_db=-40.0`, `a_tape_hiss.type=reel_375ips`
 - **Vintage AGC** - `a_agc.amount=0.6`
 
-*77 adjustable parameters in this preset.*
+*92 adjustable parameters in this preset.*
 
 ### `telethon-1976` - Late-Night Telethon (1976)
 
@@ -4402,7 +4402,7 @@ Hour nineteen of the broadcast: tired studio cameras, smeary phosphor trails, th
 - **Vintage AGC** - `a_agc.amount=0.7`
 - **Speaker Sim** - `a_speaker.device=tv_mono_1965`, `a_speaker.strength=0.55`
 
-*91 adjustable parameters in this preset.*
+*104 adjustable parameters in this preset.*
 
 ### `training-film-1966` - Corporate Training Film (1966)
 
@@ -4426,7 +4426,7 @@ SAFETY BEGINS WITH YOU: flat even lighting on Ektachrome, cheerful narration ban
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-45.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 - **Compressor** - `a_compressor.ratio=4.0`
 
-*66 adjustable parameters in this preset.*
+*80 adjustable parameters in this preset.*
 
 ### `travelogue-1958` - Kodachrome Travelogue (1958)
 
@@ -4450,7 +4450,7 @@ See the world in 16mm Kodachrome: postcard saturation, lecture-hall projector ca
 - **Optical Soundtrack** - `a_optical_track.cell_noise=-48.0`, `a_optical_track.academy_rolloff=classroom_16mm`
 - **Compressor** - `a_compressor.ratio=3.5`
 
-*69 adjustable parameters in this preset.*
+*83 adjustable parameters in this preset.*
 
 ### `wedding-16mm-1954` - Wedding Reel (1954)
 
@@ -4478,4 +4478,4 @@ The big day on rented 16mm: blushing Kodachrome, nervous framing, the reel the f
 - **Projector Bed** - `a_projector.machine=proj_16mm`, `a_projector.level_db=-26.0`
 - **Mains Hum** - `a_hum.hz=60`, `a_hum.level_db=-52.0`
 
-*78 adjustable parameters in this preset.*
+*94 adjustable parameters in this preset.*

@@ -261,6 +261,140 @@ def test_segmenting():
     assert len(segs3) == 1 and len(segs3[0]) == 2
 
 
+def test_every_effect_can_be_switched_off_in_place():
+    """`enabled` is the one dial guaranteed to reach nothing, on all of them.
+
+    Most effects can be neutralised by turning their amounts down, but not all:
+    a Risograph is defined by its ink pair and a projection surface by its
+    material, so zeroing every number still leaves a duotone print on a matte
+    screen. Taking the effect out of the chain is a different thing from
+    switching it off in place - a preset's chain is fixed, and the useful move
+    while judging a look is to lift one link out and drop it back.
+    """
+    import numpy as np
+
+    from aesthetician.engine.graph import Context, all_effects, get_effect
+
+    effects = all_effects()
+    assert len(effects) > 90
+    missing = [eid for eid, cls in effects.items()
+               if not any(p.name == "enabled" for p in cls.PARAMS)]
+    assert missing == [], f"effects with no way to switch them off: {missing}"
+    for eid, cls in effects.items():
+        prm = next(p for p in cls.PARAMS if p.name == "enabled")
+        assert prm.default is True, f"{eid}: the default has to mean 'no change'"
+
+    # And the chain builder actually drops them, keys intact for the survivors.
+    from aesthetician.engine.graph import build_chain
+    from aesthetician.engine.render import _live_chain
+
+    ctx = Context(width=32, height=24, fps=30, n_frames=10, seed=3)
+    chain = build_chain([("tone", {}), ("grain", {}), ("tone", {"gamma": 1.2})])
+    live = _live_chain(chain, ctx, {"grain": {"enabled": False}})
+    assert [e.key for e in live] == ["tone", "tone#2"], [e.key for e in live]
+
+    # A disabled effect is a pass-through, not a quieter version of itself.
+    frame = np.random.default_rng(4).random((24, 32, 3)).astype(np.float32)
+    for eid in ("riso_print", "screen", "nitrate", "vhs"):
+        eff = get_effect(eid)(enabled=False)
+        eff.resolve(ctx)
+        assert eff.v["enabled"] is False, eid
+        kept = _live_chain(build_chain([(eid, {"enabled": False})]), ctx, {})
+        assert kept == [], f"{eid} survived being switched off"
+    assert frame.shape == (24, 32, 3)
+
+
+def test_still_is_frame_zero_of_the_clip():
+    """A still must be the frame the clip opens on, not a one-frame render of it.
+
+    The temporal tracks in rng.py are lowpassed and percentile-normalised across
+    their whole length, so `n_frames` decides what frame 0 looks like. Render one
+    frame *as a one-frame clip* and every wobble - time-base error, flagging,
+    tracking - normalises against a single sample and lands at full excursion.
+    This pins both halves: keeping the frame count reproduces the clip, and
+    dropping it does not, so nobody can "simplify" render_still into the obvious
+    thing without a red test.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import render_still
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_still_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=2", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    # Wobble on purpose: with a still chain the two paths agree trivially.
+    preset = Preset(
+        id="t_still", name="t", family="t", era="", desc="",
+        video=[("vhs", {"time_base_error": 0.9, "flagging": 0.8, "tracking_error": 0.6,
+                        "dropouts": 0.0})],
+    )
+    opts = RenderOptions(seed=1234, duration=1.5, scale=1.0, crf=0)
+
+    clip = os.path.join(root, "out", "_t_still_clip.mp4")
+    render(src, clip, preset, opts)
+    kept = render_still(src, os.path.join(root, "out", "_t_still_kept.png"), preset, opts)
+    one = render_still(src, os.path.join(root, "out", "_t_still_one.png"), preset, opts,
+                       n_frames_override=1)
+    assert kept.exact is True, "a chain with no file pass is exactly reproducible"
+
+    def pixels(path, first_frame_only=False):
+        # RGB on both sides. Asking ffmpeg for gray instead would convert the
+        # PNG with BT.601 and the tagged clip with BT.709, and the gap between
+        # those two matrices is larger than anything this test is looking for.
+        cmd = ["ffmpeg", "-v", "error", "-i", path]
+        if first_frame_only:
+            cmd += ["-vframes", "1"]
+        cmd += ["-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+        raw = subprocess.run(cmd, capture_output=True, check=True).stdout
+        return np.frombuffer(raw, np.uint8).astype(np.int16)
+
+    truth = pixels(clip, first_frame_only=True)
+    kept_px = pixels(kept.path)
+    one_px = pixels(one.path)
+    assert kept_px.size == truth.size == one_px.size
+
+    # The still carries no H.264 pass of its own, so what is left against the
+    # clip is that encode: small, and nothing like a different frame.
+    kept_err = float(np.abs(kept_px - truth).mean())
+    one_err = float(np.abs(one_px - truth).mean())
+    assert kept_err < 6.0, f"still drifted from frame 0 of the clip ({kept_err:.2f}/255)"
+    # How much worse the one-frame version looks depends on where the wobble
+    # happens to sit at frame 0, so this is deliberately a loose floor; the sharp
+    # statement of the same fact lives in test_temporal_tracks_need_the_real_length.
+    assert one_err > kept_err * 1.5, (
+        f"a one-frame render came out as close as the real thing "
+        f"({one_err:.2f} vs {kept_err:.2f}) - has rng.py stopped depending on n_frames?"
+    )
+
+
+def test_temporal_tracks_need_the_real_length():
+    """Why render_still keeps the clip's frame count instead of asking for one frame.
+
+    `smooth` lowpasses white noise across the whole track and divides by the 95th
+    percentile of the result; with a single sample that percentile *is* the
+    sample, so the track normalises to a full-scale excursion no matter what the
+    seed drew. Every wobble built on it - time-base error, flagging, gate weave,
+    tracking - comes out pinned to its limit. This is the root of it, stated
+    where it cannot be mistaken for a rounding difference.
+    """
+    from aesthetician.engine.rng import TemporalNoise
+
+    clip = TemporalNoise(7, 30.0, 90)
+    alone = TemporalNoise(7, 30.0, 1)
+    assert abs(clip.smooth("k", 1.2)[0] - alone.smooth("k", 1.2)[0]) > 0.3
+    assert abs(alone.smooth("k", 1.2)[0]) == 1.0, "one sample always normalises to the rail"
+    # White noise is drawn per frame and never normalised, so it does not care.
+    assert clip.white("k")[0] == alone.white("k")[0]
+
+
 if __name__ == "__main__":
     # Several tests synthesise their fixtures with ffmpeg and probe them with
     # ffprobe. Say so up front: without this it surfaces as a FileNotFoundError
