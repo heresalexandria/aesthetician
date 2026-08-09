@@ -389,6 +389,36 @@ def still_cmd(input_path, output, scale, **kw) -> None:
     click.echo(json.dumps({"output": got.path, "exact": got.exact}))
 
 
+@main.command("events")
+@click.argument("input_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--scale", type=float, default=0.5)
+@_with(_render_options)
+def events_cmd(input_path, scale, **kw) -> None:
+    """List the discrete damage a render would produce, as JSON.
+
+    Dropouts, transport glitches and the like, each with the moment on the clip
+    it lands at and what it is made of - without rendering anything. This is what
+    a timeline draws from.
+    """
+    from .engine.presets import get_preset
+    from .engine.render import Layer, RenderOptions, plan_events
+
+    stack = _parse_layers(kw.get("layers_json")) if kw.get("layers_json") else None
+    if not stack:
+        if not kw.get("preset_id"):
+            raise click.UsageError("give --preset, or --layers for a stack")
+        video_over, audio_over = _split_overrides(kw.get("sets") or ())
+        stack = [Layer(preset=get_preset(kw["preset_id"]), variant=kw.get("variant"),
+                       video_overrides=video_over, audio_overrides=audio_over,
+                       seed=kw.get("seed") if kw.get("seed") is not None else 1,
+                       intensity=kw.get("intensity", 1.0), texture=kw.get("texture", 1.0))]
+    opts = RenderOptions(
+        seed=stack[0].seed, t0=kw.get("start") or 0.0,
+        duration=kw.get("duration"), scale=scale,
+    )
+    click.echo(json.dumps(plan_events(input_path, stack, opts)))
+
+
 @main.command("probe")
 @click.argument("input_path", type=click.Path(exists=True, dir_okay=False))
 def probe_cmd(input_path: str) -> None:
