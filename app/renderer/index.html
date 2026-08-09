@@ -113,6 +113,7 @@
       </div>
       <div id="export-bar">
         <div id="export-status" class="dim">Ready.</div>
+        <button id="btn-error-detail" class="link-btn hidden" title="Show the whole message, and copy it">Details</button>
         <div class="grow"></div>
         <div id="cache-row" class="dim">
           <span class="cache-label">Preview cache</span>
@@ -190,6 +191,21 @@
       <div class="modal-title" id="choice-title"></div>
       <div class="modal-sub dim" id="choice-sub"></div>
       <div class="modal-row" id="choice-row"></div>
+    </div>
+  </div>
+
+  <!-- A failed render says what went wrong in full, selectable and copyable.
+       Truncating it into the status bar left "Error invoking remote method
+       'aesth:preview'" and hid the sentence that actually named the cause. -->
+  <div id="error-modal" class="hidden">
+    <div class="modal-box error-box">
+      <div class="modal-title" id="error-title">Render failed</div>
+      <div class="modal-sub dim" id="error-sub"></div>
+      <pre id="error-text" tabindex="0"></pre>
+      <div class="modal-row">
+        <button id="error-copy" class="accent">Copy</button>
+        <button id="error-close">Close</button>
+      </div>
     </div>
   </div>
 

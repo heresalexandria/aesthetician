@@ -261,6 +261,49 @@ def test_segmenting():
     assert len(segs3) == 1 and len(segs3[0]) == 2
 
 
+def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
+    """A preset must render on an ffmpeg build missing an optional encoder.
+
+    The desktop app ships an ffmpeg it does not build itself, and what is
+    compiled into it varies: the macOS bundle has libmp3lame but no
+    libopencore_amrnb and no libgsm. `a_codec_speech` raised on a missing
+    encoder, which took the entire render with it - so Flip Phone Clip, the one
+    preset that asks for AMR, could not render at all in a packaged build while
+    working perfectly from a checkout against a Homebrew ffmpeg. That gap
+    between the two environments is exactly what a test has to close, so this
+    runs every preset's audio chain against a deliberately threadbare build.
+    """
+    from aesthetician.engine.graph import Context, build_chain
+    from aesthetician.engine.presets import all_presets
+    from aesthetician.effects.audio import digicodec
+
+    # Everything optional stripped out: no lame, no AMR, no GSM.
+    bare = frozenset({"pcm_s16le", "pcm_mulaw", "pcm_alaw", "g726", "adpcm_ima_wav", "aac"})
+    real = digicodec._available_encoders
+    digicodec._available_encoders = lambda: bare
+    try:
+        ctx = Context(width=320, height=240, fps=30.0, n_frames=60, seed=3)
+        broke = []
+        for pid, preset in sorted(all_presets().items()):
+            if not preset.audio:
+                continue
+            try:
+                for eff in build_chain(preset.audio):
+                    eff.resolve(ctx)
+                    eff.prepare(ctx)
+            except Exception as exc:
+                broke.append(f"{pid}: {type(exc).__name__}: {exc}")
+        assert broke == [], f"{len(broke)} presets cannot render without optional encoders: {broke[:4]}"
+
+        # And the substitution is a real one, not a silent nothing.
+        speech = build_chain([("a_codec_speech", {"codec": "amr_74"})])[0]
+        speech.resolve(ctx)
+        speech.prepare(ctx)
+        assert speech._codec == "g726_16", speech._codec
+    finally:
+        digicodec._available_encoders = real
+
+
 def test_every_effect_can_be_switched_off_in_place():
     """`enabled` is the one dial guaranteed to reach nothing, on all of them.
 
