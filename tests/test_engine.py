@@ -261,6 +261,163 @@ def test_segmenting():
     assert len(segs3) == 1 and len(segs3[0]) == 2
 
 
+def test_the_event_plan_is_what_actually_renders():
+    """Every dropout is knowable before a frame is drawn, and the list is exact.
+
+    This is what a timeline editor stands on. The draws used to happen inside
+    `process`, a frame at a time, so nothing could ask where the damage was;
+    they happen in `prepare` now, from the same per-frame generators in the same
+    order, which leaves the picture untouched and the schedule readable. The
+    test renders the preset twice - once as authored, once with dropouts off -
+    and asserts the frames that differ are exactly the frames the plan named.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_plan_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    quiet = {"luma_noise": 0, "chroma_noise": 0, "head_switch": 0, "time_base_error": 0,
+             "flagging": 0, "jitter_v": 0, "tracking_error": 0, "sharpen": 0,
+             "chroma_delay": 0, "dropout_burst": 0.5}
+    on = Preset(id="t_plan_on", name="t", family="t", era="", desc="",
+                video=[("vhs", {**quiet, "dropouts": 8.0})])
+    off = Preset(id="t_plan_off", name="t", family="t", era="", desc="",
+                 video=[("vhs", {**quiet, "dropouts": 0.0})])
+    opts = RenderOptions(seed=99, duration=2.0, scale=1.0, crf=0)
+    a = os.path.join(root, "out", "_t_plan_on.mp4")
+    b = os.path.join(root, "out", "_t_plan_off.mp4")
+    render(src, a, on, opts)
+    render(src, b, off, opts)
+
+    plan = plan_events(src, [Layer(preset=on, seed=99)], opts)
+    fps = plan["fps"]
+    planned = {int(round(e["t"] * fps)) for e in plan["events"] if e["kind"] == "dropout"}
+    assert planned, "a preset at 8 events/s over two seconds must plan some"
+
+    W, H = 320, 240
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        return np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.int16)
+
+    fa, fb = frames(a), frames(b)
+    n = min(len(fa), len(fb))
+    # A dropout can land on picture it barely changes, so "differs at all"
+    # rather than "differs loudly" is the honest comparison.
+    changed = {i for i in range(n) if np.abs(fa[i] - fb[i]).max() > 2}
+    assert changed <= planned, f"rendered damage the plan did not name: {sorted(changed - planned)}"
+    # And most of what was planned really does show up.
+    assert len(changed) >= 0.8 * len({p for p in planned if p < n}), (len(changed), len(planned))
+
+    # Per-instance detail is there to be edited, and the id is how an edit
+    # names its target.
+    one = next(e for e in plan["events"] if e["kind"] == "dropout")
+    assert set(one["detail"]) == {"id", "row", "x", "length_px", "rows", "polarity"}, one
+
+
+def test_event_edits_change_the_render_the_way_they_say():
+    """Remove, move and add really do what the plan will claim they did.
+
+    The editor is only honest if an edit's effect on the picture is exactly its
+    effect on the plan: remove leaves the named frame identical to a render
+    with no dropouts at all, move takes the damage from one frame to another,
+    add puts damage where there was none - and a no-edit render is untouched
+    by the machinery existing.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_edit_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=2", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    quiet = {"luma_noise": 0, "chroma_noise": 0, "head_switch": 0, "time_base_error": 0,
+             "flagging": 0, "jitter_v": 0, "tracking_error": 0, "sharpen": 0,
+             "chroma_delay": 0, "dropout_burst": 0.0}
+    # A sparse rate, so the frames involved carry one instance each and the
+    # comparisons stay unambiguous.
+    preset = Preset(id="t_edit", name="t", family="t", era="", desc="",
+                    video=[("vhs", {**quiet, "dropouts": 2.5})])
+    layer = lambda edits: [Layer(preset=preset, seed=31, event_edits=edits)]
+    opts = lambda edits: RenderOptions(seed=31, duration=2.0, scale=1.0, crf=0,
+                                       event_edits=edits)
+
+    plan = plan_events(src, layer([]), RenderOptions(seed=31, duration=2.0, scale=1.0))
+    drops = [e for e in plan["events"] if e["kind"] == "dropout"]
+    assert len(drops) >= 2, f"need at least two dropouts to edit, got {len(drops)}"
+    fps = plan["fps"]
+    victim = drops[0]
+    vid = victim["detail"]["id"]
+    vfr = int(round(victim["t"] * fps))
+
+    W, H = 320, 240
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        return np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.int16)
+
+    def rendered(edits, name):
+        out = os.path.join(root, "out", f"_t_edit_{name}.mp4")
+        render(src, out, preset, opts(edits))
+        return frames(out)
+
+    base = rendered([], "base")
+    clean = rendered([{"op": "remove", "id": e["detail"]["id"]} for e in drops], "clean")
+
+    # Remove: the victim's frame becomes indistinguishable from a fully clean one.
+    removed = rendered([{"op": "remove", "id": vid}], "removed")
+    assert np.abs(base[vfr] - clean[vfr]).max() > 2, "victim must be visible to begin with"
+    assert np.array_equal(removed[vfr], clean[vfr]), "removing must erase exactly that damage"
+
+    # Move: the damage leaves one frame and turns up on the other, same shape.
+    target_fi = vfr + 9 if vfr + 9 < len(base) else vfr - 9
+    target_t = plan["t0"] + target_fi / fps
+    moved = rendered([{"op": "move", "id": vid, "t": target_t}], "moved")
+    assert np.array_equal(moved[vfr], clean[vfr]), "moved damage must vanish from its frame"
+    assert np.abs(moved[target_fi] - base[target_fi]).max() > 2, "and land on the target"
+
+    # Add: a synthetic dropout lands on a frame the seed left alone.
+    quiet_fi = next(i for i in range(len(base))
+                    if np.array_equal(base[i], clean[i]) and i not in (vfr, target_fi))
+    added = rendered([{"op": "add", "kind": "dropout", "t": plan["t0"] + quiet_fi / fps,
+                       "detail": {"row": 120, "x": 40, "length_px": 160,
+                                  "polarity": "bright", "rows": 2}}], "added")
+    d = np.abs(added[quiet_fi] - clean[quiet_fi])
+    assert d.max() > 10, "an added dropout must be visible"
+    hit_rows = np.nonzero((d > 5).any(axis=1))[0]
+    assert len(hit_rows) and 118 <= hit_rows.min() and hit_rows.max() <= 123, hit_rows
+
+    # The plan tells the same story as the pixels.
+    plan_after = plan_events(src, layer([{"op": "remove", "id": vid}]),
+                             RenderOptions(seed=31, duration=2.0, scale=1.0))
+    ids_after = {e["detail"]["id"] for e in plan_after["events"] if e["kind"] == "dropout"}
+    assert vid not in ids_after and len(ids_after) == len(drops) - 1
+
+    # An op whose id the seed no longer produces is skipped, never guessed at.
+    other_seed = rendered([{"op": "remove", "id": "vhs:dropout:9999:7"}], "orphan")
+    assert np.array_equal(other_seed, base[: len(other_seed)])
+
+
 def test_events_are_scheduled_against_the_clip_not_the_window():
     """A preview is a short render from the middle of a clip, not a second clip.
 

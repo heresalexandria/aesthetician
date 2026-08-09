@@ -114,6 +114,7 @@ function newLayer(overrides = {}) {
     customId: null,      // set when the pick came from a saved custom aesthetic
     variant: null,
     sets: {},
+    events: [],          // the user's diff on the seeded event schedule
     seed: 1 + Math.floor(Math.random() * 99999),
     intensity: 1.0,
     texture: 1.0,
@@ -122,7 +123,7 @@ function newLayer(overrides = {}) {
   };
 }
 
-const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'seed', 'intensity', 'texture'];
+const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'events', 'seed', 'intensity', 'texture'];
 
 function newSession(info) {
   const sess = {
@@ -139,6 +140,14 @@ function newSession(info) {
     treatedSrc: null,
     originalSrc: null,
     originalT: null,
+    // Filmstrip timeline state. The strip is a property of the file alone, so
+    // it is fetched once per session; the event plan depends on every render
+    // knob, so it is cached by the exact layer spec that asked for it.
+    strip: null,         // {frames, duration} from aesth:filmstrip
+    stripJob: null,      // the in-flight fetch, so racing callers share one
+    eventsKey: null,     // JSON.stringify(layerSpec) the cached plan answers
+    eventsPlan: null,    // the aesth:events result for eventsKey
+    eventsJob: null,     // the key being planned right now, to dedupe requests
     // The most recent preview this tab asked for. Results are recorded per tab
     // rather than per screen, so this is what keeps an older render that lands
     // late from overwriting a newer one behind the user's back.
@@ -308,6 +317,10 @@ function activateSession(id) {
       : (sess.audioSource ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
     if (sess.presetId) schedulePreview(true);
   }
+  // The timeline belongs to the tab: repaint its cached strip and plan, and
+  // fetch whichever of the two this session never loaded. Not awaited, because
+  // switching tabs has to stay instant.
+  refreshTimeline();
   setExportStatus('Ready.');
 }
 
@@ -451,9 +464,13 @@ function hideTip() {
   if (tipEl) tipEl.classList.remove('show');
 }
 
-function showTipAt(anchor, { title, desc, facts = [], path = '' }) {
+function showTipAt(anchor, { title, desc, facts = [], path = '', stack = false }) {
   const el = tipNode();
   el.innerHTML = '';
+  // `stack` lays the facts one per line - for payloads that are a dict readout
+  // rather than a few prose fragments. The class comes off again here because
+  // the one tip element is shared by every anchor in the app.
+  el.classList.toggle('stack', stack);
   const h = document.createElement('div');
   h.className = 'tip-title';
   h.textContent = title;
@@ -612,6 +629,7 @@ async function saveCustom() {
     base: state.presetId,
     variant: state.variant,
     sets: { ...state.sets },
+    events: (state.events || []).map((e) => ({ ...e })),
     intensity: state.intensity,
     texture: state.texture,
     seed: state.seed,
@@ -640,6 +658,7 @@ function layerFromCustom(c) {
     customId: c.id,
     variant: c.variant || null,
     sets: { ...(c.sets || {}) },
+    events: (c.events || []).map((e) => ({ ...e })),
     seed: typeof c.seed === 'number' ? c.seed : 1 + Math.floor(Math.random() * 99999),
     intensity: typeof c.intensity === 'number' ? c.intensity : 1,
     texture: typeof c.texture === 'number' ? c.texture : 1,
@@ -654,6 +673,7 @@ function applyCustom(cid, opts = {}) {
   state.customId = c.id;
   state.variant = c.variant || null;
   state.sets = { ...(c.sets || {}) };
+  state.events = (c.events || []).map((e) => ({ ...e }));
   state.intensity = typeof c.intensity === 'number' ? c.intensity : 1;
   state.texture = typeof c.texture === 'number' ? c.texture : 1;
   if (typeof c.seed === 'number') state.seed = c.seed;
@@ -717,7 +737,8 @@ function customDrifted() {
     || c.intensity !== state.intensity
     || c.texture !== state.texture
     || c.seed !== state.seed
-    || JSON.stringify(c.sets || {}) !== JSON.stringify(state.sets);
+    || JSON.stringify(c.sets || {}) !== JSON.stringify(state.sets)
+    || JSON.stringify(c.events || []) !== JSON.stringify(state.events || []);
 }
 
 /* Names go into filenames, so keep them to something a filesystem enjoys. */
@@ -755,6 +776,7 @@ function captureStackLayers(sess = state) {
     customId: l.customId || null,
     variant: l.variant || null,
     sets: { ...(l.sets || {}) },
+    events: (l.events || []).map((e) => ({ ...e })),
     seed: l.seed,
     intensity: l.intensity,
     texture: l.texture,
@@ -811,6 +833,7 @@ function layerFromSaved(sl) {
     customId: sl.customId && customById(sl.customId) ? sl.customId : null,
     variant: sl.variant || null,
     sets: { ...(sl.sets || {}) },
+    events: (sl.events || []).map((e) => ({ ...e })),
     seed: typeof sl.seed === 'number' ? sl.seed : 1 + Math.floor(Math.random() * 99999),
     intensity: typeof sl.intensity === 'number' ? sl.intensity : 1,
     texture: typeof sl.texture === 'number' ? sl.texture : 1,
@@ -2295,6 +2318,7 @@ function selectPreset(pid, opts = {}) {
   state.stackId = null;    // and the arrangement is no longer the saved one
   state.variant = null;
   state.sets = {};
+  state.events = [];
   syncSelection();       // the rows themselves have not changed, only which one is lit
   renderTabs();          // the tab shows which aesthetic the clip is wearing
   buildParamPane();
@@ -2323,6 +2347,7 @@ function layerHasWork(l) {
   return Boolean(l.customId)
     || Boolean(l.variant)
     || Object.keys(l.sets || {}).length > 0
+    || (l.events || []).length > 0
     || l.intensity !== 1
     || l.texture !== 1;
 }
@@ -2345,6 +2370,8 @@ function describeLayerWork(l) {
   const bits = [];
   const n = Object.keys(l.sets || {}).length;
   if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
+  const ne = (l.events || []).length;
+  if (ne) bits.push(`${ne} timeline edit${ne === 1 ? '' : 's'}`);
   if (l.variant) bits.push(`the ${l.variant} variant`);
   if (l.intensity !== 1) bits.push(`intensity ${l.intensity.toFixed(2)}`);
   if (l.texture !== 1) bits.push(`texture ${l.texture.toFixed(2)}`);
@@ -2797,6 +2824,7 @@ function layerSpec(sess = state) {
     preset: l.presetId,
     variant: l.variant || null,
     sets: l.sets || {},
+    events: l.events || [],
     seed: l.seed,
     intensity: l.intensity,
     texture: l.texture,
@@ -2840,6 +2868,9 @@ async function runPreview() {
   sess.previewJob = jobId;
   hideStill();                           // whatever is up belongs to the last render
   showRenderOverlay(true, 'rendering preview…', 0);
+  // The tick plan depends on the same state this render does, so it refreshes
+  // alongside - fire and forget, the strip must never delay the preview.
+  refreshTimeline();
   const req = {
     jobId,
     input: state.file.path,
@@ -2920,6 +2951,388 @@ function setVideo(el, src) {
   };
 }
 
+/* ── filmstrip timeline ──────────────────────────────────────────────
+   A strip of source-frame thumbnails under the player spanning the whole clip,
+   with a colored tick wherever the engine plans discrete damage. Read-only for
+   now: ticks explain themselves on hover and clicking the strip moves the
+   preview window. The editor comes next, so the seams stay clean - fetching is
+   separated from painting, and the cached plan is the aesth:events result
+   exactly as the engine sent it. */
+
+/* One color per event kind. A kind this build has never heard of falls back to
+   the dim ink rather than crashing the paint: the engine grows new kinds, and
+   the strip has to survive every one of them. */
+const TICK_COLORS = {
+  dropout: '#f4b64e',
+  transport_glitch: '#8fb4ff',
+  transport_lock: '#f06a72',
+};
+
+/* CSS position only: scrubbing moves the head many times a second, and paying
+   a repaint of thumbnails and ticks for a pointer move would make the slider
+   feel like wading. */
+function syncTimelinePlayhead() {
+  const total = state.file && state.file.duration;
+  if (!total) return;
+  const left = (state.previewT / total) * 100;
+  $('strip-playhead').style.left = `${left}%`;
+  $('strip-window').style.left = `${left}%`;
+  $('strip-window').style.width = `${(Math.min(G.duration, total) / total) * 100}%`;
+}
+
+/* The frames are a property of the file, not of any knob, so the only reason
+   to repaint is that the strip on screen belongs to another tab - or that a
+   fetch that had failed has since delivered. */
+function paintTimelineFrames(sess) {
+  const host = $('strip-frames');
+  const frames = (sess.strip && sess.strip.frames) || [];
+  const key = `${sess.id}|${frames.length}`;
+  if (host.dataset.key === key) return;
+  host.dataset.key = key;
+  host.innerHTML = '';
+  for (const f of frames) {
+    const img = document.createElement('img');
+    img.src = fileUrl(f);
+    img.draggable = false;
+    host.appendChild(img);
+  }
+}
+
+function paintTimelineMarkers(sess) {
+  const host = $('strip-markers');
+  const key = `${sess.id}|${sess.eventsKey}`;
+  if (host.dataset.key === key) return;
+  host.dataset.key = key;
+  host.innerHTML = '';
+  const total = sess.file.duration;
+  const events = (sess.eventsPlan && sess.eventsPlan.events) || [];
+  const chip = $('strip-count');
+  chip.classList.toggle('hidden', !events.length);
+  chip.textContent = events.length ? `${events.length} event${events.length === 1 ? '' : 's'}` : '';
+  chip.title = 'Open the timeline events editor';
+  chip.onclick = (e) => { e.stopPropagation(); openEventEditor(); };
+  const edited = editedIds(sess);
+  for (const ev of events) {
+    const tick = document.createElement('div');
+    tick.className = 'strip-tick';
+    const id = ev.detail && ev.detail.id;
+    if (id && String(id).startsWith('edit:')) tick.classList.add('added');
+    else if (id && edited.has(id)) tick.classList.add('edited');
+    // Centered on its moment: the tick is 3px wide, so back up one.
+    tick.style.left = `calc(${(ev.t / total) * 100}% - 1px)`;
+    tick.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
+    attachTip(tick, () => ({
+      title: ev.kind.replace(/_/g, ' '),
+      facts: [
+        `effect ${ev.effect}`,
+        `at ${ev.t.toFixed(2)}s`,
+        ...Object.entries(ev.detail || {}).map(([k, v]) => `${k} ${v}`),
+        'click to edit',
+      ],
+      stack: true,
+    }));
+    // A tick is a control: clicking it opens its row, not a seek.
+    tick.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEventEditor(id);
+    });
+    host.appendChild(tick);
+  }
+  if (eventEditorOpen() && sess.id === G.activeId) rebuildEventRows();
+}
+
+/* Fetches whatever the strip is missing, then paints. Called fire-and-forget
+   from runPreview - the strip must never delay a render - and from
+   activateSession, so a revisited tab shows its cached strip instantly. The
+   plan is keyed by the exact layer spec, which is why knob-fiddling that lands
+   back on a spec already planned costs nothing. */
+async function refreshTimeline() {
+  const sess = state;
+  const bar = $('timeline');
+  if (!sess.file || !sess.file.path) { bar.classList.add('hidden'); return; }
+  // body.audio-session already keeps the row off screen; skipping here also
+  // keeps us from asking a WAV for frames it does not have.
+  if (sess.audioSource) return;
+  bar.classList.remove('hidden');
+  syncTimelinePlayhead();
+
+  if (!sess.strip && !sess.stripJob) {
+    sess.stripJob = window.aesth.filmstrip({ input: sess.file.path })
+      .then((r) => { sess.strip = r; })
+      .catch(() => { /* the strip is decoration - seek and ticks work without it */ })
+      .finally(() => { sess.stripJob = null; });
+  }
+
+  const key = JSON.stringify(layerSpec(sess));
+  if (sess.eventsKey !== key && sess.eventsJob !== key) {
+    if (!liveLayers(sess).length) {
+      // Nothing selected plans nothing; asking the engine would only earn a
+      // usage error back.
+      sess.eventsKey = key;
+      sess.eventsPlan = null;
+    } else {
+      sess.eventsJob = key;
+      try {
+        const plan = await window.aesth.events({
+          input: sess.file.path,
+          layers: layerSpec(sess),
+          presetId: sess.presetId,
+          variant: sess.variant,
+          sets: sess.sets,
+          seed: sess.seed,
+          intensity: sess.intensity,
+          texture: sess.texture,
+        });
+        // Only keep the answer while it is still the question: a knob moved
+        // during planning makes this plan stale on arrival, and the refresh
+        // that knob triggered is already fetching the real one.
+        if (JSON.stringify(layerSpec(sess)) === key) {
+          sess.eventsKey = key;
+          sess.eventsPlan = plan;
+        }
+      } catch (_) {
+        // A failed plan just leaves the strip tickless. The render pipeline
+        // reports its own failures; a second report for decoration would only
+        // shout over it.
+      } finally {
+        if (sess.eventsJob === key) sess.eventsJob = null;
+      }
+    }
+  }
+
+  if (sess.stripJob) await sess.stripJob;
+  if (sess.id !== G.activeId) return;   // a different tab is on screen now
+  paintTimelineFrames(sess);
+  paintTimelineMarkers(sess);
+}
+
+/* ── the timeline events editor ──────────────────────────────────────
+   The rows are the engine's own plan for the current spec - edits included -
+   so the window never shows a schedule the render would disagree with. Ops are
+   written onto the layer the event belongs to, the preview re-renders, and the
+   plan refresh brings the rows back in the edited shape.
+
+   Two kinds of target, one rule each. An instance the seed drew is edited by
+   ops naming its minted id; an instance the user added IS its op, so editing
+   one mutates the op in place and deleting one deletes the op. The engine
+   enforces the same split (see docs/events.md) - this mirror just keeps the op
+   list minimal instead of stacking contradictions. */
+
+function evLayerOf(ev) {
+  return state.layers[ev.layer] || activeLayer(state);
+}
+
+function findAddOp(l, id) {
+  return (l.events || []).find((e) => e.op === 'add' && e.id === id);
+}
+
+/* One op per (op, id): re-moving a moved dropout replaces its move op rather
+   than queueing a second opinion behind it. */
+function upsertOp(l, op) {
+  l.events = l.events || [];
+  if (op.op === 'tune') {
+    const prev = l.events.find((e) => e.op === 'tune' && e.id === op.id);
+    if (prev) { prev.detail = { ...prev.detail, ...op.detail }; return; }
+  } else if (op.op === 'move') {
+    const prev = l.events.find((e) => e.op === 'move' && e.id === op.id);
+    if (prev) { prev.t = op.t; return; }
+  }
+  l.events.push(op);
+}
+
+function afterEventEdit() {
+  state.stackId = null;          // the arrangement is no longer the saved one
+  schedulePreview();
+  refreshTimeline().then(() => { if (eventEditorOpen()) rebuildEventRows(); });
+  renderTabs();
+}
+
+function eventEditorOpen() {
+  return !$('events-modal').classList.contains('hidden');
+}
+
+function openEventEditor(focusId = null) {
+  if (!state.file || state.audioSource) return;
+  $('events-modal').classList.remove('hidden');
+  $('ev-add-t').value = state.previewT.toFixed(2);
+  rebuildEventRows(focusId);
+}
+
+function closeEventEditor() {
+  $('events-modal').classList.add('hidden');
+}
+
+function removeEvent(ev) {
+  const l = evLayerOf(ev);
+  const id = ev.detail && ev.detail.id;
+  const addOp = id && findAddOp(l, id);
+  if (addOp) {
+    l.events = l.events.filter((e) => e !== addOp);
+  } else if (id) {
+    // Any pending move or tune of it is moot once it is gone.
+    l.events = (l.events || []).filter((e) => !(e.id === id && e.op !== 'add'));
+    upsertOp(l, { op: 'remove', id, effect: ev.effect, kind: ev.kind });
+  }
+  afterEventEdit();
+}
+
+function moveEvent(ev, t) {
+  const l = evLayerOf(ev);
+  const id = ev.detail && ev.detail.id;
+  const addOp = id && findAddOp(l, id);
+  if (addOp) addOp.t = t;
+  else if (id) upsertOp(l, { op: 'move', id, t, effect: ev.effect, kind: ev.kind });
+  afterEventEdit();
+}
+
+function tuneEvent(ev, detail) {
+  const l = evLayerOf(ev);
+  const id = ev.detail && ev.detail.id;
+  const addOp = id && findAddOp(l, id);
+  if (addOp) addOp.detail = { ...addOp.detail, ...detail };
+  else if (id) upsertOp(l, { op: 'tune', id, detail, effect: ev.effect, kind: ev.kind });
+  afterEventEdit();
+}
+
+let evAddSeq = 0;
+function addEventAt(effect, kind, t, detail = {}) {
+  const l = activeLayer(state);
+  l.events = l.events || [];
+  // The id is minted here so the plan can report it back and the row can find
+  // its op again; the prefix is what marks it as the user's own.
+  l.events.push({ op: 'add', id: `edit:add:${Date.now()}:${++evAddSeq}`,
+                  effect, kind, t, detail });
+  afterEventEdit();
+}
+
+function editedIds(sess = state) {
+  const ids = new Set();
+  for (const l of sess.layers || []) {
+    for (const e of l.events || []) {
+      if (e.op === 'move' || e.op === 'tune') ids.add(e.id);
+    }
+  }
+  return ids;
+}
+
+/* A number input that commits on change, shared by every field in a row. */
+function evNum(value, { min = 0, max = null, step = 1, cls = 'ev-n' }, commit) {
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.className = cls;
+  inp.min = min; if (max != null) inp.max = max;
+  inp.step = step;
+  inp.value = value;
+  inp.onchange = () => {
+    const v = parseFloat(inp.value);
+    if (Number.isFinite(v)) commit(v);
+  };
+  return inp;
+}
+
+function rebuildEventRows(focusId = null) {
+  const host = $('ev-list');
+  host.innerHTML = '';
+  const plan = state.eventsPlan;
+  const events = (plan && plan.events) || [];
+  $('ev-count').textContent = events.length
+    ? `${events.length} planned, seed ${state.seed}` : 'none planned';
+  const dur = state.file.duration;
+  const edited = editedIds();
+  if (!events.length) {
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.style.padding = '14px';
+    hint.textContent = state.eventsJob
+      ? 'Planning…'
+      : 'Nothing planned. This aesthetic has no discrete damage - or every instance has been removed.';
+    host.appendChild(hint);
+    return;
+  }
+  for (const ev of events) {
+    const id = ev.detail && ev.detail.id;
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.dataset.id = id || '';
+    row.dataset.kind = ev.kind;
+
+    const dot = document.createElement('span');
+    dot.className = 'ev-kind';
+    dot.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
+    row.appendChild(dot);
+
+    row.appendChild(evNum(ev.t.toFixed(2), { min: 0, max: dur, step: 0.05, cls: 'ev-t' },
+      (v) => moveEvent(ev, Math.min(Math.max(v, 0), dur))));
+    const sLab = document.createElement('label');
+    sLab.textContent = 's';
+    row.appendChild(sLab);
+
+    const what = document.createElement('span');
+    what.className = 'ev-what';
+    what.textContent = `${ev.kind.replace(/_/g, ' ')} · ${ev.effect}`;
+    row.appendChild(what);
+
+    if (ev.kind === 'dropout') {
+      const d = ev.detail;
+      const lab = (t) => { const el = document.createElement('label'); el.textContent = t; return el; };
+      row.appendChild(lab('row'));
+      row.appendChild(evNum(d.row, { min: 0, step: 1 }, (v) => tuneEvent(ev, { row: Math.round(v) })));
+      row.appendChild(lab('x'));
+      row.appendChild(evNum(d.x, { min: 0, step: 1 }, (v) => tuneEvent(ev, { x: Math.round(v) })));
+      row.appendChild(lab('len'));
+      row.appendChild(evNum(d.length_px, { min: 6, step: 1 }, (v) => tuneEvent(ev, { length_px: Math.round(v) })));
+      const pol = document.createElement('select');
+      for (const c of ['bright', 'dark']) {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        if (c === d.polarity) o.selected = true;
+        pol.appendChild(o);
+      }
+      pol.onchange = () => tuneEvent(ev, { polarity: pol.value });
+      row.appendChild(pol);
+    } else if (ev.kind === 'transport_glitch') {
+      const lab = document.createElement('label');
+      lab.textContent = 'lasts';
+      row.appendChild(lab);
+      row.appendChild(evNum(ev.dur.toFixed(2), { min: 0.05, step: 0.05 },
+        (v) => tuneEvent(ev, { dur_s: v })));
+      const sl = document.createElement('label');
+      sl.textContent = 's';
+      row.appendChild(sl);
+    } else if (ev.kind === 'transport_lock') {
+      const note = document.createElement('span');
+      note.className = 'dim';
+      note.textContent = 'the deck locking on - move it with Start Glitch in VCR Transport';
+      row.appendChild(note);
+    }
+
+    const grow = document.createElement('span');
+    grow.className = 'grow';
+    row.appendChild(grow);
+
+    if (id && (String(id).startsWith('edit:') || edited.has(id))) {
+      const tag = document.createElement('span');
+      tag.className = 'ev-edited';
+      tag.textContent = String(id).startsWith('edit:') ? 'yours' : 'edited';
+      row.appendChild(tag);
+    }
+
+    if (ev.kind !== 'transport_lock') {
+      const del = document.createElement('button');
+      del.className = 'ev-del';
+      del.textContent = '×';
+      del.title = 'Remove this instance from the render';
+      del.onclick = () => removeEvent(ev);
+      row.appendChild(del);
+    }
+    host.appendChild(row);
+  }
+  if (focusId) {
+    const hit = host.querySelector(`.ev-row[data-id="${CSS.escape(focusId)}"]`);
+    if (hit) { hit.scrollIntoView({ block: 'center' }); hit.classList.add('flash'); }
+  }
+}
+
 /* With auto on, every change re-renders by itself and Preview has nothing left
    to do, so it stops taking up space pretending otherwise. Turn auto off and it
    comes back as the way to ask for a render. */
@@ -2985,6 +3398,11 @@ function wireShortcuts() {
        else - ⌘C above all - belongs to the selection in it. */
     if (!$('error-modal').classList.contains('hidden')) {
       if (e.code === 'Escape') { e.preventDefault(); closeErrorDetail(); }
+      return;
+    }
+    /* The events editor is typing-heavy; the keyboard is its own until Escape. */
+    if (eventEditorOpen()) {
+      if (e.code === 'Escape') { e.preventDefault(); closeEventEditor(); }
       return;
     }
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
@@ -3068,8 +3486,27 @@ function wireControls() {
     state.previewT = parseFloat(scrub.value);
     paintRange(scrub);
     $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+    syncTimelinePlayhead();
   });
   scrub.addEventListener('change', () => schedulePreview());
+
+  /* The strip is the same seek surface as the slider, just map-shaped: x is
+     time across the whole clip. It borrows the slider's own max and 0.1 s
+     grid, so the two controls can never disagree about where the preview
+     window is allowed to sit. */
+  $('timeline').addEventListener('click', (e) => {
+    if (!state.file || !state.file.duration) return;
+    const r = $('timeline').getBoundingClientRect();
+    if (!r.width) return;
+    const frac = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+    const t = Math.min(frac * state.file.duration, parseFloat(scrub.max) || 0);
+    state.previewT = parseFloat(t.toFixed(1));
+    scrub.value = state.previewT.toFixed(1);
+    paintRange(scrub);
+    $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+    syncTimelinePlayhead();
+    schedulePreview();
+  });
 
   $('auto-preview').checked = G.autoPreview;
   $('auto-preview').addEventListener('change', (e) => {
@@ -3096,6 +3533,8 @@ function wireControls() {
       }
       paintRange(scrub);
     }
+    // The translucent span *is* the window: a new length changes its width.
+    syncTimelinePlayhead();
     schedulePreview();
   });
   const scaleSel = $('preview-scale');
@@ -3173,6 +3612,27 @@ function wireControls() {
   $('btn-fav').addEventListener('click', () => { if (state.presetId) toggleFav(state.presetId); });
   $('btn-save-custom').addEventListener('click', saveCustom);
   $('btn-save-stack').addEventListener('click', saveStack);
+
+  $('ev-close').addEventListener('click', closeEventEditor);
+  $('events-modal').addEventListener('mousedown', (e) => {
+    if (e.target === $('events-modal')) closeEventEditor();
+  });
+  $('ev-add').addEventListener('click', () => {
+    const t = parseFloat($('ev-add-t').value);
+    if (!Number.isFinite(t)) return;
+    const kind = $('ev-add-kind').value;
+    // The op targets the effect that owns the kind; if the active layer's
+    // chain has no such effect the engine simply plans nothing for it, which
+    // the rows will show - honest, if unhelpful, so keep the two aligned.
+    addEventAt(kind === 'dropout' ? 'vhs' : 'vcr_transport', kind,
+      Math.min(Math.max(t, 0), state.file.duration), {});
+  });
+  $('ev-reset').addEventListener('click', () => {
+    const l = activeLayer(state);
+    if (!(l.events || []).length) return;
+    l.events = [];
+    afterEventEdit();
+  });
 
   $('btn-error-detail').addEventListener('click', () => showErrorDetail(G.lastFailure));
   $('error-close').addEventListener('click', closeErrorDetail);

@@ -191,6 +191,31 @@ function stillArgs(req, outputPath) {
   return args;
 }
 
+/* The whole-clip damage plan the timeline draws from. Deliberately not
+   `stillArgs`: the plan must ignore the preview window - the strip spans the
+   entire clip, so start and duration never apply - and it always plans at the
+   half scale the preview renders at, so the ticks describe the frames the user
+   will actually see. Folding that into either existing builder would mean
+   flags that lie for one caller or the other. */
+function eventsArgs(req) {
+  const args = ['events', req.input, '--scale', '0.5'];
+  if (Array.isArray(req.layers) && req.layers.length) {
+    fs.mkdirSync(LAYER_SPEC_DIR, { recursive: true });
+    const spec = path.join(LAYER_SPEC_DIR, `${req.jobId || 'events'}-${process.hrtime.bigint()}.json`);
+    fs.writeFileSync(spec, JSON.stringify(req.layers));
+    args.push('--layers', `@${spec}`);
+    req._layerSpec = spec;
+  } else {
+    args.push('-p', req.presetId,
+      '--seed', String(req.seed ?? 1),
+      '--intensity', String(req.intensity ?? 1.0),
+      '--texture', String(req.texture ?? 1.0));
+    if (req.variant) args.push('--variant', req.variant);
+    for (const [k, v] of Object.entries(req.sets || {})) args.push('--set', `${k}=${v}`);
+  }
+  return args;
+}
+
 function cacheKey(req) {
   const h = crypto.createHash('sha1');
   h.update(JSON.stringify({ ...req, jobId: undefined }));
@@ -460,6 +485,61 @@ ipcMain.handle('aesth:snippet', async (_e, req) => {
     '--start', String(req.start ?? 0), '--duration', String(req.duration ?? 3),
     '--scale', String(req.scale ?? 0.5)], { timeoutMs: 120000 });
   return { output };
+});
+
+/* ── filmstrip timeline ──────────────────────────────────────────────────
+   Two read-only helpers behind the strip under the player. Neither touches
+   previewProc or stillProc and nothing kills them: they are fast - a filmstrip
+   is one ffmpeg pass, an events plan is one Python boot - and killing a render
+   the user is waiting on to redraw decoration would be exactly backwards. */
+ipcMain.handle('aesth:events', async (_e, req) => {
+  const args = eventsArgs(req);
+  let out = '';
+  try {
+    out = await runCapture(args, { timeoutMs: 120000 });
+  } finally {
+    dropLayerSpec(req);
+  }
+  return JSON.parse(out.trim().split('\n').pop());
+});
+
+/* Source-frame thumbnails: n evenly spaced frames across the whole file, one
+   ffmpeg process. Keyed by path, mtime and geometry so reopening a file costs
+   nothing and an edited one re-extracts; the frames live in the preview cache
+   because they are the same kind of disposable - clearing it only costs the
+   next extraction. */
+ipcMain.handle('aesth:filmstrip', async (_e, req) => {
+  const { input, n = 16, h = 54 } = req;
+  const { duration } = JSON.parse(await runCapture(['probe', input]));
+  let stat = null;
+  try { stat = fs.statSync(input); } catch (_) {}
+  const key = crypto.createHash('sha1')
+    .update(JSON.stringify([input, stat ? stat.mtimeMs : 0, n, h]))
+    .digest('hex');
+  ensureCacheDir();
+  const frames = Array.from({ length: n }, (_, i) =>
+    path.join(CACHE_DIR, `strip-${key}-${String(i + 1).padStart(2, '0')}.jpg`));
+  if (frames.every((f) => fs.existsSync(f))) return { frames, duration };
+  await new Promise((resolve, reject) => {
+    // fps=n/duration samples one frame per strip cell starting at t=0; the
+    // frame cap is belt and braces against the filter rounding up at the tail.
+    const p = spawn(FFMPEG, ['-y', '-i', input,
+      '-vf', `fps=${n / duration},scale=-2:${h}`,
+      '-frames:v', String(n),
+      path.join(CACHE_DIR, `strip-${key}-%02d.jpg`)], CHILD_OPTS());
+    let err = '';
+    const t = setTimeout(() => { p.kill('SIGKILL'); reject(new Error('timed out')); }, 120000);
+    p.stderr.on('data', (d) => (err += d));
+    p.on('close', (code) => {
+      clearTimeout(t);
+      if (code === 0) resolve();
+      else reject(new Error(tailOf(err) || `exit ${code}`));
+    });
+    p.on('error', (e) => { clearTimeout(t); reject(e); });
+  });
+  // A very short or oddly stamped file can come up a frame shy; return what is
+  // actually on disk rather than a path the renderer would 404 on.
+  return { frames: frames.filter((f) => fs.existsSync(f)), duration };
 });
 
 ipcMain.handle('aesth:pick-input', async () => {

@@ -103,6 +103,11 @@ class Context:
         # scrubbed to, because "1.2 seconds in" meant 1.2 seconds into the
         # preview rather than into the clip.
         self.t0 = t0
+        # Edits to the discrete-event schedule, applied by effects in `prepare`:
+        # a list of {op, ...} dicts (see docs in render.py). Empty for a render
+        # nobody has touched, which is every render there was before this
+        # existed - so absent means exactly what it always meant.
+        self.event_edits: list[dict] = []
         self.noise = TemporalNoise(seed, fps, n_frames)
         # Indices for the frame currently being processed (set by the runner).
         self.fi_out = 0   # index on the output timeline
@@ -142,6 +147,26 @@ class Context:
         every export does, is keyed exactly as it always was.
         """
         return stream(self.seed, f"{key}@{self.abs_frame(fi)}")
+
+
+@dataclass(frozen=True)
+class Event:
+    """One discrete thing an effect does at a moment on the source clip.
+
+    Damage in this engine is not a haze, it is a series of incidents: a dropout
+    is a streak on one row of one frame, a transport glitch is a shredded stretch
+    of two thirds of a second. They were being decided a frame at a time deep
+    inside `process`, which made them impossible to talk about - you could not
+    ask where they were, let alone move one. An effect that deals in incidents
+    works them out in `prepare` now and can hand the list over.
+
+    `t` is seconds on the *clip's* timeline, so it means the same thing in a
+    preview as in an export.
+    """
+    t: float
+    dur: float
+    kind: str
+    detail: dict[str, Any] = field(default_factory=dict)
 
 
 class Effect:
@@ -188,6 +213,15 @@ class Effect:
     # ── hooks ──────────────────────────────────────────────────────────
     def prepare(self, ctx: Context) -> None:
         """Called once before processing; allocate state, precompute tracks."""
+
+    def events(self, ctx: Context) -> list["Event"]:
+        """The discrete incidents this effect will produce, after `prepare`.
+
+        Empty for the continuous effects - grain, tape noise, a rolling tracking
+        band - which are a level rather than a list of moments and want a curve,
+        not pins.
+        """
+        return []
 
     def remap(self, ctx: Context) -> Optional[np.ndarray]:
         """Optional time remap: array of source indices, one per output frame."""

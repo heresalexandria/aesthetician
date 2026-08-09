@@ -25,7 +25,8 @@ import numpy as np
 from scipy import signal as sps
 
 from ...engine.color import luma, rgb_to_yiq, yiq_to_rgb
-from ...engine.graph import Context, Effect, Param, register
+from ...engine.graph import Context, Effect, Event, Param, register
+from ...engine.rng import stream
 
 # ── horizontal-frequency model ─────────────────────────────────────────
 BASE_FS_MHZ = 13.4      # effective sample rate of a 704-sample active line
@@ -535,6 +536,7 @@ class VHS(Effect):
     )
 
     def prepare(self, ctx: Context) -> None:
+        self._schedule_dropouts(ctx)
         W = ctx.width
         self._k_gen = _lp_kernel(_cut(2.6, W))
         self._genc_cut = _cut(0.5, W)
@@ -542,27 +544,117 @@ class VHS(Effect):
         self._k_sharp = _ring_kernel_c(round(_cut(1.7, W), 4), 15)
 
     # ── damage helpers ─────────────────────────────────────────────────
-    def _apply_dropouts(self, y: np.ndarray, ctx: Context, sx: float) -> None:
+    def _schedule_dropouts(self, ctx: Context) -> None:
+        """Work out every dropout before the first frame is touched.
+
+        The same draws in the same order from the same per-frame generator, so
+        the picture does not move by a level - the only thing that changes is
+        that the list now exists somewhere you can read it. Deciding this a
+        frame at a time inside `process` meant nobody could ask where the
+        dropouts were, count them, or move one.
+        """
+        self._dropouts: dict[int, list[tuple]] = {}
         v = self.v
         rate = v["dropouts"] * self._MODE[v["mode"]][2]
         if rate <= 0.0:
             return
-        fi = min(ctx.fi_out, ctx.noise.n - 1)
-        burst = 1.0 + v["dropout_burst"] * 7.0 * max(0.0, ctx.noise.onef(f"{self.key}:doburst", 1.2)[fi]) ** 2
-        g = ctx.frame_rng(f"{self.key}:dropouts")
-        n = int(g.poisson(rate / max(ctx.fps, 1.0) * burst))
-        if n <= 0:
+        W, H = ctx.width, ctx.height
+        sx = W / BASE_W
+        burst_track = ctx.noise.onef(f"{self.key}:doburst", 1.2)
+        for fi in range(ctx.n_frames):
+            bi = min(fi, ctx.noise.n - 1)
+            burst = 1.0 + v["dropout_burst"] * 7.0 * max(0.0, burst_track[bi]) ** 2
+            g = ctx.frame_rng(f"{self.key}:dropouts", fi)
+            n = int(g.poisson(rate / max(ctx.fps, 1.0) * burst))
+            if n <= 0:
+                continue
+            evs = []
+            for i in range(min(n, 40)):
+                L = int((20.0 + 280.0 * g.random() ** 2) * sx)
+                L = max(min(L, W - 2), 6)
+                x0 = int(g.integers(0, W - L))
+                r = int(g.integers(0, H))
+                dark = bool(g.random() < 0.12)
+                rows = 1 if g.random() < 0.65 else 2
+                # The id is minted on the base schedule, before any edit, and it
+                # travels with the instance from then on. Editing one dropout
+                # must not renumber its neighbours, or every edit after the
+                # first would land on the wrong instance.
+                evs.append({"id": f"{self.key}:dropout:{ctx.abs_frame(fi)}:{i}",
+                            "x": x0, "row": r, "L": L, "dark": dark, "rows": rows})
+            self._dropouts[fi] = evs
+        self._apply_event_edits(ctx)
+
+    def _apply_event_edits(self, ctx: Context) -> None:
+        """The user's diff on top of the seeded schedule.
+
+        Ops address instances by the id minted at draw time, so they survive
+        each other; an op whose id no longer exists (the seed changed under it)
+        is skipped rather than grabbed at, because silently editing a different
+        dropout would be worse than editing none.
+        """
+        edits = [e for e in ctx.event_edits
+                 if e.get("effect", self.key) == self.key and e.get("kind", "dropout") == "dropout"]
+        if not edits:
+            return
+        fps = max(ctx.fps, 1.0)
+        by_id = {ev["id"]: (fi, ev) for fi, evs in self._dropouts.items() for ev in evs}
+        n_add = 0
+        for e in edits:
+            op = e.get("op")
+            if op == "add":
+                fi = ctx.frame_of(float(e.get("t", 0.0)))
+                if not (0 <= fi < ctx.n_frames):
+                    continue
+                d = e.get("detail") or {}
+                W, H = ctx.width, ctx.height
+                # Anything unspecified is derived from the op itself, not from
+                # the render seed, so an added dropout stays put when the seed
+                # changes - it is yours, not the tape's.
+                g = stream(0, f"edit:{e.get('id') or n_add}:{e.get('t')}")
+                L = int(d.get("length_px", 20 + 280 * g.random() ** 2 * (W / BASE_W)))
+                L = max(min(int(L), W - 2), 6)
+                x0 = int(d.get("x", g.integers(0, max(W - L, 1))))
+                row = int(d.get("row", g.integers(0, H)))
+                self._dropouts.setdefault(fi, []).append({
+                    "id": e.get("id") or f"edit:add:{n_add}",
+                    "x": min(max(x0, 0), W - L), "row": min(max(row, 0), H - 1), "L": L,
+                    "dark": d.get("polarity", "bright") == "dark",
+                    "rows": int(d.get("rows", 1))})
+                n_add += 1
+                continue
+            hit = by_id.get(e.get("id"))
+            if hit is None:
+                continue
+            fi, ev = hit
+            if op == "remove":
+                self._dropouts[fi].remove(ev)
+                if not self._dropouts[fi]:
+                    del self._dropouts[fi]
+            elif op == "move":
+                nfi = ctx.frame_of(float(e.get("t", fi / fps)))
+                self._dropouts[fi].remove(ev)
+                if not self._dropouts[fi]:
+                    del self._dropouts[fi]
+                if 0 <= nfi < ctx.n_frames:
+                    self._dropouts.setdefault(nfi, []).append(ev)
+            elif op == "tune":
+                d = e.get("detail") or {}
+                if "row" in d: ev["row"] = min(max(int(d["row"]), 0), ctx.height - 1)
+                if "x" in d: ev["x"] = min(max(int(d["x"]), 0), ctx.width - 2)
+                if "length_px" in d: ev["L"] = max(min(int(d["length_px"]), ctx.width - ev["x"]), 6)
+                if "rows" in d: ev["rows"] = 1 if int(d["rows"]) <= 1 else 2
+                if "polarity" in d: ev["dark"] = d["polarity"] == "dark"
+
+    def _apply_dropouts(self, y: np.ndarray, ctx: Context) -> None:
+        evs = getattr(self, "_dropouts", {}).get(min(ctx.fi_out, ctx.noise.n - 1))
+        if not evs:
             return
         H, W = y.shape
-        for _ in range(min(n, 40)):
-            L = int((20.0 + 280.0 * g.random() ** 2) * sx)
-            L = max(min(L, W - 2), 6)
-            x0 = int(g.integers(0, W - L))
-            r = int(g.integers(0, H))
-            dark = g.random() < 0.12
+        for ev in evs:
+            x0, r, L, dark, rows = ev["x"], ev["row"], ev["L"], ev["dark"], ev["rows"]
             tail = np.exp(-np.arange(L, dtype=np.float32) / (L * 0.38))
             tail[:2] *= (0.55, 0.9)[: min(2, L)]
-            rows = 1 if g.random() < 0.65 else 2
             for dr in range(rows):
                 rr = min(r + dr, H - 1)
                 wgt = tail if dr == 0 else tail * 0.5
@@ -580,6 +672,21 @@ class VHS(Effect):
                     if dr == 0:
                         hp = min(max(2, L // 24), L)
                         seg[:hp] = np.maximum(seg[:hp], 0.94)
+
+    def events(self, ctx: Context) -> list[Event]:
+        fps = max(ctx.fps, 1.0)
+        out: list[Event] = []
+        for fi, evs in sorted(getattr(self, "_dropouts", {}).items()):
+            for ev in evs:
+                out.append(Event(
+                    t=ctx.t0 + fi / fps,
+                    dur=1.0 / fps,          # a dropout is one frame's streak
+                    kind="dropout",
+                    detail={"id": ev["id"], "row": ev["row"], "x": ev["x"],
+                            "length_px": ev["L"], "rows": ev["rows"],
+                            "polarity": "dark" if ev["dark"] else "bright"},
+                ))
+        return out
 
     def _geometry_offsets(self, H: int, W: int, ctx: Context) -> tuple[np.ndarray, tuple]:
         """Per-row x displacement for TBE + flagging + head switch + tracking."""
@@ -815,7 +922,7 @@ class VHS(Effect):
             iq[..., 0] = i2
 
         # oxide dropouts (on the FM luma signal, so they ride the geometry)
-        self._apply_dropouts(y, ctx, sx)
+        self._apply_dropouts(y, ctx)
 
         out = np.empty_like(yiq)
         out[..., 0] = y
@@ -867,23 +974,68 @@ class VCRTransport(Effect):
     def prepare(self, ctx: Context) -> None:
         self._frozen: np.ndarray | None = None
         n, fps = ctx.n_frames, max(ctx.fps, 1.0)
-        env = np.zeros(n, np.float32)
+        # Draw the glitch list first, edit it second, and only then rasterise
+        # the envelope - so a moved or removed glitch never leaves its old
+        # shadow in the curve the frames actually read.
+        glitches: list[dict] = []
         rate = self.v["random_glitch_rate"]
         if rate > 0.0:
             ev = ctx.noise.events(f"{self.key}:glitch", rate / 60.0, min_gap_s=1.5)
             g = ctx.rng(f"{self.key}:glitchdur")
-            for idx in np.nonzero(ev)[0]:
+            for i, idx in enumerate(np.nonzero(ev)[0]):
                 dur = max(int(g.uniform(0.2, 0.8) * fps), 2)
-                prof = np.ones(dur, np.float32)
-                edge = max(min(3, dur // 2), 1)
-                prof[:edge] = np.linspace(0.3, 1.0, edge)
-                prof[-edge:] = np.linspace(1.0, 0.25, edge)
-                hi = min(idx + dur, n)
-                env[idx:hi] = np.maximum(env[idx:hi], prof[: hi - idx])
+                glitches.append({"id": f"{self.key}:transport_glitch:{ctx.abs_frame(int(idx))}:0",
+                                 "fi": int(idx), "dur": dur})
+        for e in ctx.event_edits:
+            if e.get("effect", self.key) != self.key or e.get("kind", "transport_glitch") != "transport_glitch":
+                continue
+            op = e.get("op")
+            if op == "add":
+                fi = ctx.frame_of(float(e.get("t", 0.0)))
+                if 0 <= fi < n:
+                    dur = max(int(float((e.get("detail") or {}).get("dur_s", 0.5)) * fps), 2)
+                    glitches.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi, "dur": dur})
+                continue
+            hit = next((x for x in glitches if x["id"] == e.get("id")), None)
+            if hit is None:
+                continue
+            if op == "remove":
+                glitches.remove(hit)
+            elif op == "move":
+                nfi = ctx.frame_of(float(e.get("t", hit["fi"] / fps)))
+                if 0 <= nfi < n:
+                    hit["fi"] = nfi
+                else:
+                    glitches.remove(hit)
+            elif op == "tune":
+                d = e.get("detail") or {}
+                if "dur_s" in d:
+                    hit["dur"] = max(int(float(d["dur_s"]) * fps), 2)
+        self._glitches = glitches
+        env = np.zeros(n, np.float32)
+        for gl in glitches:
+            idx, dur = gl["fi"], gl["dur"]
+            prof = np.ones(dur, np.float32)
+            edge = max(min(3, dur // 2), 1)
+            prof[:edge] = np.linspace(0.3, 1.0, edge)
+            prof[-edge:] = np.linspace(1.0, 0.25, edge)
+            hi = min(idx + dur, n)
+            env[idx:hi] = np.maximum(env[idx:hi], prof[: hi - idx])
         self._glitch_env = env
         # Against the clip, not against this render: a preview taken from the
         # middle of a tape should not re-enact the deck locking on.
         self._start_n = ctx.frame_of(self.v["start_glitch_s"]) if self.v["start_glitch"] else 0
+
+    def events(self, ctx: Context) -> list[Event]:
+        fps = max(ctx.fps, 1.0)
+        out = [Event(t=ctx.t0 + gl["fi"] / fps, dur=gl["dur"] / fps, kind="transport_glitch",
+                     detail={"id": gl["id"], "frames": gl["dur"]})
+               for gl in getattr(self, "_glitches", [])]
+        # The lock-up only belongs to a render whose window actually contains it.
+        if self.v["start_glitch"] and 0 <= self._start_n < ctx.n_frames:
+            out.append(Event(t=ctx.t0 + self._start_n / fps, dur=0.5,
+                             kind="transport_lock", detail={"frames": int(0.5 * fps)}))
+        return sorted(out, key=lambda e: e.t)
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         v = self.v

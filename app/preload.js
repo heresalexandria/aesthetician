@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('aesth', {
   preview: (req) => ipcRenderer.invoke('aesth:preview', req),
   still: (req) => ipcRenderer.invoke('aesth:still', req),
   snippet: (req) => ipcRenderer.invoke('aesth:snippet', req),
+  events: (req) => ipcRenderer.invoke('aesth:events', req),
+  filmstrip: (req) => ipcRenderer.invoke('aesth:filmstrip', req),
   pickExportPath: (suggestion, audioOnly) => ipcRenderer.invoke('aesth:pick-export-path', suggestion, audioOnly),
   exportRender: (req) => ipcRenderer.invoke('aesth:export', req),
   cancelExport: (jobId) => ipcRenderer.invoke('aesth:cancel-export', jobId),
