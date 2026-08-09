@@ -73,6 +73,9 @@ def _parse_layers(raw: str) -> list[Any]:
         if item.get("enabled") is False:
             continue
         video_over, audio_over = _split_mapping(item.get("sets") or {})
+        edits = item.get("events") or []
+        if not isinstance(edits, list):
+            raise click.BadParameter(f"--layers[{i}].events must be a list of ops")
         layers.append(Layer(
             preset=get_preset(item["preset"]),
             variant=item.get("variant") or None,
@@ -81,6 +84,7 @@ def _parse_layers(raw: str) -> list[Any]:
             seed=int(item.get("seed", 1)),
             intensity=float(item.get("intensity", 1.0)),
             texture=float(item.get("texture", 1.0)),
+            event_edits=[e for e in edits if isinstance(e, dict)],
         ))
     if not layers:
         raise click.BadParameter("every layer in --layers is disabled")

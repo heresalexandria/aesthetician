@@ -1010,3 +1010,55 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
   background: var(--bg);
 }
 .note-img:hover { border-color: var(--accent-dim); }
+
+/* ── timeline events editor ──────────────────
+   A row per planned incident. The time field is the move, the trash is the
+   remove, the detail fields are the tune - there is no separate edit mode,
+   because the list is small and the knobs are the point. */
+#events-modal {
+  position: fixed; inset: 0; z-index: 65; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+}
+.modal-box.events-box { width: 760px; max-width: calc(100vw - 40px); }
+#ev-count { font-size: 11px; margin-left: 8px; }
+#ev-list {
+  margin: 12px 0 10px; max-height: 52vh; overflow: auto;
+  border: 1px solid var(--line); border-radius: 10px; background: #07080d;
+}
+.ev-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.04); font-size: 11.5px;
+}
+.ev-row:last-child { border-bottom: none; }
+.ev-row.flash { animation: evflash 1.2s ease-out; }
+@keyframes evflash { from { background: rgba(139,92,246,.25); } to { background: transparent; } }
+.ev-kind {
+  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+}
+.ev-row .ev-t { width: 74px; }
+.ev-row label { color: var(--dim); font-size: 10.5px; }
+.ev-row input[type="number"], .ev-row select {
+  background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 2px 5px; font-size: 11px; outline: none;
+  font-variant-numeric: tabular-nums;
+}
+.ev-row input.ev-n { width: 56px; }
+.ev-row .ev-what { color: var(--dim); min-width: 96px; }
+.ev-row .ev-edited { color: #a88df8; font-size: 10px; letter-spacing: .5px; }
+.ev-row .ev-del {
+  border: none; background: none; color: var(--dim); cursor: pointer;
+  font-size: 13px; padding: 0 4px;
+}
+.ev-row .ev-del:hover { color: var(--danger); }
+#ev-add-row { display: flex; align-items: center; gap: 8px; }
+#ev-add-row select, #ev-add-row input {
+  background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 6px; font-size: 11.5px; outline: none;
+}
+#ev-add-row input { width: 80px; }
+/* Ticks are now controls, not just ink. */
+.strip-tick { cursor: pointer; }
+#strip-count { cursor: pointer; }
+.strip-tick.added { box-shadow: 0 0 0 1px rgba(255,255,255,.75); }
+.strip-tick.edited { box-shadow: 0 0 0 1px rgba(168,141,248,.9); }
