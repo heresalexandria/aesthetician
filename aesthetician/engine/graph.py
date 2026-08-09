@@ -76,6 +76,7 @@ class Context:
         out_width: Optional[int] = None,
         out_height: Optional[int] = None,
         texture: float = 1.0,
+        t0: float = 0.0,
     ):
         self.width = width
         self.height = height
@@ -95,6 +96,13 @@ class Context:
         self.out_width = out_width if out_width is not None else width
         self.out_height = out_height if out_height is not None else height
         self.texture = texture
+        # Where output frame 0 sits on the source clip's own timeline. A preview
+        # is a short render taken from the middle of a clip, and without this
+        # every render thinks it starts at the beginning of the tape: Rental
+        # Tape's transport lock-up fired in *every* preview, wherever you had
+        # scrubbed to, because "1.2 seconds in" meant 1.2 seconds into the
+        # preview rather than into the clip.
+        self.t0 = t0
         self.noise = TemporalNoise(seed, fps, n_frames)
         # Indices for the frame currently being processed (set by the runner).
         self.fi_out = 0   # index on the output timeline
@@ -113,9 +121,27 @@ class Context:
     def rng(self, key: str) -> np.random.Generator:
         return stream(self.seed, key)
 
+    def abs_frame(self, fi: Optional[int] = None) -> int:
+        """An output frame's index on the source clip's own timeline."""
+        return int(round(self.t0 * self.fps)) + (self.fi_out if fi is None else fi)
+
+    def frame_of(self, t_seconds: float) -> int:
+        """Output frame index for a time written against the source clip.
+
+        Comes back negative, or past `n_frames`, when that moment is not inside
+        this render - which is the correct answer for a preview window that does
+        not contain the event.
+        """
+        return int(round((t_seconds - self.t0) * self.fps))
+
     def frame_rng(self, key: str, fi: Optional[int] = None) -> np.random.Generator:
-        """Generator unique to (key, frame) - for per-frame spatial noise."""
-        return stream(self.seed, f"{key}@{self.fi_out if fi is None else fi}")
+        """Generator unique to (key, frame) - for per-frame spatial noise.
+
+        Keyed on the *source* frame, so the speckle a preview shows at 0:40 is
+        the speckle the export has at 0:40. A render that starts at zero, which
+        every export does, is keyed exactly as it always was.
+        """
+        return stream(self.seed, f"{key}@{self.abs_frame(fi)}")
 
 
 class Effect:

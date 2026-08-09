@@ -881,7 +881,9 @@ class VCRTransport(Effect):
                 hi = min(idx + dur, n)
                 env[idx:hi] = np.maximum(env[idx:hi], prof[: hi - idx])
         self._glitch_env = env
-        self._start_n = int(self.v["start_glitch_s"] * fps) if self.v["start_glitch"] else 0
+        # Against the clip, not against this render: a preview taken from the
+        # middle of a tape should not re-enact the deck locking on.
+        self._start_n = ctx.frame_of(self.v["start_glitch_s"]) if self.v["start_glitch"] else 0
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         v = self.v

@@ -283,7 +283,7 @@ class ANeedle(Effect):
             k = U.bandpass((body + scuff)[:, None].astype(np.float32), 40.0, 900.0, sr, order=2)[:, 0]
             return (k * 0.5 / (np.max(np.abs(k)) + 1e-9)).astype(np.float32)
 
-        if self.v["drop_at_start"] and n > sr:
+        if self.v["drop_at_start"] and n > sr and ctx.t0 <= 0.05:
             g = stream(ctx.seed, f"{self.key}:drop")
             head = int(0.6 * sr)
             env = np.ones(n, np.float32)
