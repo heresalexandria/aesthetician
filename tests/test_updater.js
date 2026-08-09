@@ -108,6 +108,94 @@ function test_asset_selection_against_a_real_release() {
   assert.strictEqual(u.assetFor([{ name: 'SHA256SUMS.txt' }], 'win32', 'x64'), null);
 }
 
+/* ── the version picker ───────────────────────────────────────────────
+   The list the picker offers is built here, so what it hides is as much a
+   decision as what it shows. */
+const LIST = [
+  {
+    tag_name: 'v0.13.1',
+    name: 'Aesthetician 0.13.1',
+    body: 'the newest one',
+    published_at: '2026-07-02T10:00:00Z',
+    html_url: 'https://github.com/heresalexandria/aesthetician/releases/tag/v0.13.1',
+    assets: [
+      { name: 'Aesthetician-0.13.1-mac-arm64.zip', size: 120, browser_download_url: 'https://github.com/x' },
+      { name: 'Aesthetician-0.13.1-win-x64-setup.exe', size: 130, browser_download_url: 'https://github.com/y' },
+    ],
+  },
+  // Out of order on purpose: GitHub sorts by creation date, and a re-cut tag
+  // can land after a newer one.
+  { tag_name: 'v0.9.0', published_at: '2026-01-02T10:00:00Z', assets: [] },
+  {
+    tag_name: 'v0.10.0',
+    published_at: '2026-02-02T10:00:00Z',
+    assets: [{ name: 'Aesthetician-0.10.0-mac-arm64.zip', size: 100, browser_download_url: 'https://github.com/z' }],
+  },
+  { tag_name: 'v0.13.2', draft: true, assets: [] },
+  { tag_name: 'nightly', assets: [] },
+];
+
+function test_release_list_shape() {
+  const list = u.summarizeReleases(LIST, { current: '0.10.0', platform: 'darwin', arch: 'arm64' });
+
+  // Newest first, whatever order the API returned them in. Drafts and tags we
+  // cannot compare against the running version never reach the dropdown.
+  assert.deepStrictEqual(list.map((r) => r.tag), ['v0.13.1', 'v0.10.0', 'v0.9.0']);
+  assert.deepStrictEqual(list.map((r) => r.direction), ['newer', 'current', 'older']);
+  assert.strictEqual(list[0].version, '0.13.1');
+  assert.strictEqual(list[0].notes, 'the newest one');
+
+  // Each entry carries this machine's asset and no download URL: the renderer
+  // asks for a tag, and the main process looks the URL up again itself.
+  assert.deepStrictEqual(list[0].asset, { name: 'Aesthetician-0.13.1-mac-arm64.zip', size: 120 });
+  assert.strictEqual(list[2].asset, null, 'a release with no build must say so, not vanish');
+  assert.ok(!('url' in list[0].asset));
+
+  const win = u.summarizeReleases(LIST, { current: '0.10.0', platform: 'win32', arch: 'x64' });
+  assert.strictEqual(win[0].asset.name, 'Aesthetician-0.13.1-win-x64-setup.exe');
+  assert.strictEqual(win[1].asset, null, 'the macOS zip is not a Windows build');
+}
+
+function test_release_list_is_not_trusted() {
+  const nasty = [
+    {
+      tag_name: 'v1.0.0',
+      html_url: 'javascript:alert(1)',
+      body: 'x'.repeat(9000),
+      published_at: '2026-03-02T10:00:00Z',
+      assets: [{ name: 'Aesthetician-1.0.0-mac-arm64.zip', size: 1 }],
+    },
+  ];
+  const [rel] = u.summarizeReleases(nasty, { current: '0.10.0', platform: 'darwin', arch: 'arm64' });
+  assert.ok(rel.htmlUrl.startsWith('https://github.com/heresalexandria/aesthetician'),
+    `a bad html_url must fall back to the releases page, got ${rel.htmlUrl}`);
+  assert.ok(rel.notes.length <= 4000, 'release notes are capped before they cross to the renderer');
+  assert.ok(rel.notes.endsWith('…'), 'a capped note says it was cut rather than stopping dead');
+
+  // Nothing about a malformed payload is allowed to throw: the picker has to
+  // open even when GitHub answers with something unexpected.
+  for (const junk of [null, undefined, {}, 'nope', [null, {}, { tag_name: 5 }]]) {
+    assert.deepStrictEqual(u.summarizeReleases(junk, { current: '0.1.0' }), []);
+  }
+}
+
+function test_release_list_limit() {
+  const many = Array.from({ length: 40 }, (_, i) => ({ tag_name: `v0.${i}.0`, assets: [] }));
+  assert.strictEqual(u.summarizeReleases(many, { current: '0.1.0' }).length, 30);
+  assert.strictEqual(u.summarizeReleases(many, { current: '0.1.0', limit: 4 })[0].tag, 'v0.39.0',
+    'the cap keeps the newest, not the first the API happened to list');
+}
+
+function test_compare_versions() {
+  assert.strictEqual(u.compareVersions('0.6.0', '0.5.0'), 1);
+  assert.strictEqual(u.compareVersions('0.5.0', '0.6.0'), -1);
+  assert.strictEqual(u.compareVersions('v0.5.0', '0.5.0'), 0);
+  assert.strictEqual(u.compareVersions('0.10.0', '0.9.0'), 1, 'numeric, not lexical');
+  // Unreadable on either side means "no answer", never a silent ordering.
+  assert.strictEqual(u.compareVersions('garbage', '0.5.0'), null);
+  assert.strictEqual(u.compareVersions('0.5.0', ''), null);
+}
+
 function test_note_image_hosts() {
   // Release notes carry screenshots. The main process fetches them so the
   // renderer never makes a remote request, which means this list is the whole
@@ -163,8 +251,12 @@ function test_allowed_urls() {
 const tests = Object.entries({
   test_parse_version,
   test_is_newer,
+  test_compare_versions,
   test_asset_selection,
   test_asset_selection_against_a_real_release,
+  test_release_list_shape,
+  test_release_list_is_not_trusted,
+  test_release_list_limit,
   test_allowed_urls,
   test_note_image_hosts,
 });

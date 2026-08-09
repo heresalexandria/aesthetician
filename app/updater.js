@@ -5,9 +5,13 @@
  * electron-updater is the usual answer and it is deliberately not used here:
  * Squirrel.Mac refuses any update that is not signed with a Developer ID, and
  * this project only ad-hoc signs (see docs/packaging.md). So the flow is
- * explicit instead - read the latest release, download this platform's asset,
- * verify it against the release's SHA256SUMS.txt, swap the installed copy and
- * relaunch. Nothing downloads or installs without the user asking for it.
+ * explicit instead - read a release, download this platform's asset, verify it
+ * against the release's SHA256SUMS.txt, swap the installed copy and relaunch.
+ * Nothing downloads or installs without the user asking for it.
+ *
+ * Usually that release is the newest one, but any published release will do:
+ * the picker in the About dialog lists them all so a specific version can be
+ * put back on, and the install path does not care which direction it moves.
  *
  * A side benefit of doing it ourselves: a file this process downloads is not
  * quarantined, so the updated bundle does not hit the Gatekeeper prompt that a
@@ -33,8 +37,16 @@ const path = require('path');
 
 const REPO = 'heresalexandria/aesthetician';
 const RELEASES_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
+const RELEASE_LIST_URL = `https://api.github.com/repos/${REPO}/releases?per_page=30`;
 const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// How many releases the version picker offers, and how long the list is good
+// for. Unauthenticated GitHub allows 60 API calls an hour per address, so
+// opening the picker twice in a row must not cost two of them.
+const MAX_RELEASES = 30;
+const RELEASE_LIST_TTL_MS = 10 * 60 * 1000;
+const MAX_NOTES = 4000;
 
 // Everything we fetch has to come from GitHub over TLS. Release JSON is data
 // from the network like any other, so the download URL inside it is checked
@@ -130,14 +142,22 @@ function parseVersion(raw) {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
 }
 
-function isNewer(candidate, current) {
-  const a = parseVersion(candidate);
-  const b = parseVersion(current);
-  if (!a || !b) return false;
+/* -1, 0 or 1, and null when either side is not a version we can read. A
+   prerelease suffix does not order: v1.2.3-rc1 and v1.2.3 compare equal, which
+   is fine for labelling a list and is why the update check ignores prereleases
+   rather than trying to rank them. */
+function compareVersions(a, b) {
+  const x = parseVersion(a);
+  const y = parseVersion(b);
+  if (!x || !y) return null;
   for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return a[i] > b[i];
+    if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
   }
-  return false;
+  return 0;
+}
+
+function isNewer(candidate, current) {
+  return compareVersions(candidate, current) === 1;
 }
 
 /* ── platform asset ──────────────────────────────────────────────────────
@@ -202,6 +222,9 @@ async function check({ force = false } = {}) {
     ok: true,
     current,
     latest,
+    // The tag as GitHub spells it, so a staged download can be matched against
+    // the version picker's list without guessing the `v`.
+    tag: String(release.tag_name || ''),
     available,
     // Release notes are text off the network: the renderer prints them with
     // textContent, never as markup.
@@ -245,6 +268,109 @@ function info() {
   };
 }
 
+/* ── every release, not just the newest ──────────────────────────────────
+   Going backwards is a normal thing to want: to find out which release a bug
+   arrived in, or to get off one that broke something while it is being fixed.
+   So the whole list is offered rather than only the tip, and installing from it
+   is the same download-verify-swap the update path already does.
+
+   Nothing here trusts the payload any further than `check` does. Tags are
+   matched against the list GitHub returned rather than pasted into a URL, so a
+   tag coming from the renderer never decides what gets fetched.               */
+let releaseList = null;      // { at, raw } - so opening the picker twice is one request
+
+async function fetchReleaseList(force = false) {
+  if (!force && releaseList && (Date.now() - releaseList.at) < RELEASE_LIST_TTL_MS) {
+    return releaseList.raw;
+  }
+  const raw = JSON.parse(await getText(RELEASE_LIST_URL, {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  }));
+  releaseList = { at: Date.now(), raw: Array.isArray(raw) ? raw : [] };
+  return releaseList.raw;
+}
+
+function truncateNotes(body) {
+  return body.length <= MAX_NOTES ? body : `${body.slice(0, MAX_NOTES - 2).trimEnd()} …`;
+}
+
+/* Release JSON as the picker needs it: newest first, one entry per published
+   release, each carrying this machine's asset if the release has one. Drafts
+   and tags we cannot parse are dropped - an unreadable tag cannot be compared
+   against the running version, and every release this project cuts is vX.Y.Z. */
+function summarizeReleases(raw, {
+  current = '',
+  platform = process.platform,
+  arch = process.arch,
+  limit = MAX_RELEASES,
+} = {}) {
+  const out = (Array.isArray(raw) ? raw : [])
+    .filter((r) => r && !r.draft && parseVersion(r.tag_name))
+    .map((r) => {
+      const asset = assetFor(r.assets, platform, arch);
+      const version = String(r.tag_name).replace(/^v/, '');
+      const rel = compareVersions(version, current);
+      return {
+        tag: String(r.tag_name),
+        version,
+        name: String(r.name || ''),
+        publishedAt: r.published_at || null,
+        prerelease: Boolean(r.prerelease),
+        htmlUrl: typeof r.html_url === 'string' && allowedUrl(r.html_url)
+          ? r.html_url : RELEASES_PAGE,
+        // Text off the network; the renderer prints it with textContent. Thirty
+        // sets of release notes cross at once, so each one is capped - and says
+        // when it has been.
+        notes: truncateNotes(String(r.body || '')),
+        // No download URL: the renderer names a tag and the main process looks
+        // the asset up again, so a URL never makes the round trip.
+        asset: asset ? { name: asset.name, size: asset.size || 0 } : null,
+        direction: rel === null ? 'unknown'
+          : rel > 0 ? 'newer' : rel < 0 ? 'older' : 'current',
+      };
+    });
+  out.sort((a, b) => compareVersions(b.version, a.version) || 0);
+  return out.slice(0, limit);
+}
+
+async function releases({ force = false } = {}) {
+  const current = app.getVersion();
+  try {
+    const raw = await fetchReleaseList(force);
+    return {
+      ok: true,
+      current,
+      packaged: app.isPackaged,
+      platform: process.platform,
+      arch: process.arch,
+      releasesUrl: RELEASES_PAGE,
+      note: app.isPackaged
+        ? platformNote()
+        : 'Running from a dev checkout - check out the tag you want instead.',
+      releases: summarizeReleases(raw, { current }),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      current,
+      error: String(err.message || err),
+      releases: [],
+      releasesUrl: RELEASES_PAGE,
+    };
+  }
+}
+
+async function releaseByTag(tag) {
+  const want = String(tag || '').trim();
+  if (!want) return null;
+  const find = (raw) => raw.find((r) => r && !r.draft && r.tag_name === want) || null;
+  const hit = find(await fetchReleaseList(false));
+  // A tag the cached list does not know about is worth one refetch: the list
+  // may simply predate the release.
+  return hit || find(await fetchReleaseList(true));
+}
+
 /* ── download ────────────────────────────────────────────────────────────  */
 function downloadDir() {
   return path.join(app.getPath('temp'), 'aesthetician-update');
@@ -264,45 +390,74 @@ async function fetchChecksum(release, assetName) {
   return null;
 }
 
-async function download(sender) {
+async function download(sender, opts = {}) {
   if (downloading) throw new Error('an update is already downloading');
   downloading = true;
   try {
-    return await runDownload(sender);
+    return await runDownload(sender, opts || {});
   } finally {
     downloading = false;
     inFlight = null;
   }
 }
 
-async function runDownload(sender) {
-  const result = lastResult && lastResult.ok ? lastResult : await check({ force: true });
-  if (!result.ok) throw new Error(result.error || 'could not reach GitHub');
-  if (!result.available) throw new Error('already up to date');
-  if (!result.asset) throw new Error(result.note || 'no build for this platform');
+/* Which release the bytes are coming from. A tag means the user picked a
+   version out of the list; without one this is the ordinary "take the latest"
+   path, and the two only differ in how the asset is found. */
+async function resolveTarget(tag) {
   if (!app.isPackaged) throw new Error('running from a dev checkout - use git pull');
+  if (!tag) {
+    const result = lastResult && lastResult.ok ? lastResult : await check({ force: true });
+    if (!result.ok) throw new Error(result.error || 'could not reach GitHub');
+    if (!result.available) throw new Error('already up to date');
+    if (!result.asset) throw new Error(result.note || 'no build for this platform');
+    return {
+      tag: result.tag || `v${result.latest}`,
+      version: result.latest,
+      asset: result.asset,
+      release: null,
+    };
+  }
+  const release = await releaseByTag(tag);
+  if (!release) throw new Error(`no release tagged ${tag}`);
+  const asset = assetFor(release.assets);
+  if (!asset) {
+    throw new Error(`${release.tag_name} has no ${process.platform}/${process.arch} build attached`);
+  }
+  return {
+    tag: String(release.tag_name),
+    version: String(release.tag_name).replace(/^v/, ''),
+    asset: { name: asset.name, url: asset.browser_download_url, size: asset.size },
+    release,
+  };
+}
 
-  // Fetch the release again purely for its checksum list: the cached result
-  // does not carry it, and it is small.
+async function runDownload(sender, { tag = '' } = {}) {
+  const target = await resolveTarget(String(tag || '').trim());
+
+  // The checksum list hangs off the release. A picked release is already in
+  // hand; the latest has to be fetched again, because the cached check result
+  // does not carry it and it is small.
   let expected = null;
   try {
-    const release = JSON.parse(await getText(RELEASES_URL, { Accept: 'application/vnd.github+json' }));
-    expected = await fetchChecksum(release, result.asset.name);
+    const release = target.release
+      || JSON.parse(await getText(RELEASES_URL, { Accept: 'application/vnd.github+json' }));
+    expected = await fetchChecksum(release, target.asset.name);
   } catch (_) { /* fall through: verified below only if we got a digest */ }
 
   const dir = downloadDir();
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  const dest = path.join(dir, result.asset.name);
+  const dest = path.join(dir, target.asset.name);
 
   const emit = (msg) => {
     if (sender && !sender.isDestroyed()) sender.send('aesth:update-progress', msg);
   };
-  emit({ stage: 'download', received: 0, total: result.asset.size || 0, frac: 0 });
+  emit({ stage: 'download', received: 0, total: target.asset.size || 0, frac: 0 });
 
-  const res = await request(result.asset.url);
+  const res = await request(target.asset.url);
   inFlight = res;
-  const total = Number(res.headers['content-length']) || result.asset.size || 0;
+  const total = Number(res.headers['content-length']) || target.asset.size || 0;
   const hash = crypto.createHash('sha256');
   let received = 0;
   let lastEmit = 0;
@@ -335,10 +490,18 @@ async function runDownload(sender) {
   }
   emit({ stage: 'download', received, total, frac: 1, verified: Boolean(expected) });
 
-  const state = writeState({
-    staged: { version: result.latest, file: dest, sha256: digest, verified: Boolean(expected) },
+  writeState({
+    staged: {
+      version: target.version,
+      tag: target.tag,
+      file: dest,
+      sha256: digest,
+      verified: Boolean(expected),
+    },
   });
-  return state.staged;
+  // The renderer gets what it needs to say which version is waiting, and not
+  // the path it is waiting at.
+  return { version: target.version, tag: target.tag, verified: Boolean(expected) };
 }
 
 function cancelDownload() {
@@ -528,6 +691,7 @@ function stagedFile() {
 module.exports = {
   check,
   info,
+  releases,
   download,
   cancelDownload,
   install,
@@ -536,8 +700,10 @@ module.exports = {
   noteImageAllowed,
   // Pure helpers, exercised by tests/test_updater.js under plain node.
   isNewer,
+  compareVersions,
   parseVersion,
   assetFor,
   allowedUrl,
+  summarizeReleases,
   CHECK_INTERVAL_MS,
 };

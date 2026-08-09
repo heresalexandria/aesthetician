@@ -43,7 +43,11 @@ const U = {
   info: null,        // { version, packaged, platform, arch, ... }
   latest: null,      // the last check result
   busy: '',          // '', 'checking', 'downloading', 'installing'
-  staged: false,     // a verified download is sitting on disk
+  staged: null,      // { version, tag } once a verified download is on disk
+  picker: false,     // the "other versions" panel is unfolded
+  releases: null,    // the whole release list, once it has been asked for
+  releasesBusy: false,
+  pickTag: '',       // which release the picker has selected
 };
 
 /* ── small persistence layer (localStorage) ─────────────────────────
@@ -1019,11 +1023,18 @@ function setVersionChip() {
 
 function syncUpdateButton() {
   const btn = $('btn-update');
-  const show = Boolean(U.latest && U.latest.available);
-  btn.classList.toggle('hidden', !show);
+  const newer = Boolean(U.latest && U.latest.available);
+  // A staged download names its own version: it can be the newest release or an
+  // older one picked out of the list, and the button has to say which.
+  btn.classList.toggle('hidden', !(U.staged || newer));
   btn.classList.remove('blocked');
-  if (!show) return;
-  btn.textContent = U.staged ? 'Install update' : 'Update available';
+  if (U.staged) {
+    btn.textContent = `Install ${U.staged.version}`;
+    btn.title = `Version ${U.staged.version} is downloaded and ready to install`;
+    return;
+  }
+  if (!newer) return;
+  btn.textContent = 'Update available';
   btn.title = `Aesthetician ${U.latest.latest} is out (you have ${U.latest.current})`;
 }
 
@@ -1175,22 +1186,61 @@ function closeAbout() {
   $('about-modal').classList.add('hidden');
 }
 
+/* Whichever release the dialog is currently talking about: the one picked out
+   of the list if there is one, otherwise whatever the check turned up. Painted
+   once per source, because rendering notes fetches their screenshots. */
+function paintNotes() {
+  const host = $('about-notes');
+  const pick = pickedRelease();
+  const r = U.latest;
+  const text = pick ? pick.notes
+    : (r && r.ok && r.available ? r.notes : '');
+  const source = pick ? pick.tag : 'latest';
+  if (!text) {
+    host.classList.add('hidden');
+    host.dataset.source = '';
+    return;
+  }
+  if (host.dataset.source !== source) {
+    renderNotes(text, host);
+    // The pane normally holds the newest release's notes, so a picked one has
+    // to say whose it is showing instead.
+    if (pick) {
+      const head = document.createElement('div');
+      head.className = 'note-head';
+      const when = releaseDate(pick.publishedAt);
+      head.textContent = `What ${pick.version} shipped with${when ? ` · ${when}` : ''}`;
+      host.prepend(head);
+    }
+    host.dataset.source = source;
+  }
+  host.classList.remove('hidden');
+}
+
 /* One dialog covers up to date, out of date, downloaded, and every way those
    can fail, so the button label and the status line are derived rather than
    set at each call site. */
 function paintAbout() {
-  const notes = $('about-notes');
   const action = $('about-action');
   const r = U.latest;
 
-  notes.classList.add('hidden');
   action.disabled = false;
   action.textContent = 'Check for updates';
+  paintNotes();
+  paintPicker();
 
   if (U.busy === 'checking') { setAboutStatus('Checking for updates…', 'busy'); action.disabled = true; return; }
   if (U.busy === 'downloading') { action.textContent = 'Cancel'; return; }
   if (U.busy === 'installing') { setAboutStatus('Installing…', 'busy'); action.disabled = true; return; }
 
+  // A download waiting on disk outranks everything else the dialog could say,
+  // and it names its own version - it is not always the newest release.
+  if (U.staged) {
+    setAboutStatus(`Version ${U.staged.version} is downloaded and ready to install. `
+      + 'Aesthetician will restart.', 'ok');
+    action.textContent = 'Install and restart';
+    return;
+  }
   if (!r) {
     setAboutStatus(U.info && U.info.lastCheckAt
       ? `Last checked ${relativeTime(U.info.lastCheckAt)}.`
@@ -1206,25 +1256,156 @@ function paintAbout() {
       + `Checked ${relativeTime(r.checkedAt)}.`, 'ok');
     return;
   }
-
-  if (r.notes) {
-    renderNotes(r.notes, notes);
-    notes.classList.remove('hidden');
-  }
   if (!r.installable) {
     setAboutStatus(`Version ${r.latest} is available. ${r.note}`, 'warn');
     action.textContent = 'View releases';
     return;
   }
-  if (U.staged) {
-    setAboutStatus(`Version ${r.latest} is downloaded and ready to install. `
-      + 'Aesthetician will restart.', 'ok');
-    action.textContent = 'Install and restart';
-    return;
-  }
   const size = r.asset && r.asset.size ? ` (${formatBytes(r.asset.size)})` : '';
   setAboutStatus(`Version ${r.latest} is available - you have ${r.current}.`);
   action.textContent = `Download${size}`;
+}
+
+/* ── the version picker ──────────────────────────────────────────────
+   Everything published, newest first, so a specific version can be put back
+   on - to find out which release a bug arrived in, or to get off one that
+   broke something. Installing an older build is the same download, checksum
+   and swap as an update; only the direction differs.                        */
+function pickedRelease() {
+  if (!U.picker || !U.pickTag || !U.releases || !U.releases.ok) return null;
+  return U.releases.releases.find((rel) => rel.tag === U.pickTag) || null;
+}
+
+function platformLabel() {
+  const src = (U.releases && U.releases.ok ? U.releases : U.info) || {};
+  const name = src.platform === 'darwin' ? 'macOS'
+    : src.platform === 'win32' ? 'Windows'
+      : src.platform || 'this platform';
+  return [name, src.arch].filter(Boolean).join(' ');
+}
+
+function releaseDate(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/* What one row of the dropdown says. The reasons a version cannot be installed
+   belong here rather than in a message that only appears after picking it. */
+function releaseLabel(rel) {
+  const bits = [`v${rel.version}`];
+  if (rel.direction === 'current') bits.push('running now');
+  if (rel.prerelease) bits.push('pre-release');
+  const when = releaseDate(rel.publishedAt);
+  if (when) bits.push(when);
+  if (!rel.asset) bits.push(`no ${platformLabel()} build`);
+  return bits.join(' · ');
+}
+
+function fillVersionSelect() {
+  const sel = $('about-version-select');
+  const list = (U.releases && U.releases.ok) ? U.releases.releases : [];
+  sel.innerHTML = '';
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = list.length ? 'Choose a version…' : 'No releases found';
+  sel.appendChild(first);
+  for (const rel of list) {
+    const opt = document.createElement('option');
+    opt.value = rel.tag;
+    opt.textContent = releaseLabel(rel);
+    sel.appendChild(opt);
+  }
+  // A refreshed list keeps the selection if it still has it.
+  sel.value = list.some((rel) => rel.tag === U.pickTag) ? U.pickTag : '';
+  U.pickTag = sel.value;
+  sel.disabled = !list.length;
+}
+
+function paintPicker() {
+  const wrap = $('about-picker');
+  const btn = $('about-version-action');
+  const note = $('about-picker-note');
+  const setNote = (text, tone = '') => {
+    note.textContent = text;
+    note.className = `about-picker-note ${tone || 'dim'}`;
+  };
+
+  $('about-other').textContent = U.picker ? 'Hide versions' : 'Other versions';
+  // With a version selected, the link goes to that release rather than the
+  // newest one, because that is the one being read about.
+  $('about-repo').textContent = pickedRelease() ? 'View this release' : 'View releases';
+  wrap.classList.toggle('hidden', !U.picker);
+  if (!U.picker) return;
+
+  btn.textContent = 'Download';
+  btn.disabled = true;
+
+  if (U.releasesBusy) { setNote('Reading the release list…', 'busy'); return; }
+  if (U.releases && !U.releases.ok) {
+    setNote(`Could not reach GitHub: ${U.releases.error}`, 'warn');
+    return;
+  }
+
+  const rel = pickedRelease();
+  if (!rel) {
+    setNote('Any published release can be installed from here, including older ones.');
+    return;
+  }
+  if (U.busy === 'downloading') { setNote(`Downloading ${rel.version}…`, 'busy'); return; }
+  if (U.busy) return;
+  if (U.staged && U.staged.tag === rel.tag) {
+    setNote(`Version ${rel.version} is downloaded and ready. Aesthetician will restart into it.`, 'ok');
+    btn.textContent = 'Install and restart';
+    btn.disabled = false;
+    return;
+  }
+
+  if (U.releases.note) { setNote(U.releases.note, 'warn'); return; }
+  if (!rel.asset) {
+    setNote(`${rel.tag} has no build for ${platformLabel()}. `
+      + 'Its release page lists whatever it does carry.', 'warn');
+    return;
+  }
+  const size = rel.asset.size ? ` (${formatBytes(rel.asset.size)})` : '';
+  btn.textContent = `Download${size}`;
+  btn.disabled = false;
+  setNote(pickNote(rel));
+}
+
+function pickNote(rel) {
+  const current = (U.releases && U.releases.current) || (U.info && U.info.version) || '';
+  if (rel.direction === 'older') {
+    return `Goes back to ${rel.version} from ${current}. The installed copy is replaced and `
+      + 'the app restarts; nothing you have saved is removed, and the newer version can be '
+      + 'reinstalled the same way.';
+  }
+  if (rel.direction === 'current') {
+    return `Reinstalls ${rel.version}, the version already running.`;
+  }
+  return `Moves up to ${rel.version} from ${current}. The installed copy is replaced and the `
+    + 'app restarts.';
+}
+
+async function loadReleases({ force = false } = {}) {
+  U.releasesBusy = true;
+  paintPicker();
+  try {
+    U.releases = await window.aesth.updateReleases({ force });
+  } catch (err) {
+    U.releases = { ok: false, error: errText(err), releases: [] };
+  }
+  U.releasesBusy = false;
+  fillVersionSelect();
+  paintPicker();
+  paintNotes();
+}
+
+function toggleVersionPicker() {
+  U.picker = !U.picker;
+  paintPicker();
+  paintNotes();
+  if (U.picker && !U.releases && !U.releasesBusy) loadReleases();
 }
 
 function relativeTime(ts) {
@@ -1245,24 +1426,32 @@ async function checkForUpdates({ force = true } = {}) {
     U.latest = { ok: false, error: errText(err) };
   }
   U.busy = '';
-  U.staged = false;
+  U.staged = null;
   syncUpdateButton();
   paintAbout();
 }
 
-async function downloadUpdate() {
+/* Without a tag this takes the newest release; with one it takes whatever the
+   picker selected, which may well be older than what is running. */
+async function downloadUpdate({ tag = '' } = {}) {
   U.busy = 'downloading';
+  // The main process clears its download directory before it starts, so
+  // anything staged from before is gone the moment this begins.
+  U.staged = null;
   $('about-bar').classList.remove('hidden');
   $('about-bar-fill').style.width = '0%';
   paintAbout();
   try {
-    await window.aesth.updateDownload();
-    U.staged = true;
+    const staged = await window.aesth.updateDownload({ tag });
+    U.staged = {
+      version: (staged && staged.version) || (U.latest && U.latest.latest) || '',
+      tag: (staged && staged.tag) || tag,
+    };
     U.busy = '';
     $('about-bar').classList.add('hidden');
   } catch (err) {
     U.busy = '';
-    U.staged = false;
+    U.staged = null;
     $('about-bar').classList.add('hidden');
     const msg = errText(err);
     paintAbout();
@@ -1318,9 +1507,23 @@ function wireUpdates() {
   $('btn-update').addEventListener('click', updateButtonClicked);
   $('about-close').addEventListener('click', closeAbout);
   $('about-repo').addEventListener('click', () => {
-    window.aesth.openExternal((U.latest && U.latest.htmlUrl)
+    const pick = pickedRelease();
+    window.aesth.openExternal((pick && pick.htmlUrl)
+      || (U.latest && U.latest.htmlUrl)
       || (U.info && U.info.releasesUrl)
       || 'https://github.com/heresalexandria/aesthetician/releases');
+  });
+  $('about-other').addEventListener('click', toggleVersionPicker);
+  $('about-version-select').addEventListener('change', (e) => {
+    U.pickTag = e.target.value;
+    paintPicker();
+    paintNotes();
+  });
+  $('about-version-action').addEventListener('click', async () => {
+    const rel = pickedRelease();
+    if (!rel || U.busy) return;
+    if (U.staged && U.staged.tag === rel.tag) { await installUpdate(); return; }
+    await downloadUpdate({ tag: rel.tag });
   });
   $('about-action').addEventListener('click', async () => {
     const r = U.latest;
@@ -3206,7 +3409,10 @@ function wireShortcuts() {
     // The about dialog owns the keyboard while it is up, the same way the name
     // prompt does - Cmd+O behind a modal is nobody's intent.
     if (!$('about-modal').classList.contains('hidden')) {
-      if (e.code === 'Escape' && !U.busy) closeAbout();
+      if (e.code === 'Escape' && !U.busy) { e.preventDefault(); closeAbout(); return; }
+      // ...except in the version dropdown, where arrows and letters are how you
+      // move through the list.
+      if (e.target === $('about-version-select')) return;
       e.preventDefault();
       return;
     }
