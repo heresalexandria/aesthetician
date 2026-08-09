@@ -273,9 +273,16 @@ def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
     between the two environments is exactly what a test has to close, so this
     runs every preset's audio chain against a deliberately threadbare build.
     """
-    from aesthetician.engine.graph import Context, build_chain
+    from aesthetician.engine.graph import Context, all_effects, build_chain, get_effect
     from aesthetician.engine.presets import all_presets
     from aesthetician.effects.audio import digicodec
+
+    # The effects that shell out to an encoder are exactly the audio file passes,
+    # so selecting them by kind keeps this covering the next one too. Everything
+    # else in a chain is left alone: a bed that cannot find its baked wav is a
+    # missing asset, which is a different problem with a different answer.
+    gated = {eid for eid, cls in all_effects().items() if cls.kind == "audio_filepass"}
+    assert gated, "no audio file passes left to check"
 
     # Everything optional stripped out: no lame, no AMR, no GSM.
     bare = frozenset({"pcm_s16le", "pcm_mulaw", "pcm_alaw", "g726", "adpcm_ima_wav", "aac"})
@@ -285,14 +292,15 @@ def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
         ctx = Context(width=320, height=240, fps=30.0, n_frames=60, seed=3)
         broke = []
         for pid, preset in sorted(all_presets().items()):
-            if not preset.audio:
-                continue
-            try:
-                for eff in build_chain(preset.audio):
+            for eid, params in preset.audio:
+                if eid not in gated:
+                    continue
+                try:
+                    eff = get_effect(eid)(**params)
                     eff.resolve(ctx)
                     eff.prepare(ctx)
-            except Exception as exc:
-                broke.append(f"{pid}: {type(exc).__name__}: {exc}")
+                except Exception as exc:
+                    broke.append(f"{pid} [{eid}]: {type(exc).__name__}: {exc}")
         assert broke == [], f"{len(broke)} presets cannot render without optional encoders: {broke[:4]}"
 
         # And the substitution is a real one, not a silent nothing.
