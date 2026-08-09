@@ -323,7 +323,7 @@ class CRT(Effect):
     def _degauss(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         """One-shot degauss: decaying AC field wobbles purity (rainbow corner
         blotches) and breathes the raster for ~0.6 s after the thunk."""
-        t = ctx.fi_out / max(ctx.fps, 1.0)
+        t = ctx.t0 + ctx.fi_out / max(ctx.fps, 1.0)
         dt = t - self.v["degauss_at_s"]
         if dt < 0.0 or dt > 0.75 or self._dg_masks is None:
             return frame

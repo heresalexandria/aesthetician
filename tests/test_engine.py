@@ -261,6 +261,45 @@ def test_segmenting():
     assert len(segs3) == 1 and len(segs3[0]) == 2
 
 
+def test_events_are_scheduled_against_the_clip_not_the_window():
+    """A preview is a short render from the middle of a clip, not a second clip.
+
+    Everything timed used to be timed from the render's own frame 0, so Rental
+    Tape's transport lock-up - authored at 1.2 s, meaning 1.2 s into the tape -
+    fired at the top of *every* preview, wherever the scrubber was. The same
+    went for every per-frame random draw: the speckle a preview showed at 0:40
+    was the speckle the export had at 0:00.
+
+    The two halves pinned here are that a render starting at zero is keyed
+    exactly as it always was - so no export moves - and that one starting later
+    is keyed to where it sits on the clip.
+    """
+    from aesthetician.engine.graph import Context
+    from aesthetician.engine.rng import stream
+
+    at_zero = Context(width=64, height=48, fps=30.0, n_frames=90, seed=7, t0=0.0)
+    for fi in (0, 5, 89):
+        at_zero.fi_out = fi
+        assert at_zero.frame_rng("k").bit_generator.state == stream(7, f"k@{fi}").bit_generator.state
+        assert at_zero.abs_frame() == fi
+    for t in (0.0, 1.2, 4.5, 12.0):
+        assert at_zero.frame_of(t) == int(round(t * 30.0))
+
+    mid = Context(width=64, height=48, fps=30.0, n_frames=90, seed=7, t0=4.0)
+    mid.fi_out = 0
+    assert mid.frame_rng("k").bit_generator.state == stream(7, "k@120").bit_generator.state
+    # An event authored before this window simply is not in it.
+    assert mid.frame_of(1.2) < 0
+    assert mid.frame_of(4.0) == 0
+    assert mid.frame_of(5.0) == 30
+
+    # A stack's later layers seek from zero but stay where they are on the clip.
+    from aesthetician.engine.render import RenderOptions
+
+    assert RenderOptions(t0=4.0).clip_t0 == 4.0
+    assert RenderOptions(t0=0.0, source_t0=4.0).clip_t0 == 4.0
+
+
 def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
     """A preset must render on an ffmpeg build missing an optional encoder.
 

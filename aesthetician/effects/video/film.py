@@ -1051,7 +1051,7 @@ class FrameDamage(Effect):
                     p1=g.uniform(0, 2 * np.pi), p2=g.uniform(0, 2 * np.pi),
                     sepia=bool(g.random() < 0.5), inten=g.uniform(0.5, 0.95),
                 ))
-        self._burn_f0 = int(self.v["burn_at_s"] * fps)
+        self._burn_f0 = ctx.frame_of(self.v["burn_at_s"])
         self._burn_dur = max(int(1.1 * fps), 4)
         self._burn_noise: np.ndarray | None = None
         self._burn_grid: tuple | None = None

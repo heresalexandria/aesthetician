@@ -84,10 +84,20 @@ class RenderOptions:
     video_only: bool = False
     audio_only: bool = False
     t0: float = 0.0
+    # Where this render sits on the *original* clip, which is only the same as
+    # `t0` for the first pass. Layer two of a stack reads an intermediate that
+    # has already been trimmed, so it seeks from zero while still being, say,
+    # forty seconds into the tape - and anything scheduled against the clip has
+    # to know that. Defaults to `t0`.
+    source_t0: Optional[float] = None
     duration: Optional[float] = None
     scale: float = 1.0            # output scale factor (previews)
     crf: int = 17
     keep_temp: bool = False
+
+    @property
+    def clip_t0(self) -> float:
+        return self.t0 if self.source_t0 is None else self.source_t0
 
 
 def _merged_overrides(variant: Optional[Variant], user: dict[str, Any], which: str) -> dict[str, dict[str, Any]]:
@@ -240,6 +250,7 @@ def render_layers(
                 video_only=opts.video_only,
                 audio_only=opts.audio_only,
                 t0=opts.t0 if i == 0 else 0.0,
+                source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,
                 scale=opts.scale if i == 0 else 1.0,
                 crf=opts.crf if last else INTERMEDIATE_CRF,
@@ -299,6 +310,7 @@ def render(
             out_width=out_w,
             out_height=out_h,
             texture=opts.texture,
+            t0=opts.clip_t0,
         )
 
         video_chain: list[Effect] = []
@@ -394,6 +406,7 @@ def _render_audio_only(
             scratch_dir=tmp_root,
             asset_root=default_asset_root(),
             texture=opts.texture,
+            t0=opts.clip_t0,
         )
         chain: list[Effect] = []
         if not opts.video_only and preset.audio:
@@ -626,6 +639,7 @@ def render_still(
             out_width=out_w,
             out_height=out_h,
             texture=opts.texture,
+            t0=opts.clip_t0,
         )
 
         chain: list[Effect] = []
@@ -709,6 +723,7 @@ def render_still_layers(
                 # Trimming and preview scaling belong to the first pass only,
                 # exactly as render_layers does it.
                 t0=opts.t0 if i == 0 else 0.0,
+                source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,
                 scale=opts.scale if i == 0 else 1.0,
                 crf=opts.crf,

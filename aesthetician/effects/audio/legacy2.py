@@ -253,7 +253,7 @@ class A8Track(Effect):
             x = x + (ghost * ct).astype(np.float32)
 
         if self.v["program_clunk"]:
-            t0 = self.v["clunk_at_s"]
+            t0 = self.v["clunk_at_s"] - ctx.t0
             if 0.3 < t0 < n / sr - 0.5:
                 g = stream(ctx.seed, f"{self.key}:clunk")
                 env = np.ones(n, np.float32)

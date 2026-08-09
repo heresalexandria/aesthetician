@@ -42,7 +42,7 @@ class Changeover(Effect):
         n, fps = ctx.n_frames, max(ctx.fps, 1.0)
         times: list[float] = []
         if self.v["force_at_s"] >= 0:
-            times = [self.v["force_at_s"]]
+            times = [self.v["force_at_s"] - ctx.t0]
         else:
             step = self.v["reel_min"] * 60.0
             tt = step
