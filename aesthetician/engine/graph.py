@@ -103,6 +103,11 @@ class Context:
         # scrubbed to, because "1.2 seconds in" meant 1.2 seconds into the
         # preview rather than into the clip.
         self.t0 = t0
+        # Edits to the discrete-event schedule, applied by effects in `prepare`:
+        # a list of {op, ...} dicts (see docs in render.py). Empty for a render
+        # nobody has touched, which is every render there was before this
+        # existed - so absent means exactly what it always meant.
+        self.event_edits: list[dict] = []
         self.noise = TemporalNoise(seed, fps, n_frames)
         # Indices for the frame currently being processed (set by the runner).
         self.fi_out = 0   # index on the output timeline

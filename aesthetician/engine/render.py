@@ -84,6 +84,14 @@ class RenderOptions:
     video_only: bool = False
     audio_only: bool = False
     t0: float = 0.0
+    # The user's diff on top of the seeded event schedule: a list of ops
+    # ({op: add|remove|move|tune, id, t, effect, kind, detail}) that effects
+    # apply in `prepare`. Ids come from the plan (`plan_events` / `cli events`),
+    # minted on the base schedule so ops survive each other. An op whose id the
+    # current seed no longer produces is skipped, not guessed at: adds are
+    # anchored to absolute clip time and survive a reseed, the others are
+    # edits *of that seed's tape* and die with it.
+    event_edits: list[dict] = field(default_factory=list)
     # Where this render sits on the *original* clip, which is only the same as
     # `t0` for the first pass. Layer two of a stack reads an intermediate that
     # has already been trimmed, so it seeks from zero while still being, say,
@@ -202,6 +210,7 @@ class Layer:
     seed: int = 1
     intensity: float = 1.0
     texture: float = 1.0
+    event_edits: list[dict] = field(default_factory=list)
 
 
 # Intermediate passes are encoded near-losslessly. The generation loss a stack
@@ -247,6 +256,7 @@ def render_layers(
                 variant=layer.variant,
                 video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides,
+                event_edits=layer.event_edits,
                 video_only=opts.video_only,
                 audio_only=opts.audio_only,
                 t0=opts.t0 if i == 0 else 0.0,
@@ -312,6 +322,7 @@ def render(
             texture=opts.texture,
             t0=opts.clip_t0,
         )
+        ctx.event_edits = list(opts.event_edits)
 
         video_chain: list[Effect] = []
         audio_chain: list[Effect] = []
@@ -641,6 +652,7 @@ def render_still(
             texture=opts.texture,
             t0=opts.clip_t0,
         )
+        ctx.event_edits = list(opts.event_edits)
 
         chain: list[Effect] = []
         if preset.video:
@@ -720,6 +732,7 @@ def render_still_layers(
                 variant=layer.variant,
                 video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides,
+                event_edits=layer.event_edits,
                 # Trimming and preview scaling belong to the first pass only,
                 # exactly as render_layers does it.
                 t0=opts.t0 if i == 0 else 0.0,
@@ -756,6 +769,7 @@ def _plan_one(input_w: int, input_h: int, info: "media.MediaInfo", preset: Prese
         asset_root=default_asset_root(), out_width=out_w, out_height=out_h,
         texture=opts.texture, t0=opts.clip_t0,
     )
+    ctx.event_edits = list(opts.event_edits)
     over = _merged_overrides(preset.variant(opts.variant), opts.video_overrides, "video")
     rows: list[dict] = []
     for eff in _live_chain(build_chain(preset.video), ctx, over):
@@ -784,7 +798,7 @@ def plan_events(input_path: str, layers: list[Layer], opts: RenderOptions) -> di
             step = RenderOptions(
                 seed=layer.seed, intensity=layer.intensity, texture=layer.texture,
                 variant=layer.variant, video_overrides=layer.video_overrides,
-                audio_overrides=layer.audio_overrides,
+                audio_overrides=layer.audio_overrides, event_edits=layer.event_edits,
                 t0=opts.t0 if i == 0 else 0.0, source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,
                 scale=opts.scale if i == 0 else 1.0, crf=opts.crf,
