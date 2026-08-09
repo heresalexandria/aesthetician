@@ -2694,7 +2694,7 @@ async function runPreview() {
     setVideo(videoB, original.output);
   } catch (err) {
     if (String(err.message || '').includes('superseded')) return;
-    setExportStatus(`Preview failed: ${err.message.slice(0, 300)}`, true);
+    reportFailure('Preview', err);
   } finally {
     if (G.activeJob === jobId) showRenderOverlay(false);
     refreshCacheInfo();
@@ -2776,6 +2776,12 @@ function wireShortcuts() {
     if (choiceOpen()) {
       if (e.code === 'Escape') closeChoice(null);
       e.preventDefault();
+      return;
+    }
+    /* The failure detail is a reading pane: Escape closes it, and everything
+       else - ⌘C above all - belongs to the selection in it. */
+    if (!$('error-modal').classList.contains('hidden')) {
+      if (e.code === 'Escape') { e.preventDefault(); closeErrorDetail(); }
       return;
     }
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
@@ -2961,6 +2967,28 @@ function wireControls() {
   $('btn-fav').addEventListener('click', () => { if (state.presetId) toggleFav(state.presetId); });
   $('btn-save-custom').addEventListener('click', saveCustom);
   $('btn-save-stack').addEventListener('click', saveStack);
+
+  $('btn-error-detail').addEventListener('click', () => showErrorDetail(G.lastFailure));
+  $('error-close').addEventListener('click', closeErrorDetail);
+  $('error-modal').addEventListener('mousedown', (e) => {
+    if (e.target === $('error-modal')) closeErrorDetail();
+  });
+  $('error-copy').addEventListener('click', async () => {
+    const btn = $('error-copy');
+    try {
+      await navigator.clipboard.writeText($('error-text').textContent);
+      btn.textContent = 'Copied';
+    } catch (_) {
+      // Clipboard refused: select it so ⌘C still works rather than saying nothing.
+      const r = document.createRange();
+      r.selectNodeContents($('error-text'));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      btn.textContent = 'Press ⌘C';
+    }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+  });
 
   $('modal-cancel').addEventListener('click', () => closeModal(null));
   $('modal-ok').addEventListener('click', () => closeModal($('modal-input').value.trim() || null));
@@ -3233,8 +3261,12 @@ async function startExport(job) {
       flash('Export canceled', { sub: basename(job.req.output) });
     } else {
       job.status = 'failed';
-      job.error = msg.slice(0, 300);
-      setExportStatus(`Export failed: ${job.error}`, true);
+      // The row shows the cause; the whole message stays on the job so the
+      // Details button can hand it over intact.
+      const parts = errorParts(err);
+      job.error = parts.headline;
+      job.errorFull = parts.full;
+      reportFailure('Export', err);
       flash('Export failed', { sub: basename(job.req.output), kind: 'error', ms: 8000 });
     }
   } finally {
@@ -3369,6 +3401,12 @@ function renderExports() {
       const err = document.createElement('div');
       err.className = 'ex-err';
       err.textContent = job.error;
+      err.title = 'Click for the whole message';
+      err.onclick = () => showErrorDetail({
+        title: `Export failed · ${basename(job.req.output)}`,
+        sub: job.error,
+        text: job.errorFull || job.error,
+      });
       row.appendChild(err);
     }
 
@@ -3429,6 +3467,46 @@ function setExportStatus(text, isError = false) {
   const el = $('export-status');
   el.textContent = text;
   el.style.color = isError ? 'var(--danger)' : '';
+  // Any new status supersedes the last failure's detail button.
+  if (!isError) $('btn-error-detail').classList.add('hidden');
+}
+
+/* ── failures ────────────────────────────────────────────────────────
+   What a render says when it dies is often the only thing that explains it, and
+   it arrives wrapped: Electron prefixes the IPC channel, and Python puts the
+   sentence that names the cause on the *last* line of a traceback. The status
+   bar is one ellipsised line, so it was showing the prefix and hiding the
+   sentence - "Error invoking remote method 'aesth:preview'" and nothing else.
+   So: lead with the cause, keep the whole thing, and put it a click away. */
+function errorParts(err) {
+  const full = String((err && err.stack) || (err && err.message) || err || 'unknown error');
+  const stripped = full.replace(/^Error: Error invoking remote method '[^']*':\s*/, '')
+    .replace(/^Error invoking remote method '[^']*':\s*/, '');
+  // A Python traceback ends on the line that matters; ffmpeg and Node errors are
+  // already one line, so the last non-empty line is the right pick either way.
+  const lines = stripped.split('\n').map((l) => l.trim()).filter(Boolean);
+  const named = [...lines].reverse().find((l) => /^[A-Za-z_.]+(Error|Exception)\b/.test(l));
+  return { headline: named || lines[lines.length - 1] || 'unknown error', full: stripped };
+}
+
+function reportFailure(what, err) {
+  const { headline, full } = errorParts(err);
+  G.lastFailure = { title: `${what} failed`, sub: headline, text: full };
+  setExportStatus(`${what} failed: ${headline}`, true);
+  $('btn-error-detail').classList.remove('hidden');
+}
+
+function showErrorDetail(failure) {
+  if (!failure) return;
+  $('error-title').textContent = failure.title;
+  $('error-sub').textContent = failure.sub || '';
+  $('error-text').textContent = failure.text;
+  $('error-modal').classList.remove('hidden');
+  $('error-text').focus();
+}
+
+function closeErrorDetail() {
+  $('error-modal').classList.add('hidden');
 }
 
 function setExportStatusLink(prefix, file) {

@@ -675,6 +675,24 @@ input[type="checkbox"] { accent-color: var(--accent); }
 }
 #export-status a { color: #a88df8; cursor: pointer; }
 
+/* ── failure detail ───────────────────────────
+   The status bar gets one line; everything a render actually said lives here,
+   selectable and one button away from the clipboard. */
+#error-modal {
+  position: fixed; inset: 0; z-index: 70; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+}
+.modal-box.error-box { width: 720px; max-width: calc(100vw - 40px); }
+#error-text {
+  margin: 12px 0 14px; padding: 11px 12px; max-height: 46vh; overflow: auto;
+  background: #07080d; border: 1px solid var(--line); border-radius: 9px;
+  font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #d6d9e6; white-space: pre-wrap; word-break: break-word;
+  user-select: text; cursor: text;
+}
+#error-text:focus { outline: 1px solid var(--accent-dim); }
+
 /* ── params ───────────────────────────────── */
 #preset-title-wrap { flex: 1; min-width: 0; }
 #preset-title { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

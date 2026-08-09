@@ -101,6 +101,19 @@ function ensureCacheDir() {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
 
+/* What a failed child said, trimmed for a human rather than for a byte count.
+   The tail is the half worth keeping - Python puts the sentence that names the
+   cause on the last line - but cutting at a fixed offset landed mid-word and
+   opened the report with "Error: ceback (most recent call last):". So: cut to
+   the next line break, and keep enough that a whole traceback survives. */
+function tailOf(text, max = 8000) {
+  const s = String(text || '');
+  if (s.length <= max) return s;
+  const cut = s.slice(-max);
+  const nl = cut.indexOf('\n');
+  return `…\n${nl >= 0 ? cut.slice(nl + 1) : cut}`;
+}
+
 function runCapture(args, { timeoutMs = 60000 } = {}) {
   return new Promise((resolve, reject) => {
     const p = spawn(PYTHON, ['-m', 'aesthetician.cli', ...args], CHILD_OPTS());
@@ -112,7 +125,7 @@ function runCapture(args, { timeoutMs = 60000 } = {}) {
     p.on('close', (code) => {
       clearTimeout(t);
       if (code === 0) resolve(out);
-      else reject(new Error(err.slice(-2000) || `exit ${code}`));
+      else reject(new Error(tailOf(err) || `exit ${code}`));
     });
     p.on('error', (e) => { clearTimeout(t); reject(e); });
   });
@@ -221,7 +234,7 @@ function spawnRender(args, jobId, sender, kind, output = null) {
         // chose; nobody wants that, so sweep it up.
         if (output) { try { fs.unlinkSync(output); } catch (_) { /* never written */ } }
         reject(new Error('superseded'));
-      } else reject(new Error(err.slice(-2000) || `exit ${code}`));
+      } else reject(new Error(tailOf(err) || `exit ${code}`));
     });
     p.on('error', reject);
   });
@@ -423,7 +436,7 @@ ipcMain.handle('aesth:still', async (_e, req) => {
         if (stillProc === p) stillProc = null;
         if (code === 0) resolve(so);
         else if (p.killed) reject(new Error('superseded'));
-        else reject(new Error(se.slice(-2000) || `exit ${code}`));
+        else reject(new Error(tailOf(se) || `exit ${code}`));
       });
       p.on('error', reject);
     });

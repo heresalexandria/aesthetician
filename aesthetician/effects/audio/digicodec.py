@@ -4,7 +4,9 @@ bitcrushing, and buffer glitches."""
 from __future__ import annotations
 
 import functools
+import shutil
 import subprocess
+import sys
 
 import numpy as np
 
@@ -12,6 +14,27 @@ from ...engine import media
 from ...engine.graph import Context, Effect, Param, register
 from ...engine.rng import stream
 from . import _util as U
+
+
+def _warn_missing(eid: str, wanted: str, used: str | None) -> None:
+    """Say what this build cannot do, on stderr, and carry on.
+
+    The desktop app ships an ffmpeg it does not build itself, and the optional
+    encoders in it vary: the macOS bundle has libmp3lame but no
+    libopencore_amrnb and no libgsm. Raising here took the whole render with it,
+    so Flip Phone Clip - the one preset that asks for AMR - could not render at
+    all in a packaged build, while the same preset worked from a checkout
+    against a Homebrew ffmpeg. One missing codec pass is worth a line of stderr,
+    not the other nine effects in the chain.
+
+    stderr rather than stdout: --json-progress owns stdout, and the GUI parses it.
+    """
+    if used:
+        print(f"[aesthetician] {eid}: ffmpeg here has no '{wanted}' encoder; "
+              f"using '{used}' instead", file=sys.stderr)
+    else:
+        print(f"[aesthetician] {eid}: ffmpeg here has no '{wanted}' encoder; "
+              f"passing the audio through untouched", file=sys.stderr)
 
 
 @functools.lru_cache(maxsize=1)
@@ -48,10 +71,16 @@ class ACodecMp3(Effect):
     _FORCE_SR = {"8": 12000, "16": 16000, "24": 22050, "32": 24000}
 
     def prepare(self, ctx: Context) -> None:
-        if "libmp3lame" not in _available_encoders():
-            raise RuntimeError("a_codec_mp3 requires the ffmpeg libmp3lame encoder, which is not available in this ffmpeg build")
+        # An ffmpeg without libmp3lame is not a reason to lose the whole render;
+        # see the note on _warn_missing.
+        self._usable = "libmp3lame" in _available_encoders()
+        if not self._usable:
+            _warn_missing(self.eid, "libmp3lame", None)
 
     def file_pass(self, in_path: str, out_path: str, ctx: Context) -> None:
+        if not self._usable:
+            shutil.copyfile(in_path, out_path)
+            return
         k = self.v["kbps"]
         args = ["-c:a", "libmp3lame", "-b:a", f"{k}k"]
         if k in self._FORCE_SR:
@@ -86,18 +115,25 @@ class ACodecSpeech(Effect):
               desc="Telephony codec and rate; amr_475 ≈ 2003 cellphone at one bar.", group="Bandwidth"),
     )
 
+    # Stand-ins, nearest first, for a build without the codec a preset asked for.
+    # All of them are 8 kHz narrowband, so the character survives even though the
+    # exact artifacts do not: AMR's burbling becomes ADPCM's grit.
+    _FALLBACK = ("g726_16", "g726_24", "g726_32", "mulaw_8k", "alaw_8k", "adpcm_ima_22k")
+
     def prepare(self, ctx: Context) -> None:
-        enc = self._CODECS[self.v["codec"]][0]
         avail = _available_encoders()
-        if enc not in avail:
-            alts = sorted(c for c, spec in self._CODECS.items() if spec[0] in avail)
-            raise RuntimeError(
-                f"a_codec_speech: codec '{self.v['codec']}' needs ffmpeg encoder '{enc}', "
-                f"which is not available. Available choices here: {', '.join(alts) or 'none'}"
-            )
+        want = self.v["codec"]
+        if self._CODECS[want][0] in avail:
+            self._codec = want
+            return
+        self._codec = next((c for c in self._FALLBACK if self._CODECS[c][0] in avail), None)
+        _warn_missing(self.eid, self._CODECS[want][0], self._codec)
 
     def file_pass(self, in_path: str, out_path: str, ctx: Context) -> None:
-        enc, extra, ext, rate = self._CODECS[self.v["codec"]]
+        if self._codec is None:      # nothing in this build can stand in
+            shutil.copyfile(in_path, out_path)
+            return
+        enc, extra, ext, rate = self._CODECS[self._codec]
         args = ["-ar", str(rate), "-ac", "1", "-c:a", enc, *extra]
         media.audio_roundtrip(in_path, out_path, args, mid_ext=ext)
 
