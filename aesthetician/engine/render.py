@@ -735,3 +735,66 @@ def render_still_layers(
         return Still(path=output_path, exact=exact)
     finally:
         shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+# ── event plans ────────────────────────────────────────────────────────
+def _plan_one(input_w: int, input_h: int, info: "media.MediaInfo", preset: Preset,
+              opts: RenderOptions, tmp_root: str) -> tuple[list[dict], int, int]:
+    """Events for one preset, plus the size it hands on to the next layer."""
+    duration, fps, n_frames = _timing(info, opts)
+    out_w, out_h = _even(int(input_w * opts.scale)), _even(int(input_h * opts.scale))
+    if preset.proc_height and preset.proc_height < out_h:
+        proc_h = _even(preset.proc_height)
+        proc_w = _even(out_w * proc_h / out_h)
+    else:
+        proc_w, proc_h = out_w, out_h
+    ctx = Context(
+        width=proc_w, height=proc_h, fps=fps, n_frames=n_frames,
+        sr=info.sr if info.has_audio else 48000,
+        channels=min(info.channels, 2) if info.has_audio else 2,
+        seed=opts.seed, intensity=opts.intensity, scratch_dir=tmp_root,
+        asset_root=default_asset_root(), out_width=out_w, out_height=out_h,
+        texture=opts.texture, t0=opts.clip_t0,
+    )
+    over = _merged_overrides(preset.variant(opts.variant), opts.video_overrides, "video")
+    rows: list[dict] = []
+    for eff in _live_chain(build_chain(preset.video), ctx, over):
+        for ev in eff.events(ctx):
+            rows.append({"effect": eff.key, "kind": ev.kind,
+                         "t": round(ev.t, 4), "dur": round(ev.dur, 4),
+                         "detail": ev.detail})
+    return rows, out_w, out_h
+
+
+def plan_events(input_path: str, layers: list[Layer], opts: RenderOptions) -> dict:
+    """What discrete damage a render would produce, without rendering it.
+
+    The whole point of hoisting the schedules: a timeline can draw these, and
+    eventually you can move one. Costs a chain `prepare`, not a render.
+    """
+    info = media.probe(input_path)
+    if not info.has_video:
+        return {"duration": info.duration, "fps": info.fps, "events": []}
+    duration, fps, n_frames = _timing(info, opts)
+    tmp_root = tempfile.mkdtemp(prefix="aesth_plan_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+    try:
+        rows: list[dict] = []
+        w, h = info.width, info.height
+        for i, layer in enumerate(layers):
+            step = RenderOptions(
+                seed=layer.seed, intensity=layer.intensity, texture=layer.texture,
+                variant=layer.variant, video_overrides=layer.video_overrides,
+                audio_overrides=layer.audio_overrides,
+                t0=opts.t0 if i == 0 else 0.0, source_t0=opts.clip_t0,
+                duration=opts.duration if i == 0 else None,
+                scale=opts.scale if i == 0 else 1.0, crf=opts.crf,
+            )
+            got, w, h = _plan_one(w, h, info, layer.preset, step, tmp_root)
+            for r in got:
+                r["layer"] = i
+            rows.extend(got)
+        rows.sort(key=lambda r: (r["t"], r["layer"], r["effect"]))
+        return {"t0": opts.clip_t0, "duration": duration, "fps": fps,
+                "n_frames": n_frames, "events": rows}
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)

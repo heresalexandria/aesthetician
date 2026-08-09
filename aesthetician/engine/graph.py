@@ -144,6 +144,26 @@ class Context:
         return stream(self.seed, f"{key}@{self.abs_frame(fi)}")
 
 
+@dataclass(frozen=True)
+class Event:
+    """One discrete thing an effect does at a moment on the source clip.
+
+    Damage in this engine is not a haze, it is a series of incidents: a dropout
+    is a streak on one row of one frame, a transport glitch is a shredded stretch
+    of two thirds of a second. They were being decided a frame at a time deep
+    inside `process`, which made them impossible to talk about - you could not
+    ask where they were, let alone move one. An effect that deals in incidents
+    works them out in `prepare` now and can hand the list over.
+
+    `t` is seconds on the *clip's* timeline, so it means the same thing in a
+    preview as in an export.
+    """
+    t: float
+    dur: float
+    kind: str
+    detail: dict[str, Any] = field(default_factory=dict)
+
+
 class Effect:
     """Base class. Subclasses define eid/label/kind and PARAMS, then implement
     the hook for their kind.
@@ -188,6 +208,15 @@ class Effect:
     # ── hooks ──────────────────────────────────────────────────────────
     def prepare(self, ctx: Context) -> None:
         """Called once before processing; allocate state, precompute tracks."""
+
+    def events(self, ctx: Context) -> list["Event"]:
+        """The discrete incidents this effect will produce, after `prepare`.
+
+        Empty for the continuous effects - grain, tape noise, a rolling tracking
+        band - which are a level rather than a list of moments and want a curve,
+        not pins.
+        """
+        return []
 
     def remap(self, ctx: Context) -> Optional[np.ndarray]:
         """Optional time remap: array of source indices, one per output frame."""

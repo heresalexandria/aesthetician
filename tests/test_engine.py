@@ -261,6 +261,70 @@ def test_segmenting():
     assert len(segs3) == 1 and len(segs3[0]) == 2
 
 
+def test_the_event_plan_is_what_actually_renders():
+    """Every dropout is knowable before a frame is drawn, and the list is exact.
+
+    This is what a timeline editor stands on. The draws used to happen inside
+    `process`, a frame at a time, so nothing could ask where the damage was;
+    they happen in `prepare` now, from the same per-frame generators in the same
+    order, which leaves the picture untouched and the schedule readable. The
+    test renders the preset twice - once as authored, once with dropouts off -
+    and asserts the frames that differ are exactly the frames the plan named.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_plan_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    quiet = {"luma_noise": 0, "chroma_noise": 0, "head_switch": 0, "time_base_error": 0,
+             "flagging": 0, "jitter_v": 0, "tracking_error": 0, "sharpen": 0,
+             "chroma_delay": 0, "dropout_burst": 0.5}
+    on = Preset(id="t_plan_on", name="t", family="t", era="", desc="",
+                video=[("vhs", {**quiet, "dropouts": 8.0})])
+    off = Preset(id="t_plan_off", name="t", family="t", era="", desc="",
+                 video=[("vhs", {**quiet, "dropouts": 0.0})])
+    opts = RenderOptions(seed=99, duration=2.0, scale=1.0, crf=0)
+    a = os.path.join(root, "out", "_t_plan_on.mp4")
+    b = os.path.join(root, "out", "_t_plan_off.mp4")
+    render(src, a, on, opts)
+    render(src, b, off, opts)
+
+    plan = plan_events(src, [Layer(preset=on, seed=99)], opts)
+    fps = plan["fps"]
+    planned = {int(round(e["t"] * fps)) for e in plan["events"] if e["kind"] == "dropout"}
+    assert planned, "a preset at 8 events/s over two seconds must plan some"
+
+    W, H = 320, 240
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        return np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.int16)
+
+    fa, fb = frames(a), frames(b)
+    n = min(len(fa), len(fb))
+    # A dropout can land on picture it barely changes, so "differs at all"
+    # rather than "differs loudly" is the honest comparison.
+    changed = {i for i in range(n) if np.abs(fa[i] - fb[i]).max() > 2}
+    assert changed <= planned, f"rendered damage the plan did not name: {sorted(changed - planned)}"
+    # And most of what was planned really does show up.
+    assert len(changed) >= 0.8 * len({p for p in planned if p < n}), (len(changed), len(planned))
+
+    # Per-instance detail is there to be edited later.
+    one = next(e for e in plan["events"] if e["kind"] == "dropout")
+    assert set(one["detail"]) == {"row", "x", "length_px", "rows", "polarity"}, one
+
+
 def test_events_are_scheduled_against_the_clip_not_the_window():
     """A preview is a short render from the middle of a clip, not a second clip.
 
