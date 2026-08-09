@@ -562,6 +562,37 @@ aside { background: var(--bg2); overflow-y: auto; }
 .mini-bar { width: 220px; height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; }
 #render-bar { height: 100%; width: 0%; background: var(--grad); border-radius: 4px; transition: width .2s; }
 
+/* ── filmstrip timeline ───────────────────
+   Source frames spanning the whole clip, so the strip is a map: x is time.
+   Everything above the frames is positioned in percent of the strip width,
+   which is what lets the playhead move on scrub without touching the images. */
+#timeline {
+  position: relative; height: 56px; flex: 0 0 auto;
+  margin: 8px 14px 0; border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden; background: var(--bg2); cursor: pointer;
+}
+#strip-frames { position: absolute; inset: 0; display: flex; }
+/* Cells flex to an equal share of the width whatever the strip's size, and the
+   frames crop rather than letterbox: a gap-free band reads as one filmstrip. */
+#strip-frames img { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; pointer-events: none; }
+#strip-markers { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.strip-tick { position: absolute; top: 0; bottom: 0; width: 3px; pointer-events: auto; }
+#strip-window {
+  position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none;
+  background: rgba(139, 92, 246, .18);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, .45);
+}
+#strip-playhead {
+  position: absolute; top: 0; bottom: 0; width: 2px; z-index: 3; pointer-events: none;
+  background: #fff; box-shadow: 0 0 6px rgba(0, 0, 0, .8);
+}
+#strip-count {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); z-index: 4;
+  font-size: 10px; color: var(--dim); pointer-events: none;
+  background: rgba(6, 7, 10, .72); padding: 1px 7px; border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
 #player-controls {
   display: flex; align-items: center; gap: 11px; padding: 11px 16px 9px;
   background: var(--bg);
@@ -673,6 +704,10 @@ input[type="checkbox"] { accent-color: var(--accent); }
   margin-top: 5px; font-size: 10px; color: #7d68c4;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+/* Facts that are a dict readout, one field per line. The default wrapped row
+   is right for a handful of prose facts, but flowing "row 206 · x 44 · rows 1"
+   together turns a timeline tick's anatomy into soup. */
+#tip.stack .tip-facts { flex-direction: column; gap: 3px; }
 #export-status a { color: #a88df8; cursor: pointer; }
 
 /* ── failure detail ───────────────────────────
@@ -889,6 +924,8 @@ body.audio-session #player-wrap::before {
 }
 body.audio-session #player-empty { z-index: 1; }
 body.audio-session #btn-ab { position: relative; }
+/* No frames to strip out of a sound file, so the timeline sits this one out. */
+body.audio-session #timeline { display: none; }
 
 /* ── layers ───────────────────────────────── */
 #layers-panel { border-bottom: 1px solid var(--line); padding: 9px 12px 10px; }
