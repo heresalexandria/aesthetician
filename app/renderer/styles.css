@@ -863,6 +863,25 @@ input[type="checkbox"] { accent-color: var(--accent); }
   font-size: 11.5px; line-height: 1.5; color: var(--dim);
   white-space: pre-wrap; overflow-wrap: anywhere; user-select: text;
 }
+/* The version picker sits below the notes and stays folded away: reverting is
+   a deliberate act, not something to trip over on the way to Update. */
+.about-picker { margin-top: 14px; }
+.about-picker-label {
+  display: block; margin-bottom: 6px; font-size: 11px;
+  color: var(--dim); letter-spacing: .3px;
+}
+.about-picker-row { display: flex; align-items: center; gap: 8px; }
+.about-picker-row select {
+  flex: 1; min-width: 0; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 7px;
+  font-size: 11.5px; outline: none; cursor: pointer;
+}
+.about-picker-row select:hover:enabled { border-color: var(--line2); }
+.about-picker-row select:disabled { opacity: .45; cursor: default; }
+.about-picker-note { margin-top: 8px; font-size: 11.5px; line-height: 1.5; }
+.about-picker-note.ok { color: #8ee0b0; }
+.about-picker-note.warn { color: var(--danger); }
+.about-picker-note.busy { color: #9dbaff; }
 .about-bar {
   margin-top: 12px; height: 4px; border-radius: 4px;
   background: var(--bg3); overflow: hidden;

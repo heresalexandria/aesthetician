@@ -220,9 +220,18 @@
       </div>
       <div id="about-status" class="about-status dim">Checking for updates…</div>
       <div id="about-notes" class="about-notes hidden"></div>
+      <div id="about-picker" class="about-picker hidden">
+        <label class="about-picker-label" for="about-version-select">Install a specific version</label>
+        <div class="about-picker-row">
+          <select id="about-version-select"></select>
+          <button id="about-version-action" disabled>Download</button>
+        </div>
+        <div id="about-picker-note" class="about-picker-note dim"></div>
+      </div>
       <div id="about-bar" class="about-bar hidden"><div id="about-bar-fill"></div></div>
       <div class="modal-row">
         <button id="about-repo" class="link-btn">View releases</button>
+        <button id="about-other" class="link-btn">Other versions</button>
         <div class="grow"></div>
         <button id="about-close">Close</button>
         <button id="about-action" class="accent">Check for updates</button>

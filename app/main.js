@@ -606,7 +606,9 @@ ipcMain.handle('aesth:thumbs', () => {
    The renderer drives all of it: nothing is fetched or installed on a timer. */
 ipcMain.handle('aesth:update-info', () => updater.info());
 ipcMain.handle('aesth:update-check', (_e, opts) => updater.check(opts || {}));
-ipcMain.handle('aesth:update-download', (e) => updater.download(e.sender));
+ipcMain.handle('aesth:update-releases', (_e, opts) => updater.releases(opts || {}));
+// opts.tag picks a specific release; without one this takes the latest.
+ipcMain.handle('aesth:update-download', (e, opts) => updater.download(e.sender, opts || {}));
 ipcMain.handle('aesth:update-cancel', () => updater.cancelDownload());
 ipcMain.handle('aesth:update-install', () => updater.install());
 ipcMain.handle('aesth:update-reveal', () => {

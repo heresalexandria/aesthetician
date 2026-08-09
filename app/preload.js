@@ -37,7 +37,8 @@ contextBridge.exposeInMainWorld('aesth', {
 
   updateInfo: () => ipcRenderer.invoke('aesth:update-info'),
   updateCheck: (opts) => ipcRenderer.invoke('aesth:update-check', opts),
-  updateDownload: () => ipcRenderer.invoke('aesth:update-download'),
+  updateReleases: (opts) => ipcRenderer.invoke('aesth:update-releases', opts),
+  updateDownload: (opts) => ipcRenderer.invoke('aesth:update-download', opts),
   updateCancel: () => ipcRenderer.invoke('aesth:update-cancel'),
   updateInstall: () => ipcRenderer.invoke('aesth:update-install'),
   updateReveal: () => ipcRenderer.invoke('aesth:update-reveal'),
