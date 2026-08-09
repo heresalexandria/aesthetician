@@ -358,7 +358,7 @@ aside { background: var(--bg2); overflow-y: auto; }
 }
 .preset-card {
   position: relative;
-  height: 66px; padding: 7px 9px; border-radius: 10px; cursor: pointer;
+  min-height: 66px; padding: 7px 9px; border-radius: 10px; cursor: pointer;
   border: 1px solid transparent; display: flex; align-items: center; gap: 10px;
   margin-bottom: 3px; contain: layout paint;
   transition: background .1s ease, border-color .1s ease;
@@ -404,8 +404,29 @@ aside { background: var(--bg2); overflow-y: auto; }
    ellipsising a few characters early. Stock rows clear the star and the +; rows
    of your own clear the wider rename/delete cluster and the +. */
 .preset-card .p-name { padding-right: 54px; }
+/* Library names are short labels someone wrote to fit. The names on these rows
+   were typed by the person reading them, and the default one ends in the date
+   and time of the save - exactly the part an ellipsis eats, and exactly the part
+   that tells this morning's two attempts apart. So they wrap, and the row grows
+   to hold them. Three lines covers about ninety characters; past that the row
+   would be taller than its own thumbnail for no gain, and the card's tooltip
+   carries the name in full anyway. */
 .preset-card.custom .p-name,
-.preset-card.stack .p-name { padding-right: 80px; }
+.preset-card.stack .p-name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  padding-right: 0;
+}
+/* The corner controls only overlap the first line, so only the first line pays
+   for them. Reserving the column outright cost every line a third of its width
+   and pushed even short names onto three of them. */
+.preset-card.custom .p-name::before,
+.preset-card.stack .p-name::before {
+  content: ''; float: right; width: 80px; height: 1.25em;
+}
 .preset-card .p-meta { font-size: 10.5px; color: var(--dim); line-height: 1.25; }
 .preset-card .p-tag {
   font-size: 10.5px; line-height: 1.3; font-style: italic;
@@ -488,7 +509,9 @@ aside { background: var(--bg2); overflow-y: auto; }
   border: 1px solid var(--line);
   box-shadow: 0 14px 44px rgba(0,0,0,.45);
 }
-#player-wrap video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+/* The element fills the wrap and letterboxes inside itself, so this covers the
+   black bars too - the whole picture area is the play/pause target. */
+#player-wrap video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
 #video-b { z-index: 1; }
 #video-a { z-index: 2; }
 #player-empty { color: var(--dim); font-size: 14px; z-index: 0; padding: 0 30px; text-align: center; }
@@ -503,6 +526,32 @@ aside { background: var(--bg2); overflow-y: auto; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
   backdrop-filter: blur(5px);
 }
+/* ── the paused player's first look ──────────────────────────────
+   Frame 0 arrives about ten times sooner than the clip it belongs to, and most
+   tweaks are judged on a still anyway. So it takes the picture, and the render
+   it came from carries on underneath: the overlay drops out of the middle and
+   becomes a strip along the bottom, because a spinner over the frame you are
+   trying to read is worse than no frame at all. */
+/* pointer-events off so the click still reaches #player-wrap, which is where
+   play/pause lives - the still is a picture, not a control. */
+#still-frame {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; z-index: 3; cursor: pointer; pointer-events: none;
+}
+#still-chip {
+  position: absolute; top: 14px; right: 14px; z-index: 7;
+  background: rgba(6,7,10,.78); color: var(--dim);
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 20px; border: 1px solid var(--line2);
+  backdrop-filter: blur(6px); pointer-events: none;
+}
+#still-chip.provisional { color: #f4b64e; border-color: rgba(244,182,78,.4); }
+#player-wrap.has-still #render-overlay {
+  inset: auto 0 0 0; height: 42px; background: rgba(8,9,14,.82);
+  flex-direction: row; gap: 12px; backdrop-filter: blur(8px);
+}
+#player-wrap.has-still .spinner { width: 15px; height: 15px; border-width: 2px; }
+#player-wrap.has-still .mini-bar { width: 140px; }
 .spinner {
   width: 34px; height: 34px; border-radius: 50%;
   border: 2.5px solid var(--line2); border-top-color: var(--accent);
@@ -686,6 +735,16 @@ input[type="checkbox"] { accent-color: var(--accent); }
   background: var(--accent); box-shadow: 0 0 6px rgba(139,92,246,.8);
 }
 .effect-head .e-text + .e-tweaks { margin-left: 6px; }
+/* The power switch sits hard right, after any badges. It is the one control in
+   the card that decides whether the rest of them do anything. */
+.effect-head .e-power { margin-left: auto; flex: 0 0 auto; cursor: pointer; }
+.effect-head .e-text + .e-power,
+.effect-head .e-tweaks + .e-power { margin-left: 6px; }
+/* Switched off: the card stays exactly where it is in the chain, and says so by
+   going quiet rather than by disappearing. */
+.effect-card.off > .effect-head { color: var(--dim); }
+.effect-card.off > .effect-head .chev { opacity: .45; }
+.effect-card.off .effect-body { opacity: .38; }
 /* the datetime picker inherits the same chrome as the other text fields */
 .prow input[type="datetime-local"] {
   flex: 1; min-width: 0; background: var(--bg2); color: var(--text);
@@ -712,10 +771,15 @@ input[type="checkbox"] { accent-color: var(--accent); }
    between sensible bounds and the slider absorbs the difference. */
 .prow .pval {
   flex: 0 0 auto; min-width: 42px; max-width: 104px;
-  text-align: right; font-size: 11px; color: var(--dim);
+  text-align: right; font-size: 11px; color: var(--text);
   white-space: nowrap; overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
+/* Dropouts run 0 to 60 events/s, so a live 0.4 sits against the same end stop
+   as a dead 0 and no thumb position can tell them apart. The number is the only
+   place that difference can show, so it carries it: lit means the parameter is
+   doing something, dim means it is sitting on the bottom of its range. */
+.prow.at-min .pval { color: var(--dim); }
 .prow select, .prow input[type="number"] {
   flex: 1; min-width: 0; background: var(--bg2); color: var(--text); border: 1px solid var(--line);
   border-radius: 6px; padding: 4px 6px; font-size: 11.5px; outline: none;

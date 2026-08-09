@@ -184,11 +184,27 @@ class Effect:
 _REGISTRY: dict[str, type[Effect]] = {}
 
 
+# Every effect carries this, injected at registration rather than typed out 104
+# times. Some effects have no dial that reaches "nothing": a Risograph is defined
+# by its ink pair and a projection surface by its material, so zeroing every
+# amount still leaves a duotone print on a matte screen. Taking the effect out of
+# the chain is not the same thing - a preset is a fixed chain, and what you want
+# while judging a look is to lift one link out and drop it back. Default True, so
+# it means "no change" to every preset already written.
+ENABLED = Param(
+    "enabled", "Enabled", "bool", True,
+    desc="Switch this effect off without taking it out of the chain. Off means "
+         "the picture passes through untouched.",
+)
+
+
 def register(cls: type[Effect]) -> type[Effect]:
     if not cls.eid:
         raise ValueError(f"{cls.__name__} missing eid")
     if cls.eid in _REGISTRY:
         raise ValueError(f"duplicate effect id {cls.eid}")
+    if not any(p.name == ENABLED.name for p in cls.PARAMS):
+        cls.PARAMS = (ENABLED, *cls.PARAMS)
     _REGISTRY[cls.eid] = cls
     return cls
 

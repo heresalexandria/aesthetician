@@ -26,10 +26,17 @@ class ARoom(Effect):
     _CHAMBER_L = (47.9, 53.3, 61.1, 67.9)
     _CHAMBER_R = (48.7, 52.7, 61.9, 68.3)
     PARAMS = (
-        Param("size", "Room Size", "float", 1.0, 0.5, 1.6,
-              desc="Scales the reflection delays.", group="Damage"),
-        Param("decay_s", "Decay", "float", 0.35, 0.1, 1.5, unit="s",
-              desc="RT60-style decay time.", group="Damage"),
+        # The original range was scaled to the Schroeder small room this started
+        # as. The chamber and plate modes arrived later wanting numbers well past
+        # it, and presets were already written that way - a cathedral asking for
+        # size 2.2 and a 4.2 s decay was quietly getting 1.6 and 1.5. The dial
+        # now reaches where those presets were pointing, and further: down to a
+        # broom cupboard and out to a hall.
+        Param("size", "Room Size", "float", 1.0, 0.2, 4.0,
+              desc="Scales the reflection delays: under 1 is a cupboard, past 2 is a hall.",
+              group="Damage"),
+        Param("decay_s", "Decay", "float", 0.35, 0.05, 8.0, unit="s",
+              desc="RT60-style decay time. The chamber mode runs 1.6x this.", group="Damage"),
         Param("damp", "Damping", "float", 0.55, 0.0, 0.95,
               desc="High-frequency absorption in the tail.", group="Damage"),
         Param("predelay_ms", "Predelay", "float", 8.0, 0.0, 60.0, unit="ms",
@@ -126,8 +133,9 @@ class ASlap(Effect):
               desc="Slap delay time.", group="Damage"),
         Param("gain_db", "Echo Level", "float", -8.0, -30.0, 0.0, unit="dB",
               desc="Level of the first repeat.", group="Damage"),
-        Param("repeats", "Repeats", "int", 1, 1, 3,
-              desc="Number of echoes.", group="Damage"),
+        Param("repeats", "Repeats", "int", 1, 1, 12,
+              desc="Number of echoes. Repeats past the end of the clip stop early.",
+              group="Damage"),
         Param("damp", "Damping", "float", 0.5, 0.0, 1.0,
               desc="Progressive treble loss on each repeat.", group="Damage"),
     )

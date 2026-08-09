@@ -24,8 +24,12 @@ class AAmRadio(Effect):
               desc="Atmospheric crackle and hiss bed.", group="Noise"),
         Param("fade", "Ionospheric Fade", "float", 0.0, 0.0, 1.0,
               desc="Slow 0.05–0.2 Hz level and treble fading (skywave).", group="Damage", iscale=True),
-        Param("whistle_db", "Heterodyne", "float", -66.0, -80.0, -35.0, unit="dB",
-              desc="Faint drifting 1–3 kHz carrier-beat whistle.", group="Noise"),
+        # The old floor of -80 dB was not silence: the level gate downstream opens
+        # above 1e-6, and -80 dB is 1e-4, so the whistle was always on. It reaches
+        # a real off now, and up to -20 for a set tuned squarely onto a beat note.
+        Param("whistle_db", "Heterodyne", "float", -66.0, -120.0, -20.0, unit="dB",
+              desc="Drifting 1–3 kHz carrier-beat whistle. Fully off at the bottom of the dial.",
+              group="Noise"),
         Param("tune_drift", "Tuning Drift", "float", 0.0, 0.0, 10.0, unit="/min",
               desc="Brief detune dips per minute (muffled, distorted, quieter).", group="Damage", iscale=True),
         Param("adjacent_channel", "Adjacent Channel", "float", 0.0, 0.0, 1.0,

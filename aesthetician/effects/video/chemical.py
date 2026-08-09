@@ -279,9 +279,19 @@ class NitrateDecay(Effect):
 
         # coverage: spread scales the stage's nominal area, breathing slightly
         # and creeping forward over the clip - decay never retreats
+        spread = self.v["spread"]
+        if spread <= 0.0:
+            # A dial reading zero means no decay. It used to mean a third of one:
+            # the curve below started at 0.30 rather than 0, so Spread 0.00 still
+            # ate a quarter of the frame and still moved with the seed.
+            return frame
         g01 = fi / max(ctx.n_frames - 1, 1)
         breathe = 1.0 + 0.05 * float(self._grow[min(fi, len(self._grow) - 1)])
-        area = area0 * (0.30 + 1.40 * self.v["spread"]) * breathe * (0.92 + 0.14 * g01)
+        # Everything from 0.1 up is the original curve - that is where every
+        # preset lives - and the bottom tenth ramps its 0.30 floor down to zero
+        # so the dial arrives at off instead of stopping short of it.
+        scale = (0.30 + 1.40 * spread) if spread >= 0.1 else (0.44 * spread / 0.1)
+        area = area0 * scale * breathe * (0.92 + 0.14 * g01)
         area = float(np.clip(area, 0.004, 0.90))
         th = float(qs[int(round((1.0 - area) * 256))])
 

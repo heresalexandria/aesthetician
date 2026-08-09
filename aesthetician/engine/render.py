@@ -102,6 +102,53 @@ def _even(x: int) -> int:
     return max(2, int(round(x / 2)) * 2)
 
 
+def _timing(info: "media.MediaInfo", opts: RenderOptions) -> tuple[float, float, int]:
+    """Clip length, frame rate and frame count for a render.
+
+    Shared rather than repeated because `n_frames` is load-bearing well beyond
+    "how many frames to write": the temporal noise tracks in rng.py are filtered
+    and percentile-normalised across their whole length, so the same seed over a
+    different number of frames is a different frame 0. Anything claiming to
+    preview a clip has to agree with it here.
+    """
+    duration = opts.duration if opts.duration is not None else max(info.duration - opts.t0, 0.1)
+    duration = min(duration, max(info.duration - opts.t0, 0.1))
+    return duration, info.fps, max(int(round(duration * info.fps)), 1)
+
+
+def _video_geometry(info: "media.MediaInfo", preset: Preset, opts: RenderOptions) -> tuple[int, int, int, int]:
+    """(proc_w, proc_h, out_w, out_h) - the era resolution and the delivery size."""
+    out_w, out_h = _even(int(info.width * opts.scale)), _even(int(info.height * opts.scale))
+    if preset.proc_height and preset.proc_height < out_h:
+        proc_h = _even(preset.proc_height)
+        proc_w = _even(out_w * proc_h / out_h)
+    else:
+        proc_w, proc_h = out_w, out_h
+    return proc_w, proc_h, out_w, out_h
+
+
+def _live_chain(chain: list[Effect], ctx: Context, over: dict[str, dict[str, Any]]) -> list[Effect]:
+    """Resolve a built chain and drop the effects switched off in it.
+
+    Resolve first, filter second: `enabled` is an ordinary parameter, so a
+    variant or a --set is what decides it. Filtering after `build_chain` has
+    handed out the keys means a repeat still answers to `grain#2` whether or not
+    the copy before it is switched on, and `prepare` only runs for the effects
+    that are actually going to see a frame.
+    """
+    for eff in chain:
+        eff.resolve(ctx, over.get(eff.key))
+    live = [eff for eff in chain if eff.v.get("enabled", True)]
+    for eff in live:
+        eff.prepare(ctx)
+    return live
+
+
+def _upscale_flags(preset: Preset) -> str:
+    flavor = preset.upscale if preset.upscale != "auto" else "soft"
+    return {"sharp": "lanczos", "soft": "bicubic"}.get(flavor, "bicubic")
+
+
 def _segment_chain(chain: list[Effect]) -> list[list[Effect]]:
     """Split into frame-effect runs separated by single-filepass segments.
 
@@ -224,10 +271,7 @@ def render(
     progress: Optional[ProgressCb] = None,
 ) -> str:
     info = media.probe(input_path)
-    duration = opts.duration if opts.duration is not None else max(info.duration - opts.t0, 0.1)
-    duration = min(duration, max(info.duration - opts.t0, 0.1))
-    fps = info.fps
-    n_frames = max(int(round(duration * fps)), 1)
+    duration, fps, n_frames = _timing(info, opts)
 
     if not info.has_video:
         return _render_audio_only(
@@ -235,12 +279,7 @@ def render(
             _PhasedProgress(progress, {"audio": 0.86, "encode": 0.14, "done": 0.0}),
         )
 
-    out_w, out_h = _even(int(info.width * opts.scale)), _even(int(info.height * opts.scale))
-    if preset.proc_height and preset.proc_height < out_h:
-        proc_h = _even(preset.proc_height)
-        proc_w = _even(out_w * proc_h / out_h)
-    else:
-        proc_w, proc_h = out_w, out_h
+    proc_w, proc_h, out_w, out_h = _video_geometry(info, preset, opts)
 
     variant = preset.variant(opts.variant)
     tmp_root = tempfile.mkdtemp(prefix="aesth_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
@@ -265,17 +304,11 @@ def render(
         video_chain: list[Effect] = []
         audio_chain: list[Effect] = []
         if not opts.audio_only and preset.video:
-            video_chain = build_chain(preset.video)
             v_over = _merged_overrides(variant, opts.video_overrides, "video")
-            for eff in video_chain:
-                eff.resolve(ctx, v_over.get(eff.key))
-                eff.prepare(ctx)
+            video_chain = _live_chain(build_chain(preset.video), ctx, v_over)
         if not opts.video_only and info.has_audio and preset.audio:
-            audio_chain = build_chain(preset.audio)
             a_over = _merged_overrides(variant, opts.audio_overrides, "audio")
-            for eff in audio_chain:
-                eff.resolve(ctx, a_over.get(eff.key))
-                eff.prepare(ctx)
+            audio_chain = _live_chain(build_chain(preset.audio), ctx, a_over)
 
         report = _PhasedProgress(progress, _phase_weights(bool(video_chain), info.has_audio))
 
@@ -364,11 +397,8 @@ def _render_audio_only(
         )
         chain: list[Effect] = []
         if not opts.video_only and preset.audio:
-            chain = build_chain(preset.audio)
             over = _merged_overrides(preset.variant(opts.variant), opts.audio_overrides, "audio")
-            for eff in chain:
-                eff.resolve(ctx, over.get(eff.key))
-                eff.prepare(ctx)
+            chain = _live_chain(build_chain(preset.audio), ctx, over)
 
         report("audio", 0.0)
         audio = media.read_audio(input_path, ctx.sr, ctx.channels, opts.t0, duration)
@@ -511,8 +541,7 @@ def _render_video(
         cur_input, cur_is_source = nxt, False
 
     if (proc_w, proc_h) != (out_w, out_h):
-        flavor = preset.upscale if preset.upscale != "auto" else "soft"
-        flags = {"sharp": "lanczos", "soft": "bicubic"}.get(flavor, "bicubic")
+        flags = _upscale_flags(preset)
         final = os.path.join(tmp_root, "video_final.mp4")
         media._run(
             [
@@ -537,3 +566,157 @@ def default_asset_root() -> str:
         return env
     pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(os.path.dirname(pkg_dir), "assets")
+
+
+# ── stills ─────────────────────────────────────────────────────────────
+@dataclass
+class Still:
+    """The result of a still render."""
+    path: str
+    # True when this is exactly frame 0 of the clip, one H.264 pass aside.
+    exact: bool
+
+
+def render_still(
+    input_path: str,
+    output_path: str,
+    preset: Preset,
+    opts: RenderOptions,
+    n_frames_override: Optional[int] = None,
+) -> Still:
+    """Frame 0 of what `render` would produce, without rendering the rest.
+
+    The point is a picture to judge a knob by, several seconds before the clip
+    that confirms it. Everything that decides a pixel is set up exactly as
+    `render` sets it up - era resolution, delivery size, seed, master dials,
+    variant, overrides - and `n_frames` above all, because the temporal tracks
+    in rng.py are filtered and percentile-normalised across their whole length.
+    Rendering one frame *as a one-frame clip* would move time-base error,
+    flagging, tracking error and gate weave to a full-scale excursion and show
+    you a frame the preview never contains. Keeping the count and stopping after
+    the first frame costs a ninetieth of the work and reproduces it.
+
+    Real codec passes are the exception. They treat an encoded clip, and one
+    frame is not one: they run here on a one-frame file, which is the same codec
+    doing the same thing with no neighbouring frames to predict from. Close, but
+    not the clip, and `Still.exact` says so.
+    """
+    info = media.probe(input_path)
+    if not info.has_video:
+        raise ValueError("a still needs a source with a picture")
+    duration, fps, n_frames = _timing(info, opts)
+    if n_frames_override is not None:
+        n_frames = max(int(n_frames_override), 1)
+    proc_w, proc_h, out_w, out_h = _video_geometry(info, preset, opts)
+    variant = preset.variant(opts.variant)
+    tmp_root = tempfile.mkdtemp(prefix="aesth_still_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+
+    try:
+        ctx = Context(
+            width=proc_w,
+            height=proc_h,
+            fps=fps,
+            n_frames=n_frames,
+            sr=info.sr if info.has_audio else 48000,
+            channels=min(info.channels, 2) if info.has_audio else 2,
+            seed=opts.seed,
+            intensity=opts.intensity,
+            scratch_dir=tmp_root,
+            asset_root=default_asset_root(),
+            out_width=out_w,
+            out_height=out_h,
+            texture=opts.texture,
+        )
+
+        chain: list[Effect] = []
+        if preset.video:
+            v_over = _merged_overrides(variant, opts.video_overrides, "video")
+            chain = _live_chain(build_chain(preset.video), ctx, v_over)
+
+        exact = not any(eff.kind == "filepass" for eff in chain)
+
+        # Frame 0 of the output can be a later frame of the source, if anything
+        # in the chain remaps time.
+        want = int(_compose_src_map(chain, ctx, n_frames)[0]) if chain else 0
+        reader = media.read_frames(
+            input_path, proc_w, proc_h, fps,
+            t0=opts.t0, duration=duration, matrix=media.source_matrix(info),
+        )
+        frame: Optional[np.ndarray] = None
+        try:
+            for i, got in enumerate(reader):
+                frame = got
+                if i >= want:
+                    break
+        finally:
+            reader.close()
+        if frame is None:
+            raise media.MediaError("no frame to build a still from")
+
+        ctx.fi_out = 0
+        ctx.fi_src = want
+        for eff in chain:
+            if eff.kind == "filepass":
+                one_in = os.path.join(tmp_root, f"{eff.key}_in.mp4")
+                one_out = os.path.join(tmp_root, f"{eff.key}_out.mp4")
+                media.write_one_frame_video(one_in, frame, fps)
+                eff.file_pass(one_in, one_out, ctx)
+                got = next(media.read_frames(one_out, proc_w, proc_h, fps), None)
+                if got is not None:
+                    frame = got
+            else:
+                frame = eff.process(frame, ctx)
+                if frame.dtype != np.float32:
+                    frame = frame.astype(np.float32)
+
+        media.write_image(output_path, frame, out_w, out_h, _upscale_flags(preset))
+        return Still(path=output_path, exact=exact)
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def render_still_layers(
+    input_path: str,
+    output_path: str,
+    layers: list[Layer],
+    opts: RenderOptions,
+) -> Still:
+    """A stack's frame 0: each layer's still treated by the next.
+
+    The clip version feeds each layer the *video* the one below produced, so a
+    still of a stack is an approximation by construction - layer two is reading
+    one frame where it would have read a clip. Every layer still keeps the real
+    frame count, so nothing drifts on the temporal tracks; what it cannot keep
+    is the generation loss of a full encode between layers.
+    """
+    if not layers:
+        raise ValueError("render_still_layers needs at least one layer")
+    tmp_root = tempfile.mkdtemp(prefix="aesth_still_stack_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+    try:
+        info = media.probe(input_path)
+        _, _, n_frames = _timing(info, opts)
+        current = input_path
+        exact = len(layers) == 1
+        for i, layer in enumerate(layers):
+            last = i == len(layers) - 1
+            step = RenderOptions(
+                seed=layer.seed,
+                intensity=layer.intensity,
+                texture=layer.texture,
+                variant=layer.variant,
+                video_overrides=layer.video_overrides,
+                audio_overrides=layer.audio_overrides,
+                # Trimming and preview scaling belong to the first pass only,
+                # exactly as render_layers does it.
+                t0=opts.t0 if i == 0 else 0.0,
+                duration=opts.duration if i == 0 else None,
+                scale=opts.scale if i == 0 else 1.0,
+                crf=opts.crf,
+            )
+            dest = output_path if last else os.path.join(tmp_root, f"still_{i}.png")
+            got = render_still(current, dest, layer.preset, step, n_frames_override=n_frames)
+            exact = exact and got.exact
+            current = dest
+        return Still(path=output_path, exact=exact)
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)

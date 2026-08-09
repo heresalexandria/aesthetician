@@ -135,6 +135,10 @@ function newSession(info) {
     treatedSrc: null,
     originalSrc: null,
     originalT: null,
+    // The most recent preview this tab asked for. Results are recorded per tab
+    // rather than per screen, so this is what keeps an older render that lands
+    // late from overwriting a newer one behind the user's back.
+    previewJob: null,
   };
   for (const key of LAYER_FIELDS) {
     Object.defineProperty(sess, key, {
@@ -286,6 +290,7 @@ function activateSession(id) {
 
   // Restore this tab's already-rendered preview if it has one; the files live in
   // the preview cache, so switching back is instant and costs no re-render.
+  hideStill();   // any stand-in on screen belongs to the tab being left
   if (sess.treatedSrc && sess.originalSrc) {
     $('player-empty').classList.add('hidden');
     setVideo(videoA, sess.treatedSrc);
@@ -503,16 +508,23 @@ function paramTip(path, prm, baseVal) {
   facts.push(`preset value ${baseVal}`);
   if (String(prm.default) !== String(baseVal)) facts.push(`effect default ${prm.default}`);
   if (prm.iscale) facts.push('follows Intensity');
-  if (NOISE_HINT.has(path.split('.').pop()) ) facts.push('follows Texture');
+  // Repeats of one effect carry a #n suffix; Texture scales the effect, not the
+  // copy, so the suffix comes off before the lookup.
+  if (NOISE_HINT.has(path.replace(/#\d+\./, '.'))) facts.push('follows Texture');
   return { title: prm.label, desc: prm.desc || '', facts, path };
 }
 
-/* Params the master Texture dial scales (mirrors engine/texture.py). Used only
-   to annotate tooltips. */
-const NOISE_HINT = new Set(['amount', 'luma_noise', 'chroma_noise', 'fm_sparkle',
-  'azimuth_error', 'phase_noise', 'snow', 'impulse_noise', 'noise_floor',
-  'retrace_lines', 'moire_cam', 'agc_gain_noise', 'density', 'toner', 'grain_ink',
-  'intermittent', 'mottle']);
+/* Params the master Texture dial scales, keyed exactly as engine/texture.py
+   keys them. Used only to annotate tooltips - but on the effect *and* the param,
+   because matching the bare name told anyone hovering Saturation → Amount that
+   the Texture dial would move it, and it will not. */
+const NOISE_HINT = new Set(['grain.amount', 'grain.intermittent', 'grain.mottle',
+  'dust.density', 'vhs.luma_noise', 'vhs.chroma_noise', 'vhs.fm_sparkle',
+  'vhs.azimuth_error', 'ntsc.phase_noise', 'signal_rf.snow',
+  'signal_rf.impulse_noise', 'rf_dx.noise_floor', 'herringbone.amount',
+  'crt.retrace_lines', 'lcd_screen.moire_cam', 'exposure_auto.agc_gain_noise',
+  'cel_dirt.density', 'paper_texture.amount', 'photocopy.toner',
+  'riso_print.grain_ink']);
 
 // ── range fill ──────────────────────────────────────────────────────
 /* Sliders paint their track with the accent gradient up to the thumb; the CSS
@@ -1597,7 +1609,9 @@ function customCard(c) {
   const card = document.createElement('div');
   card.className = 'preset-card custom' + (c.id === selectionId() ? ' sel' : '');
   card.dataset.pid = c.id;
-  card.title = `Custom aesthetic based on ${base.name}`;
+  // The name leads, because two lines still clamp a long one and the tooltip is
+  // then the only place the whole thing exists.
+  card.title = `${c.name}\n\nCustom aesthetic based on ${base.name}`;
 
   const holder = thumbFor(base);
   const badge = document.createElement('span');
@@ -1657,8 +1671,8 @@ function stackCard(k) {
     + (usable.length ? '' : ' broken');
   card.dataset.pid = k.id;
   card.title = usable.length
-    ? `Saved stack · ${stackChain(k)}`
-    : 'This stack uses aesthetics that are not in this build.';
+    ? `${k.name}\n\nSaved stack · ${stackChain(k)}`
+    : `${k.name}\n\nThis stack uses aesthetics that are not in this build.`;
 
   let holder;
   if (base) {
@@ -2349,6 +2363,32 @@ function effectCard({ eid, key, params }, variantOv) {
   head.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`
     + (hasText ? '<span class="e-text" title="Burns text into the picture - editable below">Aa</span>' : '')
     + (tweaked ? '<span class="e-tweaks" title="Has manual tweaks"></span>' : '');
+
+  /* Every effect carries an `enabled` flag, and it belongs in the header rather
+     than buried in the parameter list: it is the one control that decides
+     whether any of the others matter. Some effects have no dial that reaches
+     nothing - a Risograph is its ink pair, a projection surface is its material
+     - so this is the only way to hear or see the chain without them. */
+  const onPath = `${key}.enabled`;
+  const onBase = onPath in variantOv ? variantOv[onPath]
+    : ('enabled' in params ? params.enabled : true);
+  const isOn = onPath in state.sets ? state.sets[onPath] : onBase;
+  card.classList.toggle('off', !isOn);
+  const power = document.createElement('input');
+  power.type = 'checkbox';
+  power.className = 'e-power';
+  power.checked = !!isOn;
+  power.title = isOn ? `Switch ${eff.label} off for this layer` : `Switch ${eff.label} back on`;
+  power.onclick = (e) => e.stopPropagation();      // the header row toggles open
+  power.onchange = () => {
+    if (power.checked === onBase) delete state.sets[onPath];
+    else state.sets[onPath] = power.checked;
+    card.classList.toggle('off', !power.checked);
+    power.title = power.checked ? `Switch ${eff.label} off for this layer` : `Switch ${eff.label} back on`;
+    syncOverrideRow();
+    schedulePreview();
+  };
+  head.appendChild(power);
   attachTip(head, () => ({
     title: eff.label,
     desc: eff.desc || '',
@@ -2363,6 +2403,7 @@ function effectCard({ eid, key, params }, variantOv) {
 
   let lastGroup = null;
   for (const prm of eff.params) {
+    if (prm.name === 'enabled') continue;   // it lives in the header
     const path = `${key}.${prm.name}`;
     const baseVal = path in variantOv ? variantOv[path] : (prm.name in params ? params[prm.name] : prm.default);
     const curVal = path in state.sets ? state.sets[path] : baseVal;
@@ -2390,8 +2431,16 @@ function paramRow(path, prm, baseVal, curVal) {
   row.appendChild(label);
   attachTip(row, () => paramTip(path, prm, baseVal));
 
-  const commit = (val) => {
-    if (val === baseVal || String(val) === String(baseVal)) delete state.sets[path];
+  /* Numbers are pinned to the precision the row prints before they are stored,
+     so what a row says is what the engine is handed. Everything else goes
+     through untouched. */
+  const norm = (v) => (prm.kind === 'float' || prm.kind === 'int') ? quantize(v, prm) : v;
+
+  const commit = (rawVal) => {
+    const val = norm(rawVal);
+    // Landing back on the preset's own number clears the override rather than
+    // pinning a rounded copy of it next to it.
+    if (val === norm(baseVal) || String(val) === String(baseVal)) delete state.sets[path];
     else state.sets[path] = val;
     row.classList.toggle('overridden', path in state.sets);
     syncOverrideRow();
@@ -2403,14 +2452,35 @@ function paramRow(path, prm, baseVal, curVal) {
     slider.type = 'range';
     slider.className = 'range-fill';
     slider.min = prm.lo; slider.max = prm.hi;
-    slider.step = prm.kind === 'int' ? 1 : (prm.step || (prm.hi - prm.lo) / 200);
+    slider.step = sliderStep(prm);
     slider.value = curVal;
     paintRange(slider);
     const val = document.createElement('span');
     val.className = 'pval';
-    val.textContent = fmtVal(curVal, prm);
-    slider.oninput = () => { val.textContent = fmtVal(parseFloat(slider.value), prm); paintRange(slider); };
-    slider.onchange = () => commit(prm.kind === 'int' ? parseInt(slider.value, 10) : parseFloat(slider.value));
+    const paint = (v) => {
+      val.textContent = fmtVal(v, prm);
+      // The one thing the thumb cannot show: on a wide range a live value can
+      // park against the same end stop as a dead one.
+      row.classList.toggle('at-min', quantize(v, prm) <= prm.lo);
+      paintRange(slider);
+    };
+    paint(curVal);
+    slider.oninput = () => paint(parseFloat(slider.value));
+    slider.onchange = () => commit(parseFloat(slider.value));
+    /* The grid is finer than a keypress wants to move - it has to be, to hold
+       the numbers presets actually author - so the arrows keep their own nudge
+       of a 200th of the range, which is the travel they always had. */
+    slider.addEventListener('keydown', (e) => {
+      const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      const nudge = prm.kind === 'int' ? 1 : (prm.hi - prm.lo) / 200;
+      const next = quantize(Math.min(prm.hi, Math.max(prm.lo, parseFloat(slider.value) + dir * nudge)), prm);
+      if (next === parseFloat(slider.value)) return;
+      slider.value = next;
+      paint(next);
+      commit(next);
+    });
     row.appendChild(slider);
     row.appendChild(val);
   } else if (prm.kind === 'bool') {
@@ -2459,9 +2529,48 @@ function paramRow(path, prm, baseVal, curVal) {
   return row;
 }
 
+/* ── slider precision ───────────────────────────────────────────────
+   A range input snaps its value onto `min + n*step`, so a step coarser than the
+   numbers presets actually author makes the thumb sit somewhere the engine is
+   not. Dropouts run 0 to 60 events/s, which used to give a step of 0.3: a
+   preset authored at 0.4 landed the thumb on 0.3, hard against the left stop
+   and indistinguishable from a parameter switched off - while the engine went
+   on rendering 0.4. Somebody saved that as a custom aesthetic, read the knob as
+   zero and got dropouts through a whole export.
+
+   The grid, the readout and the number written into `sets` all come from here,
+   so they cannot drift apart again. tests/test_renderer.js walks the library
+   and holds them to it. */
+function valueDecimals(prm, v) {
+  if (prm.kind === 'int') return 0;
+  // Ranges this narrow (setup level, black crush, keystone) are all detail; two
+  // decimals would flatten most of the travel to the same printed number.
+  if (Math.abs(prm.hi - prm.lo) < 0.5) return 3;
+  return Math.abs(v) >= 100 ? 0 : 2;
+}
+
+/* One grid for every float, fine enough for the most precise number anyone
+   authors (three decimals, in tone.lift at 0.015) whatever the range around it.
+   Deriving it from the range is what went wrong before: any rule that scales
+   with `hi - lo` is coarse exactly where the range is widest, which is exactly
+   where a value near the bottom has no other way to show itself. */
+function sliderStep(prm) {
+  if (prm.kind === 'int') return 1;
+  return prm.step || 0.001;
+}
+
+/* A value pinned to what the row can print, so a slider never holds 0.4025
+   under a readout that says 0.40. */
+function quantize(v, prm) {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  if (!Number.isFinite(n)) return v;
+  if (prm.kind === 'int') return Math.round(n);
+  return parseFloat(n.toFixed(valueDecimals(prm, n)));
+}
+
 function fmtVal(v, prm) {
   if (typeof v !== 'number') return String(v);
-  const s = prm.kind === 'int' ? String(v) : (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
+  const s = prm.kind === 'int' ? String(v) : v.toFixed(valueDecimals(prm, v));
   return prm.unit ? `${s}${prm.unit === '°' ? '' : ' '}${prm.unit}` : s;
 }
 
@@ -2491,11 +2600,42 @@ function layerSpec(sess = state) {
   }));
 }
 
+/* ── the paused player's first look ──────────────────────────────────
+   Frame 0 of the very same render, which the engine can produce for about a
+   tenth of the clip's cost because it does one frame of pixel work instead of
+   ninety. Only while paused: a still over a running loop would just be a
+   flicker, and pausing is already what you do when you are working on a look
+   rather than watching one. */
+function showStill(src, exact) {
+  const img = $('still-frame');
+  img.src = `file://${src}?t=${Date.now()}`;
+  img.classList.remove('hidden');
+  $('player-wrap').classList.add('has-still');
+  $('player-empty').classList.add('hidden');
+  const chip = $('still-chip');
+  chip.classList.remove('hidden');
+  chip.classList.toggle('provisional', !exact);
+  chip.textContent = exact ? 'still · frame 1' : 'still · frame 1 · settles when the clip lands';
+  chip.title = exact
+    ? 'Frame 1 of the clip being rendered, exactly as it will look.'
+    : 'This chain has a real codec pass, which needs a clip rather than one '
+      + 'frame. The picture will shift slightly once the clip finishes.';
+}
+
+function hideStill() {
+  $('still-frame').classList.add('hidden');
+  $('still-frame').removeAttribute('src');
+  $('still-chip').classList.add('hidden');
+  $('player-wrap').classList.remove('has-still');
+}
+
 async function runPreview() {
   if (!state.file || !liveLayers(state).length) return;
   const sess = state;                    // this render belongs to THIS tab
   const jobId = `job${++G.jobCounter}`;
   G.activeJob = jobId;
+  sess.previewJob = jobId;
+  hideStill();                           // whatever is up belongs to the last render
   showRenderOverlay(true, 'rendering preview…', 0);
   const req = {
     jobId,
@@ -2515,6 +2655,19 @@ async function runPreview() {
     videoOnly: $('exp-video-only').checked,
     audioOnly: $('exp-audio-only').checked,
   };
+  /* Alongside the clip rather than before it: the still is short enough that
+     racing it costs the clip almost nothing, and serialising them would push
+     the clip back by the whole still. Whichever lands first paints - and on a
+     cache hit that is the clip, so the still has to know it has been beaten by
+     *this* render rather than by the one still on screen from last time. */
+  let clipPainted = false;
+  if (G.paused && !state.audioSource) {
+    window.aesth.still(req).then((s) => {
+      if (clipPainted || sess.previewJob !== jobId || sess.id !== G.activeId) return;
+      showStill(s.output, s.exact);
+    }).catch(() => { /* the clip is the real answer; a lost still is not worth a message */ });
+  }
+
   try {
     const [treated, original] = await Promise.all([
       window.aesth.preview(req),
@@ -2523,13 +2676,20 @@ async function runPreview() {
         : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale, audioSource: state.audioSource }),
     ]);
     // Record the result on its own session even if the user has moved on, so
-    // coming back to that tab costs nothing.
+    // coming back to that tab costs nothing - but only while this is still the
+    // render that tab last asked for. A knob moved mid-render starts a newer
+    // one, and if that newer one is a cache hit it answers immediately while
+    // this one is still going; landing afterwards and writing over it would
+    // leave the tab holding a render of settings the user has already left,
+    // which is what you would then get back on returning to it.
+    if (sess.previewJob !== jobId) return;
     sess.treatedSrc = treated.output;
     sess.originalSrc = original.output;
     sess.originalT = req.start;
     if (sess.id !== G.activeId) return;  // a different tab is on screen now
     if (G.activeJob !== jobId) return;   // superseded by a newer render
     $('player-empty').classList.add('hidden');
+    clipPainted = true;
     setVideo(videoA, treated.output);
     setVideo(videoB, original.output);
   } catch (err) {
@@ -2546,6 +2706,9 @@ function setVideo(el, src) {
   el.src = `file://${src}?t=${Date.now()}`;
   el.load();
   el.onloadeddata = () => {
+    // The clip is here, so the stand-in has done its job. Swapped on load
+    // rather than on request, so there is never a blank frame between them.
+    if (el === videoA) hideStill();
     try { el.currentTime = Math.min(t, el.duration - 0.05) || 0; } catch (_) {}
     el.muted = el === videoB ? true : G.muted;
     // A held pause survives re-renders: the new take arrives on a still frame
@@ -2571,7 +2734,8 @@ function setPlaying(play) {
   btn.title = G.paused
     ? 'Play the preview (or press Space)'
     : 'Pause the looping preview (or press Space)';
-  if (!videoA.getAttribute('src')) return;
+  if (!videoA.getAttribute('src')) return;   // nothing to play; a still may still be up
+  if (play) hideStill();                     // asking for the clip means asking past the still
   for (const v of [videoA, videoB]) {
     if (play) v.play().catch(() => {});
     else v.pause();
@@ -2733,6 +2897,8 @@ function wireControls() {
   const ab = $('btn-ab');
   const showOriginal = (on) => {
     videoA.style.opacity = on ? '0' : '1';
+    // The still sits above videoA, so it has to step aside for the same reason.
+    $('still-frame').style.opacity = on ? '0' : '1';
     ab.classList.toggle('held', on);
     $('ab-badge').classList.toggle('hidden', !on);
     if (on) { videoB.currentTime = videoA.currentTime; videoB.muted = G.muted; videoA.muted = true; }
@@ -2742,6 +2908,15 @@ function wireControls() {
   ab.addEventListener('mouseup', () => showOriginal(false));
   ab.addEventListener('mouseleave', () => showOriginal(false));
   G.showOriginal = showOriginal;   // the B-key shortcut shares this
+
+  /* Clicking the picture stops and starts it, the same as the button and the
+     space bar. Stopping a loop on the frame you want to look at is the most
+     common thing anyone does here, and it should not need a trip to a 24px
+     button below the picture. */
+  $('player-wrap').addEventListener('click', () => {
+    if (!videoA.getAttribute('src')) return;   // nothing rendered yet
+    setPlaying(G.paused);
+  });
 
   const muteBtn = $('btn-mute');
   muteBtn.classList.toggle('on', !G.muted);
