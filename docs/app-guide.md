@@ -170,7 +170,16 @@ replaces the installed copy and restarts. Nothing is downloaded until you ask.
 
 If anything is still exporting, the button turns red and says **Finish exports
 first**, and the export panel opens. Let the renders finish, or stop them, and
-the update goes through. See [updates.md](updates.md) for the details.
+the update goes through.
+
+Newer is not always what you want. **Other versions** in the same dialog lists
+every release that has been published, with the date each went out and the one
+you are running marked. Pick one and it shows what that release shipped with and
+offers to install it, older versions included - useful for working out which
+release a bug arrived in, or for stepping back off one that broke something.
+Going back changes nothing you have saved, and the next launch offers the newer
+release again. Releases with no build for your machine say so instead of
+pretending. See [updates.md](updates.md) for the details.
 
 ## Stacking aesthetics as layers
 

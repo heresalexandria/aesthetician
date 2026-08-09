@@ -9,6 +9,9 @@ installs it in place.
 [ v0.5.0 ] [ ● Update available ] [ ⭳ 2 exporting ]
 ```
 
+The same dialog can install any *other* published release - see
+[Going back to an older version](#going-back-to-an-older-version).
+
 ## Why not electron-updater
 
 The obvious answer is `electron-updater`, and it does not work here.
@@ -36,6 +39,7 @@ this can go.
 | every launch | read the version, paint the chip |
 | launch, if the last check was over 24 h ago | check GitHub in the background |
 | clicking the version chip | open the dialog; check on demand |
+| unfolding **Other versions** | read the release list, cached for 10 min |
 | `--smoke` / `--shot` | no check at all |
 
 The last check time lives in `update-state.json` under the app's user-data
@@ -69,6 +73,39 @@ turns red, says `Finish exports first`, and opens the export panel. Killing
 someone's half-finished render to install an update is not a trade the app gets
 to make on their behalf.
 
+## Going back to an older version
+
+**Other versions** in the About dialog unfolds a picker listing every published
+release, newest first, with the date it went out and the version currently
+running marked. Choosing one shows what that release shipped with and offers to
+download and install it, the same way an update is downloaded and installed -
+the swap does not care which direction it moves.
+
+It exists for the two moments where the newest build is not the one you want:
+pinning down which release a bug arrived in, and getting off a release that
+broke something while the fix is being written.
+
+| what the picker refuses | what it says |
+|---|---|
+| a release with no build for this machine (the early ones have none) | names the platform and points at the release page |
+| a dev checkout | `check out the tag you want instead` |
+| a tag GitHub does not have | `no release tagged …` |
+
+Two things follow from installing an older build and are worth knowing:
+
+- **Nothing you have saved is touched.** Favorites, custom aesthetics and saved
+  stacks live in the user-data directory, which the swap leaves alone. An older
+  build simply ignores entries it does not understand.
+- **The update check comes back.** Installing clears the last-check timestamp,
+  so the next launch notices the newer release and offers it again. That is the
+  intended way back up.
+
+The list itself is one `GET /releases?per_page=30`, cached for ten minutes so
+opening the picker twice does not spend two of the sixty unauthenticated API
+calls an hour that GitHub allows. Tags are matched against the list GitHub
+returned rather than pasted into a URL, so the tag the renderer names never
+decides what gets fetched.
+
 ## Testing a change to it
 
 The pure decisions - version comparison, asset selection, URL allow-listing -
@@ -89,6 +126,10 @@ exercising by hand after any change to `installMac`:
 
 Test the refusal path too, by putting the app somewhere unwritable: the dialog
 should explain rather than quit.
+
+The version picker shares that download and swap, so it needs the same hand
+pass: pick the release *below* the installed one, take it, and confirm the app
+reopens on the older version with its `Update available` button back.
 
 ## Release notes in the dialog
 

@@ -135,6 +135,10 @@ Taking that update downloads the release from GitHub, verifies its checksum,
 replaces the installed copy and restarts - no browser, and no Gatekeeper prompt.
 Exports in flight block an update until they finish or are canceled.
 
+The same dialog lists every published release under **Other versions**, so a
+specific one can be installed on demand - including an older one, for pinning
+down which release a bug arrived in or stepping back off a bad build.
+
 See [docs/updates.md](docs/updates.md).
 
 ## Releases
