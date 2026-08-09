@@ -135,6 +135,14 @@ function newSession(info) {
     treatedSrc: null,
     originalSrc: null,
     originalT: null,
+    // Filmstrip timeline state. The strip is a property of the file alone, so
+    // it is fetched once per session; the event plan depends on every render
+    // knob, so it is cached by the exact layer spec that asked for it.
+    strip: null,         // {frames, duration} from aesth:filmstrip
+    stripJob: null,      // the in-flight fetch, so racing callers share one
+    eventsKey: null,     // JSON.stringify(layerSpec) the cached plan answers
+    eventsPlan: null,    // the aesth:events result for eventsKey
+    eventsJob: null,     // the key being planned right now, to dedupe requests
     // The most recent preview this tab asked for. Results are recorded per tab
     // rather than per screen, so this is what keeps an older render that lands
     // late from overwriting a newer one behind the user's back.
@@ -304,6 +312,10 @@ function activateSession(id) {
       : (sess.audioSource ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
     if (sess.presetId) schedulePreview(true);
   }
+  // The timeline belongs to the tab: repaint its cached strip and plan, and
+  // fetch whichever of the two this session never loaded. Not awaited, because
+  // switching tabs has to stay instant.
+  refreshTimeline();
   setExportStatus('Ready.');
 }
 
@@ -447,9 +459,13 @@ function hideTip() {
   if (tipEl) tipEl.classList.remove('show');
 }
 
-function showTipAt(anchor, { title, desc, facts = [], path = '' }) {
+function showTipAt(anchor, { title, desc, facts = [], path = '', stack = false }) {
   const el = tipNode();
   el.innerHTML = '';
+  // `stack` lays the facts one per line - for payloads that are a dict readout
+  // rather than a few prose fragments. The class comes off again here because
+  // the one tip element is shared by every anchor in the app.
+  el.classList.toggle('stack', stack);
   const h = document.createElement('div');
   h.className = 'tip-title';
   h.textContent = title;
@@ -2637,6 +2653,9 @@ async function runPreview() {
   sess.previewJob = jobId;
   hideStill();                           // whatever is up belongs to the last render
   showRenderOverlay(true, 'rendering preview…', 0);
+  // The tick plan depends on the same state this render does, so it refreshes
+  // alongside - fire and forget, the strip must never delay the preview.
+  refreshTimeline();
   const req = {
     jobId,
     input: state.file.path,
@@ -2715,6 +2734,148 @@ function setVideo(el, src) {
     // rather than restarting the loop under the user.
     if (!G.paused) el.play().catch(() => {});
   };
+}
+
+/* ── filmstrip timeline ──────────────────────────────────────────────
+   A strip of source-frame thumbnails under the player spanning the whole clip,
+   with a colored tick wherever the engine plans discrete damage. Read-only for
+   now: ticks explain themselves on hover and clicking the strip moves the
+   preview window. The editor comes next, so the seams stay clean - fetching is
+   separated from painting, and the cached plan is the aesth:events result
+   exactly as the engine sent it. */
+
+/* One color per event kind. A kind this build has never heard of falls back to
+   the dim ink rather than crashing the paint: the engine grows new kinds, and
+   the strip has to survive every one of them. */
+const TICK_COLORS = {
+  dropout: '#f4b64e',
+  transport_glitch: '#8fb4ff',
+  transport_lock: '#f06a72',
+};
+
+/* CSS position only: scrubbing moves the head many times a second, and paying
+   a repaint of thumbnails and ticks for a pointer move would make the slider
+   feel like wading. */
+function syncTimelinePlayhead() {
+  const total = state.file && state.file.duration;
+  if (!total) return;
+  const left = (state.previewT / total) * 100;
+  $('strip-playhead').style.left = `${left}%`;
+  $('strip-window').style.left = `${left}%`;
+  $('strip-window').style.width = `${(Math.min(G.duration, total) / total) * 100}%`;
+}
+
+/* The frames are a property of the file, not of any knob, so the only reason
+   to repaint is that the strip on screen belongs to another tab - or that a
+   fetch that had failed has since delivered. */
+function paintTimelineFrames(sess) {
+  const host = $('strip-frames');
+  const frames = (sess.strip && sess.strip.frames) || [];
+  const key = `${sess.id}|${frames.length}`;
+  if (host.dataset.key === key) return;
+  host.dataset.key = key;
+  host.innerHTML = '';
+  for (const f of frames) {
+    const img = document.createElement('img');
+    img.src = fileUrl(f);
+    img.draggable = false;
+    host.appendChild(img);
+  }
+}
+
+function paintTimelineMarkers(sess) {
+  const host = $('strip-markers');
+  const key = `${sess.id}|${sess.eventsKey}`;
+  if (host.dataset.key === key) return;
+  host.dataset.key = key;
+  host.innerHTML = '';
+  const total = sess.file.duration;
+  const events = (sess.eventsPlan && sess.eventsPlan.events) || [];
+  const chip = $('strip-count');
+  chip.classList.toggle('hidden', !events.length);
+  chip.textContent = events.length ? `${events.length} event${events.length === 1 ? '' : 's'}` : '';
+  for (const ev of events) {
+    const tick = document.createElement('div');
+    tick.className = 'strip-tick';
+    // Centered on its moment: the tick is 3px wide, so back up one.
+    tick.style.left = `calc(${(ev.t / total) * 100}% - 1px)`;
+    tick.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
+    attachTip(tick, () => ({
+      title: ev.kind.replace(/_/g, ' '),
+      facts: [
+        `effect ${ev.effect}`,
+        `at ${ev.t.toFixed(2)}s`,
+        ...Object.entries(ev.detail || {}).map(([k, v]) => `${k} ${v}`),
+      ],
+      stack: true,
+    }));
+    host.appendChild(tick);
+  }
+}
+
+/* Fetches whatever the strip is missing, then paints. Called fire-and-forget
+   from runPreview - the strip must never delay a render - and from
+   activateSession, so a revisited tab shows its cached strip instantly. The
+   plan is keyed by the exact layer spec, which is why knob-fiddling that lands
+   back on a spec already planned costs nothing. */
+async function refreshTimeline() {
+  const sess = state;
+  const bar = $('timeline');
+  if (!sess.file || !sess.file.path) { bar.classList.add('hidden'); return; }
+  // body.audio-session already keeps the row off screen; skipping here also
+  // keeps us from asking a WAV for frames it does not have.
+  if (sess.audioSource) return;
+  bar.classList.remove('hidden');
+  syncTimelinePlayhead();
+
+  if (!sess.strip && !sess.stripJob) {
+    sess.stripJob = window.aesth.filmstrip({ input: sess.file.path })
+      .then((r) => { sess.strip = r; })
+      .catch(() => { /* the strip is decoration - seek and ticks work without it */ })
+      .finally(() => { sess.stripJob = null; });
+  }
+
+  const key = JSON.stringify(layerSpec(sess));
+  if (sess.eventsKey !== key && sess.eventsJob !== key) {
+    if (!liveLayers(sess).length) {
+      // Nothing selected plans nothing; asking the engine would only earn a
+      // usage error back.
+      sess.eventsKey = key;
+      sess.eventsPlan = null;
+    } else {
+      sess.eventsJob = key;
+      try {
+        const plan = await window.aesth.events({
+          input: sess.file.path,
+          layers: layerSpec(sess),
+          presetId: sess.presetId,
+          variant: sess.variant,
+          sets: sess.sets,
+          seed: sess.seed,
+          intensity: sess.intensity,
+          texture: sess.texture,
+        });
+        // Only keep the answer while it is still the question: a knob moved
+        // during planning makes this plan stale on arrival, and the refresh
+        // that knob triggered is already fetching the real one.
+        if (JSON.stringify(layerSpec(sess)) === key) {
+          sess.eventsKey = key;
+          sess.eventsPlan = plan;
+        }
+      } catch (_) {
+        // A failed plan just leaves the strip tickless. The render pipeline
+        // reports its own failures; a second report for decoration would only
+        // shout over it.
+      } finally {
+        if (sess.eventsJob === key) sess.eventsJob = null;
+      }
+    }
+  }
+
+  if (sess.stripJob) await sess.stripJob;
+  if (sess.id !== G.activeId) return;   // a different tab is on screen now
+  paintTimelineFrames(sess);
+  paintTimelineMarkers(sess);
 }
 
 /* With auto on, every change re-renders by itself and Preview has nothing left
@@ -2862,8 +3023,27 @@ function wireControls() {
     state.previewT = parseFloat(scrub.value);
     paintRange(scrub);
     $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+    syncTimelinePlayhead();
   });
   scrub.addEventListener('change', () => schedulePreview());
+
+  /* The strip is the same seek surface as the slider, just map-shaped: x is
+     time across the whole clip. It borrows the slider's own max and 0.1 s
+     grid, so the two controls can never disagree about where the preview
+     window is allowed to sit. */
+  $('timeline').addEventListener('click', (e) => {
+    if (!state.file || !state.file.duration) return;
+    const r = $('timeline').getBoundingClientRect();
+    if (!r.width) return;
+    const frac = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+    const t = Math.min(frac * state.file.duration, parseFloat(scrub.max) || 0);
+    state.previewT = parseFloat(t.toFixed(1));
+    scrub.value = state.previewT.toFixed(1);
+    paintRange(scrub);
+    $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+    syncTimelinePlayhead();
+    schedulePreview();
+  });
 
   $('auto-preview').checked = G.autoPreview;
   $('auto-preview').addEventListener('change', (e) => {
@@ -2890,6 +3070,8 @@ function wireControls() {
       }
       paintRange(scrub);
     }
+    // The translucent span *is* the window: a new length changes its width.
+    syncTimelinePlayhead();
     schedulePreview();
   });
   const scaleSel = $('preview-scale');
