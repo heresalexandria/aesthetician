@@ -1081,3 +1081,12 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 #strip-count { cursor: pointer; }
 .strip-tick.added { box-shadow: 0 0 0 1px rgba(255,255,255,.75); }
 .strip-tick.edited { box-shadow: 0 0 0 1px rgba(168,141,248,.9); }
+
+/* Instances with duration paint as translucent spans; the ring rules they share
+   with ticks keep meaning the same thing. */
+.strip-tick.span { width: auto; opacity: .5; border-radius: 2px; }
+.strip-tick.span:hover { opacity: .8; }
+#ev-filter { display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
+#ev-filter .chip { font-size: 10.5px; padding: 2px 9px; }
+.ev-knob { display: inline-flex; align-items: center; gap: 5px; }
+.ev-knob input[type="range"] { height: 3px; }

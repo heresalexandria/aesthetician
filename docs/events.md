@@ -36,10 +36,19 @@ trustworthy:
 Costs a chain `prepare`, never a render. Stacks are planned layer by layer with
 the geometry each layer hands the next, and every event carries its layer index.
 
-Effects with events so far: `vhs` (dropout), `vcr_transport` (transport_glitch,
-transport_lock). Continuous effects return nothing from `events()` on purpose -
-they are a curve, not a list of moments, and pretending otherwise would put pins
-on the timeline that mean nothing.
+Effects with events so far: `vhs` (dropout, tracking_storm, skew_tear),
+`vcr_transport` (transport_glitch, transport_lock). Tracking storms are the
+instructive case: the render drives them from a continuous gate track, but what
+that track *produces* is episodes - so the schedule segments the track into
+runs, each run is an instance with a duration and a peak intensity, and the
+per-frame activation the render reads is rasterised back from the (possibly
+edited) list. Untouched, the rasterisation reproduces the original values to
+the bit, which the byte-identity checks hold it to.
+
+Truly continuous damage - tape noise, grain, the head-switch strip - still
+returns nothing from `events()` on purpose: it is a level, not a list of
+moments, and pretending otherwise would put pins on the timeline that mean
+nothing.
 
 ## Ids, and why they are minted early
 

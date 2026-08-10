@@ -537,6 +537,8 @@ class VHS(Effect):
 
     def prepare(self, ctx: Context) -> None:
         self._schedule_dropouts(ctx)
+        self._schedule_storms(ctx)
+        self._schedule_tears(ctx)
         W = ctx.width
         self._k_gen = _lp_kernel(_cut(2.6, W))
         self._genc_cut = _cut(0.5, W)
@@ -584,6 +586,154 @@ class VHS(Effect):
                             "x": x0, "row": r, "L": L, "dark": dark, "rows": rows})
             self._dropouts[fi] = evs
         self._apply_event_edits(ctx)
+
+    def _schedule_storms(self, ctx: Context) -> None:
+        """Tracking storms as instances: the runs the gate track produces.
+
+        The render used to compute activation per frame - a slow gate crossing a
+        threshold the knob sets, times a per-frame flicker - which made storms
+        real but unaddressable: episodes with a start, a length and a peak that
+        existed nowhere as a list. The same arithmetic over the whole track at
+        once yields the same numbers frame for frame, segmented into runs. Each
+        run is an instance with an id; edits move, scale, stretch, remove or add
+        segments; and the per-frame activation the render reads is rasterised
+        from the final list. Untouched, it reproduces the old values exactly.
+        """
+        n = ctx.n_frames
+        v = self.v
+        self._storms: list[dict] = []
+        # Not vectorised, and that is the point. The per-frame original mixed
+        # widths mid-expression - float32 track scalars, a float() promotion at
+        # the clip, the power in float64, the flicker multiply back in whatever
+        # the running numpy promotes to - and both a float32 and a float64
+        # vectorisation of it land a last-bit away often enough to move single
+        # pixels. Running the literal expressions per frame IS the original
+        # computation, whatever numpy's promotion rules are this year; a python
+        # loop over the frame count costs microseconds per frame in prepare.
+        self._track_act = np.zeros(n, np.float64)
+        tr = v["tracking_error"]
+        if tr > 0.0:
+            m = min(n, ctx.noise.n)
+            gate_track = ctx.noise.smooth(f"{self.key}:trgate", 0.35)
+            flick_track = ctx.noise.white(f"{self.key}:trflick")
+            acts = self._track_act
+            for fi in range(m):
+                gate = 0.5 + 0.5 * gate_track[fi]
+                act = float(np.clip((gate - (0.92 - tr)) / 0.30, 0.0, 1.0)) ** 1.3
+                act *= 0.55 + 0.45 * abs(flick_track[fi])
+                if act > 0.02:
+                    acts[fi] = float(act)
+            f = 0
+            while f < m:
+                if acts[f] <= 0.0:
+                    f += 1
+                    continue
+                f1 = f
+                while f1 < m and acts[f1] > 0.0:
+                    f1 += 1
+                self._storms.append({
+                    "id": f"{self.key}:tracking_storm:{ctx.abs_frame(f)}:0",
+                    "f0": f, "seg": acts[f:f1].copy(),
+                })
+                f = f1
+            self._track_act = np.zeros(n, np.float64)
+        fps = max(ctx.fps, 1.0)
+        for e in ctx.event_edits:
+            if e.get("effect", self.key) != self.key or e.get("kind") != "tracking_storm":
+                continue
+            op = e.get("op")
+            if op == "add":
+                f0 = ctx.frame_of(float(e.get("t", 0.0)))
+                d = e.get("detail") or {}
+                length = max(int(round(float(d.get("dur_s", 0.6)) * fps)), 2)
+                peak = float(np.clip(float(d.get("intensity", 0.8)), 0.05, 1.0))
+                # The flicker comes from the op, not the seed, so an added storm
+                # keeps its exact character across a reseed.
+                g = stream(0, f"edit:{e.get('id') or f0}")
+                u = np.linspace(-1.0, 1.0, length)
+                env = (0.5 + 0.5 * np.cos(np.pi * u)) * peak
+                env *= (0.55 + 0.45 * g.random(length))
+                if 0 <= f0 < n:
+                    self._storms.append({"id": e.get("id") or f"edit:add:{f0}",
+                                         "f0": f0, "seg": env})
+                continue
+            hit = next((x for x in self._storms if x["id"] == e.get("id")), None)
+            if hit is None:
+                continue
+            if op == "remove":
+                self._storms.remove(hit)
+            elif op == "move":
+                nf0 = ctx.frame_of(float(e.get("t", hit["f0"] / fps)))
+                if 0 <= nf0 < n:
+                    hit["f0"] = nf0
+                else:
+                    self._storms.remove(hit)
+            elif op == "tune":
+                d = e.get("detail") or {}
+                if "intensity" in d:
+                    peak = float(hit["seg"].max()) or 1.0
+                    hit["seg"] = np.clip(hit["seg"] * (float(d["intensity"]) / peak), 0.0, 1.0)
+                if "dur_s" in d:
+                    length = max(int(round(float(d["dur_s"]) * fps)), 2)
+                    old = hit["seg"]
+                    xs = np.linspace(0, len(old) - 1, length)
+                    hit["seg"] = np.interp(xs, np.arange(len(old)), old)
+        for st in self._storms:
+            f0 = st["f0"]
+            f1 = min(f0 + len(st["seg"]), n)
+            if f1 > f0:
+                self._track_act[f0:f1] = np.maximum(self._track_act[f0:f1],
+                                                    st["seg"][: f1 - f0])
+
+    def _schedule_tears(self, ctx: Context) -> None:
+        """Skew tears as instances. Already events at heart - a Poisson mask
+        with a hard shear drawn per hit - so this only lifts the mask into a
+        list. The geometry generator stays keyed to the frame the tear was
+        minted on, which is what lets a moved tear keep its own shape.
+        """
+        n = ctx.n_frames
+        self._tears: list[dict] = []
+        st = self.v["skew_tear"]
+        if st > 0.0:
+            ev = ctx.noise.events(f"{self.key}:skewev", per_second=0.12 + 0.55 * st, min_gap_s=1.2)
+            for idx in np.nonzero(ev[:n] > 0.0)[0]:
+                self._tears.append({"id": f"{self.key}:skew_tear:{ctx.abs_frame(int(idx))}:0",
+                                    "fi": int(idx), "key_fi": int(idx), "e": 1.0})
+        fps = max(ctx.fps, 1.0)
+        for e in ctx.event_edits:
+            if e.get("effect", self.key) != self.key or e.get("kind") != "skew_tear":
+                continue
+            op = e.get("op")
+            if op == "add":
+                fi = ctx.frame_of(float(e.get("t", 0.0)))
+                if 0 <= fi < n:
+                    d = e.get("detail") or {}
+                    self._tears.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi,
+                                        "key_fi": fi,
+                                        "e": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 2.0))})
+                continue
+            hit = next((x for x in self._tears if x["id"] == e.get("id")), None)
+            if hit is None:
+                continue
+            if op == "remove":
+                self._tears.remove(hit)
+            elif op == "move":
+                nfi = ctx.frame_of(float(e.get("t", hit["fi"] / fps)))
+                if 0 <= nfi < n:
+                    hit["fi"] = nfi          # key_fi stays: the tear keeps its shape
+                else:
+                    self._tears.remove(hit)
+            elif op == "tune":
+                d = e.get("detail") or {}
+                if "intensity" in d:
+                    hit["e"] = float(np.clip(float(d["intensity"]), 0.05, 2.0))
+        # frame -> (strength, geometry key): the tear frame at full strength and
+        # the frame after it relaxing back at half, exactly as the render did.
+        self._tear_map: dict[int, tuple[float, int]] = {}
+        for t in self._tears:
+            self._tear_map[t["fi"]] = (t["e"], t["key_fi"])
+            if t["fi"] + 1 < n and (t["fi"] + 1) not in [x["fi"] for x in self._tears]:
+                self._tear_map.setdefault(t["fi"] + 1, (0.5 * t["e"], t["key_fi"]))
 
     def _apply_event_edits(self, ctx: Context) -> None:
         """The user's diff on top of the seeded schedule.
@@ -686,7 +836,21 @@ class VHS(Effect):
                             "length_px": ev["L"], "rows": ev["rows"],
                             "polarity": "dark" if ev["dark"] else "bright"},
                 ))
-        return out
+        for st in getattr(self, "_storms", []):
+            out.append(Event(
+                t=ctx.t0 + st["f0"] / fps,
+                dur=len(st["seg"]) / fps,
+                kind="tracking_storm",
+                detail={"id": st["id"], "intensity": round(float(st["seg"].max()), 3)},
+            ))
+        for tr in getattr(self, "_tears", []):
+            out.append(Event(
+                t=ctx.t0 + tr["fi"] / fps,
+                dur=2.0 / fps,              # the tear and its relaxing frame
+                kind="skew_tear",
+                detail={"id": tr["id"], "intensity": round(tr["e"], 3)},
+            ))
+        return sorted(out, key=lambda e: e.t)
 
     def _geometry_offsets(self, H: int, W: int, ctx: Context) -> tuple[np.ndarray, tuple]:
         """Per-row x displacement for TBE + flagging + head switch + tracking."""
@@ -720,11 +884,10 @@ class VHS(Effect):
 
         st = v["skew_tear"]
         if st > 0.0:
-            ev = ctx.noise.events(f"{self.key}:skewev", per_second=0.12 + 0.55 * st, min_gap_s=1.2)
-            e = float(ev[fi])
-            fe = fi
-            if e <= 0.0 and fi > 0 and ev[fi - 1] > 0.0:
-                e, fe = 0.5, fi - 1               # second frame, relaxing back
+            # The schedule owns the when and the how-hard; the geometry is drawn
+            # from the frame the tear was minted on, so a moved tear tears the
+            # same way in its new home.
+            e, fe = getattr(self, "_tear_map", {}).get(fi, (0.0, fi))
             if e > 0.0:
                 ge = ctx.frame_rng(f"{self.key}:skew", fe)   # tear keeps its place
                 y0 = int(H * (0.03 + 0.11 * ge.random()))
@@ -757,10 +920,12 @@ class VHS(Effect):
 
         band = None
         tr = v["tracking_error"]
-        if tr > 0.0:
-            gate = 0.5 + 0.5 * ctx.noise.smooth(f"{self.key}:trgate", 0.35)[fi]
-            act = float(np.clip((gate - (0.92 - tr)) / 0.30, 0.0, 1.0)) ** 1.3
-            act *= 0.55 + 0.45 * abs(ctx.noise.white(f"{self.key}:trflick")[fi])
+        if tr > 0.0 or len(getattr(self, "_storms", [])):
+            # The per-frame activation now comes off the rasterised schedule -
+            # identical numbers when nobody has edited, and the edited truth
+            # when someone has. `tr` alone no longer gates it: an added storm
+            # must land even on a preset whose dial sits at zero.
+            act = float(self._track_act[fi]) if fi < len(self._track_act) else 0.0
             if act > 0.02:
                 g = ctx.frame_rng(f"{self.key}:track")
                 bh = (36.0 + 84.0 * (0.5 + 0.5 * ctx.noise.smooth(f"{self.key}:trh", 0.2)[fi])) * sy
@@ -985,7 +1150,7 @@ class VCRTransport(Effect):
             for i, idx in enumerate(np.nonzero(ev)[0]):
                 dur = max(int(g.uniform(0.2, 0.8) * fps), 2)
                 glitches.append({"id": f"{self.key}:transport_glitch:{ctx.abs_frame(int(idx))}:0",
-                                 "fi": int(idx), "dur": dur})
+                                 "fi": int(idx), "dur": dur, "amp": 1.0})
         for e in ctx.event_edits:
             if e.get("effect", self.key) != self.key or e.get("kind", "transport_glitch") != "transport_glitch":
                 continue
@@ -993,8 +1158,10 @@ class VCRTransport(Effect):
             if op == "add":
                 fi = ctx.frame_of(float(e.get("t", 0.0)))
                 if 0 <= fi < n:
-                    dur = max(int(float((e.get("detail") or {}).get("dur_s", 0.5)) * fps), 2)
-                    glitches.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi, "dur": dur})
+                    d = e.get("detail") or {}
+                    dur = max(int(float(d.get("dur_s", 0.5)) * fps), 2)
+                    glitches.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi, "dur": dur,
+                                     "amp": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 1.0))})
                 continue
             hit = next((x for x in glitches if x["id"] == e.get("id")), None)
             if hit is None:
@@ -1011,14 +1178,17 @@ class VCRTransport(Effect):
                 d = e.get("detail") or {}
                 if "dur_s" in d:
                     hit["dur"] = max(int(float(d["dur_s"]) * fps), 2)
+                if "intensity" in d:
+                    hit["amp"] = float(np.clip(float(d["intensity"]), 0.05, 1.0))
         self._glitches = glitches
         env = np.zeros(n, np.float32)
         for gl in glitches:
             idx, dur = gl["fi"], gl["dur"]
-            prof = np.ones(dur, np.float32)
+            prof = np.full(dur, gl.get("amp", 1.0), np.float32)
             edge = max(min(3, dur // 2), 1)
-            prof[:edge] = np.linspace(0.3, 1.0, edge)
-            prof[-edge:] = np.linspace(1.0, 0.25, edge)
+            amp = gl.get("amp", 1.0)
+            prof[:edge] = np.linspace(0.3 * amp, amp, edge)
+            prof[-edge:] = np.linspace(amp, 0.25 * amp, edge)
             hi = min(idx + dur, n)
             env[idx:hi] = np.maximum(env[idx:hi], prof[: hi - idx])
         self._glitch_env = env
@@ -1029,7 +1199,8 @@ class VCRTransport(Effect):
     def events(self, ctx: Context) -> list[Event]:
         fps = max(ctx.fps, 1.0)
         out = [Event(t=ctx.t0 + gl["fi"] / fps, dur=gl["dur"] / fps, kind="transport_glitch",
-                     detail={"id": gl["id"], "frames": gl["dur"]})
+                     detail={"id": gl["id"], "frames": gl["dur"],
+                             "intensity": round(gl.get("amp", 1.0), 3)})
                for gl in getattr(self, "_glitches", [])]
         # The lock-up only belongs to a render whose window actually contains it.
         if self.v["start_glitch"] and 0 <= self._start_n < ctx.n_frames:

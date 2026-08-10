@@ -418,6 +418,90 @@ def test_event_edits_change_the_render_the_way_they_say():
     assert np.array_equal(other_seed, base[: len(other_seed)])
 
 
+def test_tracking_storms_are_instances_with_teeth():
+    """The shredded band is addressable: planned, removed, moved, added.
+
+    Tracking error was continuous machinery with episodic results - a gate
+    track crossing a threshold - so it never appeared in the plan and could not
+    be edited. Now the runs are instances. The checks are physical: a banding
+    metric (rows disagreeing sharply with their neighbours) must light up
+    exactly where the plan says a storm is, go dark when the storm is removed,
+    and light up on a preset whose dial is at zero when one is added there.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_storm_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    quiet = {"luma_noise": 0, "chroma_noise": 0, "head_switch": 0, "time_base_error": 0,
+             "flagging": 0, "jitter_v": 0, "sharpen": 0, "chroma_delay": 0,
+             "dropouts": 0.0, "dropout_burst": 0.0, "skew_tear": 0}
+    stormy = Preset(id="t_storm", name="t", family="t", era="", desc="",
+                    video=[("vhs", {**quiet, "tracking_error": 0.55})])
+    calm = Preset(id="t_calm", name="t", family="t", era="", desc="",
+                  video=[("vhs", {**quiet, "tracking_error": 0.0})])
+    opts = lambda edits=(): RenderOptions(seed=1234, duration=3.0, scale=1.0, crf=0,
+                                          event_edits=list(edits))
+
+    W, H = 320, 240
+    def banded(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        v = np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.float32)
+        d = np.abs(np.diff(v, axis=1)).mean(axis=2)
+        return (d > 14).sum(axis=1)          # shredded rows per frame
+
+    a = os.path.join(root, "out", "_t_storm_base.mp4")
+    render(src, a, stormy, opts())
+    plan = plan_events(src, [Layer(preset=stormy, seed=1234)], opts())
+    storms = [e for e in plan["events"] if e["kind"] == "tracking_storm"]
+    assert storms, "tracking 0.55 over three seconds must produce at least one storm"
+    fps = plan["fps"]
+    rows = banded(a)
+    storm_frames = set()
+    for e in storms:
+        f0 = int(round(e["t"] * fps))
+        storm_frames.update(range(f0, min(f0 + int(round(e["dur"] * fps)), len(rows))))
+    # The banding lives inside the planned storms and nowhere else.
+    outside = [i for i in range(len(rows)) if rows[i] > 25 and i not in storm_frames]
+    assert outside == [], f"shredding outside every planned storm: {outside}"
+    assert max(rows[i] for i in storm_frames) > 25, "a planned storm must actually shred"
+
+    # Removing every storm calms the tape to the dial-at-zero picture.
+    b = os.path.join(root, "out", "_t_storm_removed.mp4")
+    render(src, b, stormy, opts([{"op": "remove", "kind": "tracking_storm",
+                                  "id": e["detail"]["id"]} for e in storms]))
+    assert max(banded(b)) <= 25, "removed storms must leave no shredding behind"
+
+    # An added storm shreds a preset whose dial is at zero, where it was asked to.
+    c = os.path.join(root, "out", "_t_storm_added.mp4")
+    render(src, c, calm, opts([{"op": "add", "kind": "tracking_storm", "t": 1.0,
+                                "detail": {"dur_s": 0.5, "intensity": 0.9}}]))
+    rows_c = banded(c)
+    hot = {i for i in range(len(rows_c)) if rows_c[i] > 25}
+    want = set(range(int(1.0 * fps), int(1.5 * fps) + 1))
+    assert hot and hot <= want, f"added storm landed at frames {sorted(hot)}, wanted within {sorted(want)}"
+
+    # And the plan agrees about the addition, dial at zero notwithstanding.
+    plan_c = plan_events(src, [Layer(preset=calm, seed=1234,
+                                     event_edits=[{"op": "add", "kind": "tracking_storm",
+                                                   "t": 1.0, "detail": {"dur_s": 0.5, "intensity": 0.9}}])],
+                         opts())
+    got = [e for e in plan_c["events"] if e["kind"] == "tracking_storm"]
+    assert len(got) == 1 and abs(got[0]["t"] - 1.0) < 0.05, got
+
+
 def test_events_are_scheduled_against_the_clip_not_the_window():
     """A preview is a short render from the middle of a clip, not a second clip.
 

@@ -2966,6 +2966,8 @@ const TICK_COLORS = {
   dropout: '#f4b64e',
   transport_glitch: '#8fb4ff',
   transport_lock: '#f06a72',
+  tracking_storm: '#6fd7b8',
+  skew_tear: '#a88df8',
 };
 
 /* CSS position only: scrubbing moves the head many times a second, and paying
@@ -3014,27 +3016,57 @@ function paintTimelineMarkers(sess) {
   const edited = editedIds(sess);
   for (const ev of events) {
     const tick = document.createElement('div');
-    tick.className = 'strip-tick';
     const id = ev.detail && ev.detail.id;
+    // An instance that lasts paints as a span the width of its stay; a
+    // one-frame incident paints as a tick. Same positioning, same handlers.
+    const spanPct = (ev.dur / total) * 100;
+    const wide = spanPct * host.clientWidth / 100 > 5;
+    tick.className = wide ? 'strip-tick span' : 'strip-tick';
     if (id && String(id).startsWith('edit:')) tick.classList.add('added');
     else if (id && edited.has(id)) tick.classList.add('edited');
-    // Centered on its moment: the tick is 3px wide, so back up one.
-    tick.style.left = `calc(${(ev.t / total) * 100}% - 1px)`;
+    if (wide) {
+      tick.style.left = `calc(${(ev.t / total) * 100}% )`;
+      tick.style.width = `${spanPct}%`;
+    } else {
+      // Centered on its moment: the tick is 3px wide, so back up one.
+      tick.style.left = `calc(${(ev.t / total) * 100}% - 1px)`;
+    }
     tick.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
     attachTip(tick, () => ({
       title: ev.kind.replace(/_/g, ' '),
       facts: [
         `effect ${ev.effect}`,
-        `at ${ev.t.toFixed(2)}s`,
+        `at ${ev.t.toFixed(2)}s for ${ev.dur.toFixed(2)}s`,
         ...Object.entries(ev.detail || {}).map(([k, v]) => `${k} ${v}`),
-        'click to edit',
+        'click to edit · drag to move',
       ],
       stack: true,
     }));
-    // A tick is a control: clicking it opens its row, not a seek.
-    tick.addEventListener('click', (e) => {
+    /* Click opens the editor; a horizontal drag past a few pixels moves the
+       instance and commits on release. The threshold is what keeps a shaky
+       click from becoming an accidental move. */
+    tick.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
-      openEventEditor(id);
+      e.preventDefault();
+      const strip = host.getBoundingClientRect();
+      const grabbed = e.clientX;
+      let moved = false;
+      const onMove = (m) => {
+        if (!moved && Math.abs(m.clientX - grabbed) < 4) return;
+        moved = true;
+        const frac = Math.min(Math.max((m.clientX - strip.left) / strip.width, 0), 1);
+        if (wide) tick.style.left = `${frac * 100}%`;
+        else tick.style.left = `calc(${frac * 100}% - 1px)`;
+      };
+      const onUp = (u) => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        if (!moved) { openEventEditor(id); return; }
+        const frac = Math.min(Math.max((u.clientX - strip.left) / strip.width, 0), 1);
+        moveEvent(ev, Math.round(frac * total * 20) / 20);
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
     });
     host.appendChild(tick);
   }
@@ -3215,6 +3247,32 @@ function editedIds(sess = state) {
   return ids;
 }
 
+/* A dial and a number that agree: drag the range or type the value, same
+   commit. This is the row-level answer to "knobs and value entry". */
+function evKnob(value, { min = 0, max = 1, step = 0.01, width = 64 }, commit) {
+  const wrap = document.createElement('span');
+  wrap.className = 'ev-knob';
+  const r = document.createElement('input');
+  r.type = 'range'; r.className = 'range-fill';
+  r.min = min; r.max = max; r.step = step; r.value = value;
+  r.style.width = `${width}px`;
+  paintRange(r);
+  const n = document.createElement('input');
+  n.type = 'number'; n.className = 'ev-n';
+  n.min = min; n.max = max; n.step = step; n.value = value;
+  r.oninput = () => { n.value = r.value; paintRange(r); };
+  r.onchange = () => commit(parseFloat(r.value));
+  n.onchange = () => {
+    const v = parseFloat(n.value);
+    if (!Number.isFinite(v)) return;
+    r.value = v; paintRange(r);
+    commit(Math.min(Math.max(v, min), max));
+  };
+  wrap.appendChild(r);
+  wrap.appendChild(n);
+  return wrap;
+}
+
 /* A number input that commits on change, shared by every field in a row. */
 function evNum(value, { min = 0, max = null, step = 1, cls = 'ev-n' }, commit) {
   const inp = document.createElement('input');
@@ -3234,9 +3292,31 @@ function rebuildEventRows(focusId = null) {
   const host = $('ev-list');
   host.innerHTML = '';
   const plan = state.eventsPlan;
-  const events = (plan && plan.events) || [];
-  $('ev-count').textContent = events.length
-    ? `${events.length} planned, seed ${state.seed}` : 'none planned';
+  const all = (plan && plan.events) || [];
+  /* The kind chips: damage one effect at a time. The set is whatever the plan
+     actually contains, so the bar never advertises a kind this chain cannot
+     produce. */
+  const kinds = [...new Set(all.map((e) => e.kind))];
+  const bar = $('ev-filter');
+  bar.innerHTML = '';
+  if (kinds.length > 1) {
+    const mk = (label, value) => {
+      const c = document.createElement('span');
+      c.className = 'chip' + ((G.evFilter || '') === value ? ' sel' : '');
+      c.textContent = label;
+      if (value) c.style.color = TICK_COLORS[value] || '';
+      c.onclick = () => { G.evFilter = value; rebuildEventRows(); };
+      bar.appendChild(c);
+    };
+    mk('all', '');
+    for (const k of kinds) mk(k.replace(/_/g, ' '), k);
+  } else {
+    G.evFilter = '';
+  }
+  const events = (G.evFilter ? all.filter((e) => e.kind === G.evFilter) : all);
+  $('ev-count').textContent = all.length
+    ? `${events.length}${G.evFilter ? ` of ${all.length}` : ''} planned, seed ${state.seed}`
+    : 'none planned';
   const dur = state.file.duration;
   const edited = editedIds();
   if (!events.length) {
@@ -3290,7 +3370,7 @@ function rebuildEventRows(focusId = null) {
       }
       pol.onchange = () => tuneEvent(ev, { polarity: pol.value });
       row.appendChild(pol);
-    } else if (ev.kind === 'transport_glitch') {
+    } else if (ev.kind === 'transport_glitch' || ev.kind === 'tracking_storm') {
       const lab = document.createElement('label');
       lab.textContent = 'lasts';
       row.appendChild(lab);
@@ -3299,6 +3379,17 @@ function rebuildEventRows(focusId = null) {
       const sl = document.createElement('label');
       sl.textContent = 's';
       row.appendChild(sl);
+      const il = document.createElement('label');
+      il.textContent = 'intensity';
+      row.appendChild(il);
+      row.appendChild(evKnob(ev.detail.intensity ?? 1, { min: 0.05, max: 1, step: 0.01 },
+        (v) => tuneEvent(ev, { intensity: v })));
+    } else if (ev.kind === 'skew_tear') {
+      const il = document.createElement('label');
+      il.textContent = 'intensity';
+      row.appendChild(il);
+      row.appendChild(evKnob(ev.detail.intensity ?? 1, { min: 0.05, max: 2, step: 0.01 },
+        (v) => tuneEvent(ev, { intensity: v })));
     } else if (ev.kind === 'transport_lock') {
       const note = document.createElement('span');
       note.className = 'dim';
@@ -3494,18 +3585,33 @@ function wireControls() {
      time across the whole clip. It borrows the slider's own max and 0.1 s
      grid, so the two controls can never disagree about where the preview
      window is allowed to sit. */
-  $('timeline').addEventListener('click', (e) => {
+  const stripSeek = (clientX, commit) => {
     if (!state.file || !state.file.duration) return;
     const r = $('timeline').getBoundingClientRect();
     if (!r.width) return;
-    const frac = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+    const frac = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
     const t = Math.min(frac * state.file.duration, parseFloat(scrub.max) || 0);
     state.previewT = parseFloat(t.toFixed(1));
     scrub.value = state.previewT.toFixed(1);
     paintRange(scrub);
     $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
     syncTimelinePlayhead();
-    schedulePreview();
+    if (commit) schedulePreview();
+  };
+  /* Press and slide scrubs the strip like a timeline, not like a button: the
+     playhead follows the pointer live, and the render fires once on release.
+     A plain click is the degenerate drag and behaves exactly as before. */
+  $('timeline').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.strip-tick')) return;   // ticks own their own drags
+    stripSeek(e.clientX, false);
+    const onMove = (m) => stripSeek(m.clientX, false);
+    const onUp = (u) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      stripSeek(u.clientX, true);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   });
 
   $('auto-preview').checked = G.autoPreview;
@@ -3624,8 +3730,9 @@ function wireControls() {
     // The op targets the effect that owns the kind; if the active layer's
     // chain has no such effect the engine simply plans nothing for it, which
     // the rows will show - honest, if unhelpful, so keep the two aligned.
-    addEventAt(kind === 'dropout' ? 'vhs' : 'vcr_transport', kind,
-      Math.min(Math.max(t, 0), state.file.duration), {});
+    const owner = { dropout: 'vhs', tracking_storm: 'vhs', skew_tear: 'vhs',
+                    transport_glitch: 'vcr_transport' }[kind] || 'vhs';
+    addEventAt(owner, kind, Math.min(Math.max(t, 0), state.file.duration), {});
   });
   $('ev-reset').addEventListener('click', () => {
     const l = activeLayer(state);
