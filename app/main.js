@@ -95,6 +95,8 @@ function dropLayerSpec(req) {
 let win = null;
 let previewProc = null; // superseded previews get killed
 let stillProc = null;   // and so does the still that was racing alongside one
+let fullProc = null;    // the one whole-clip background render, see aesth:preview-full
+let fullPart = null;    // its half-written output, swept when that render is killed
 const exportProcs = new Map();
 
 function ensureCacheDir() {
@@ -312,6 +314,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (previewProc) previewProc.kill('SIGKILL');
   if (stillProc) stillProc.kill('SIGKILL');
+  killFullRender();
   for (const p of exportProcs.values()) p.kill('SIGKILL');
   app.quit();
 });
@@ -426,6 +429,8 @@ ipcMain.handle('aesth:preview', async (e, req) => {
   // asks for both at once and the still is the half that answers first. Killing
   // it here killed it every time, roughly a millisecond after it started.
   if (fs.existsSync(output)) return { output, cached: true };
+  // Any in-flight full render is for a spec the user just left, and it is stealing cores from the render they are waiting on.
+  killFullRender();
   const args = renderArgs(req, output + '.part' + ext);
   try {
     await spawnRender(args, req.jobId, e.sender, 'preview');
@@ -433,6 +438,87 @@ ipcMain.handle('aesth:preview', async (e, req) => {
     dropLayerSpec(req);
   }
   fs.renameSync(output + '.part' + ext, output);
+  return { output, cached: false };
+});
+
+/* ── whole-clip background render ────────────────────────────────────────
+   After a window preview lands, the renderer asks for the entire clip at
+   preview quality. Once that file is on disk, seeking anywhere in the clip is
+   just a seek inside it instead of a re-render per scrub. Everything here is
+   shaped by one rule: this render must never get in the way of one the user is
+   actually waiting on. It never touches previewProc or stillProc, it reports
+   no progress, and an interactive preview kills it on sight. The renderer side
+   of the deal is written down in PREVIEW-FULL-CONTRACT.md. */
+
+function killFullRender() {
+  if (!fullProc) return;
+  try { fullProc.kill('SIGKILL'); } catch (_) {}
+  fullProc = null;
+  /* Killing the process is not enough: it leaves a truncated whole-clip .part
+     in the cache dir, and one would be made every time the user changes the
+     spec mid-render. Unlinking at the kill site is race-free - the replacement
+     render has not been spawned yet, so nothing is writing this path. */
+  if (fullPart) { try { fs.unlinkSync(fullPart); } catch (_) {} fullPart = null; }
+}
+
+/* Like spawnRender, but progress stays in this process: aesth:progress drives
+   the overlay bar, which belongs to renders the user asked to watch, and this
+   one is invisible by design. The stdout pipe still has to drain, though -
+   --json-progress keeps writing, and a full buffer would stall the engine
+   mid-clip. */
+function spawnFullRender(args, part) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(PYTHON, args, CHILD_OPTS());
+    fullProc = p;
+    fullPart = part;
+    let err = '';
+    p.stdout.resume();
+    p.stderr.on('data', (d) => (err += d));
+    p.on('close', (code) => {
+      if (fullProc === p) { fullProc = null; fullPart = null; }
+      if (code === 0) resolve();
+      else if (p.killed) reject(new Error('superseded'));
+      else {
+        // A real failure is not racing anyone; sweep the truncated output.
+        try { fs.unlinkSync(part); } catch (_) { /* never written */ }
+        reject(new Error(tailOf(err) || `exit ${code}`));
+      }
+    });
+    p.on('error', (e) => {
+      if (fullProc === p) { fullProc = null; fullPart = null; }
+      reject(e);
+    });
+  });
+}
+
+ipcMain.handle('aesth:preview-full', async (_e, req) => {
+  /* Whole clip, one quality. start and duration are stripped rather than
+     trusted absent, and crf is pinned, all before the key is computed: a stray
+     window would silently cache a partial file as "the whole clip", and a
+     caller-chosen crf would fork the cache into near-identical seek surfaces.
+     21 rather than the preview's 19 because this file is a seek surface, not a
+     master, and it is as long as the clip. */
+  req = { ...req, start: undefined, duration: undefined, crf: 21 };
+  const key = cacheKey({ ...req, kind: 'preview-full' });
+  const ext = req.audioSource ? '.m4a' : '.mp4';
+  const output = path.join(CACHE_DIR, `${key}${ext}`);
+  // Only ever one of these in flight: a new request means the spec moved on,
+  // which makes whatever is still rendering stale by definition.
+  killFullRender();
+  if (fs.existsSync(output)) return { output, cached: true };
+  const part = output + '.part' + ext;
+  const args = renderArgs(req, part);
+  try {
+    await spawnFullRender(args, part);
+  } catch (err) {
+    // Killed on purpose, by a newer full request or by an interactive preview.
+    // Not an error worth a dialog: the renderer just waits for the next one.
+    if (err.message === 'superseded') return { superseded: true };
+    throw err;
+  } finally {
+    dropLayerSpec(req);
+  }
+  fs.renameSync(part, output);
   return { output, cached: false };
 });
 
