@@ -418,6 +418,69 @@ def test_event_edits_change_the_render_the_way_they_say():
     assert np.array_equal(other_seed, base[: len(other_seed)])
 
 
+def test_every_window_plans_the_same_tape():
+    """A preview window and the export must agree on every scheduled event.
+
+    Schedules used to be drawn on the render's own noise tracks, and those
+    tracks normalise over the render's length - so a three-second preview
+    planned a different tape than the export, and an edit naming an exported
+    storm's id was silently orphaned on screen. That is the bug that shipped as
+    "editing tracking storms does nothing in the preview". Schedules now come
+    from clip-timeline noise, and this holds every kind to it, window by window.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_win_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=9", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    preset = Preset(id="t_win", name="t", family="t", era="", desc="",
+                    video=[("vhs", {"tracking_error": 0.45, "dropouts": 3.0,
+                                    "dropout_burst": 0.6, "skew_tear": 0.6}),
+                           ("vcr_transport", {"start_glitch": False, "random_glitch_rate": 8.0})])
+    layer = [Layer(preset=preset, seed=77)]
+    full = plan_events(src, layer, RenderOptions(seed=77, scale=1.0))
+
+    def keyset(plan, kinds):
+        return sorted((e["kind"], round(e["t"], 3), round(e["dur"], 3), e["detail"]["id"])
+                      for e in plan["events"] if e["kind"] in kinds)
+
+    kinds = {"dropout", "tracking_storm", "skew_tear", "transport_glitch"}
+    for t0 in (0.0, 2.0, 5.5):
+        win = plan_events(src, layer, RenderOptions(seed=77, scale=1.0, t0=t0, duration=2.5))
+        got = keyset(win, kinds)
+        want = [k for k in keyset(full, kinds) if k[1] < t0 + 2.5 and k[1] + k[2] > t0]
+        assert got == want, (t0, got[:3], want[:3])
+
+    # And an edit named from the full plan lands inside a window's pixels.
+    storm = next(e for e in full["events"] if e["kind"] == "tracking_storm")
+    w0 = max(storm["t"] - 0.5, 0.0)
+    base = os.path.join(root, "out", "_t_win_base.mp4")
+    edit = os.path.join(root, "out", "_t_win_edit.mp4")
+    render(src, base, preset, RenderOptions(seed=77, t0=w0, duration=2.0, scale=1.0, crf=0))
+    render(src, edit, preset, RenderOptions(
+        seed=77, t0=w0, duration=2.0, scale=1.0, crf=0,
+        event_edits=[{"op": "remove", "kind": "tracking_storm", "id": storm["detail"]["id"]}]))
+    W, H = 320, 240
+    def gray(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        return np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.int16)
+    a, b = gray(base), gray(edit)
+    assert np.abs(a[: len(b)] - b[: len(a)]).max() > 20, \
+        "removing a full-plan storm must visibly change the window that contains it"
+
+
 def test_tracking_storms_are_instances_with_teeth():
     """The shredded band is addressable: planned, removed, moved, added.
 
@@ -697,12 +760,16 @@ def test_still_is_frame_zero_of_the_clip():
     kept_err = float(np.abs(kept_px - truth).mean())
     one_err = float(np.abs(one_px - truth).mean())
     assert kept_err < 6.0, f"still drifted from frame 0 of the clip ({kept_err:.2f}/255)"
-    # How much worse the one-frame version looks depends on where the wobble
-    # happens to sit at frame 0, so this is deliberately a loose floor; the sharp
-    # statement of the same fact lives in test_temporal_tracks_need_the_real_length.
-    assert one_err > kept_err * 1.5, (
+    # The one-frame render used to be dramatically worse, because tracking
+    # storms normalised against the render length. Clip-timeline scheduling
+    # fixed that on purpose, so the residual gap is only the continuous look
+    # tracks (time-base error, flagging) - small, but it must not vanish: if
+    # these two ever match, someone has made the still path stop rendering the
+    # same wobbles, and the sharp statement of the underlying mechanism lives
+    # in test_temporal_tracks_need_the_real_length.
+    assert one_err > kept_err * 1.02, (
         f"a one-frame render came out as close as the real thing "
-        f"({one_err:.2f} vs {kept_err:.2f}) - has rng.py stopped depending on n_frames?"
+        f"({one_err:.2f} vs {kept_err:.2f}) - has the still path stopped rendering wobbles?"
     )
 
 

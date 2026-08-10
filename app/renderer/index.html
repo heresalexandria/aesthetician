@@ -94,8 +94,9 @@
           <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/></svg>
         </button>
         <div id="scrub-wrap">
-          <span class="dim" id="scrub-label">preview at 0.0s</span>
-          <input id="scrub" class="range-fill" type="range" min="0" max="10" step="0.1" value="0"/>
+          <span class="dim" id="scrub-label">preview at</span>
+          <input id="timecode" type="text" spellcheck="false" title="Jump to a time - seconds (7.5) or minutes:seconds (1:07.5)"/>
+          <span class="grow"></span>
         </div>
         <div class="pc-group" title="Length of the rendered preview window">
           <select id="preview-len">
@@ -216,31 +217,31 @@
     </div>
   </div>
 
-  <!-- Timeline events: every planned dropout and glitch, each one editable.
-       The rows are the plan the engine just returned, so what this window
-       claims is what the export will do. -->
-  <div id="events-modal" class="hidden">
-    <div class="modal-box events-box">
-      <div class="modal-title">Timeline events
-        <span id="ev-count" class="dim"></span>
+  <!-- The damage editor: one kind of placeable damage at a time, on its own
+       filmstrip, with the player still visible above. Spans drag; edges
+       stretch; the panel on the right is the selected instance's knobs. -->
+  <div id="damage-editor" class="hidden">
+    <div id="de-head">
+      <span id="de-dot"></span>
+      <span id="de-title">damage</span>
+      <span id="de-count" class="dim"></span>
+      <span class="grow"></span>
+      <button id="de-add" title="Add an instance at the playhead">+ Add at playhead</button>
+      <button id="de-reset" title="Drop every edit of this kind on this layer">Reset kind</button>
+      <button id="de-close">Close</button>
+    </div>
+    <div id="de-body">
+      <div id="de-lane-wrap">
+        <div id="de-lane">
+          <div id="de-frames"></div>
+          <div id="de-spans"></div>
+          <div id="de-playhead"></div>
+        </div>
+        <div class="dim" id="de-hint">Drag a span to move it · drag its edges to stretch · click empty film to add · click a span to select</div>
       </div>
-      <div class="modal-sub dim">Times are on the clip. Edits apply to this tab's layer and travel with saved aesthetics and stacks.</div>
-      <div id="ev-filter"></div>
-      <div id="ev-list"></div>
-      <div id="ev-add-row">
-        <select id="ev-add-kind">
-          <option value="dropout">dropout</option>
-          <option value="tracking_storm">tracking storm</option>
-          <option value="skew_tear">skew tear</option>
-          <option value="transport_glitch">transport glitch</option>
-        </select>
-        <label>at</label>
-        <input id="ev-add-t" type="number" min="0" step="0.05"/>
-        <span class="dim">s</span>
-        <button id="ev-add">Add</button>
-        <span class="grow"></span>
-        <button id="ev-reset" title="Drop every edit on this layer and go back to the seed's own schedule">Reset edits</button>
-        <button id="ev-close">Close</button>
+      <div id="de-side">
+        <div id="de-empty" class="hint">Select an instance on the timeline.</div>
+        <div id="de-form" class="hidden"></div>
       </div>
     </div>
   </div>

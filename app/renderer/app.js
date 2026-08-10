@@ -275,11 +275,7 @@ function activateSession(id) {
   $('file-chip').title = `${sess.file.path}\nClick to show it in the Finder`;
   $('file-chip').classList.remove('hidden');
 
-  const scrub = $('scrub');
-  scrub.max = Math.max(sess.file.duration - G.duration, 0).toFixed(1);
-  scrub.value = sess.previewT.toFixed(1);
-  paintRange(scrub);
-  $('scrub-label').textContent = `preview at ${sess.previewT.toFixed(1)}s`;
+  $('timecode').value = fmtTimecode(sess.previewT);
   $('seed').value = sess.seed;
   $('intensity').value = sess.intensity;
   $('intensity-val').textContent = sess.intensity.toFixed(2);
@@ -2750,6 +2746,15 @@ function paramRow(path, prm, baseVal, curVal) {
     row.appendChild(inp);
   }
 
+  const dkind = placeableKindFor(path);
+  if (dkind) {
+    const open = document.createElement('button');
+    open.className = 'p-edit';
+    open.textContent = '◷';
+    open.title = `Place ${DAMAGE_KINDS[dkind].label.toLowerCase()} on the timeline`;
+    open.onclick = () => openDamageEditor(dkind);
+    row.appendChild(open);
+  }
   const reset = document.createElement('button');
   reset.className = 'reset-mini';
   reset.textContent = '↺';
@@ -2926,6 +2931,9 @@ async function runPreview() {
     clipPainted = true;
     setVideo(videoA, treated.output);
     setVideo(videoB, original.output);
+    // The user has a picture; spend the idle cores on making every future seek
+    // free. Fire and forget - the window pipeline owes it nothing.
+    maybeKickFullPreview();
   } catch (err) {
     if (String(err.message || '').includes('superseded')) return;
     reportFailure('Preview', err);
@@ -2937,6 +2945,8 @@ async function runPreview() {
 
 function setVideo(el, src) {
   const t = el === videoA ? (videoB.currentTime || 0) : (videoA.currentTime || 0);
+  el.dataset.src = el.dataset.src && el.dataset.src.startsWith('full:') && el.dataset.src.endsWith(src)
+    ? el.dataset.src : src;
   el.src = `file://${src}?t=${Date.now()}`;
   el.load();
   el.onloadeddata = () => {
@@ -3000,84 +3010,14 @@ function paintTimelineFrames(sess) {
   }
 }
 
+/* The default strip stays clean: thumbs, playhead, window. Damage ink lives
+   in the editor's own lane now - a strip you navigate by should not look like
+   a fault report. The plan still refreshes here, because the editor and the
+   per-row badges read it. */
 function paintTimelineMarkers(sess) {
-  const host = $('strip-markers');
-  const key = `${sess.id}|${sess.eventsKey}`;
-  if (host.dataset.key === key) return;
-  host.dataset.key = key;
-  host.innerHTML = '';
-  const total = sess.file.duration;
-  const events = (sess.eventsPlan && sess.eventsPlan.events) || [];
-  const chip = $('strip-count');
-  chip.classList.toggle('hidden', !events.length);
-  chip.textContent = events.length ? `${events.length} event${events.length === 1 ? '' : 's'}` : '';
-  chip.title = 'Open the timeline events editor';
-  chip.onclick = (e) => { e.stopPropagation(); openEventEditor(); };
-  const edited = editedIds(sess);
-  for (const ev of events) {
-    const tick = document.createElement('div');
-    const id = ev.detail && ev.detail.id;
-    // An instance that lasts paints as a span the width of its stay; a
-    // one-frame incident paints as a tick. Same positioning, same handlers.
-    const spanPct = (ev.dur / total) * 100;
-    const wide = spanPct * host.clientWidth / 100 > 5;
-    tick.className = wide ? 'strip-tick span' : 'strip-tick';
-    if (id && String(id).startsWith('edit:')) tick.classList.add('added');
-    else if (id && edited.has(id)) tick.classList.add('edited');
-    if (wide) {
-      tick.style.left = `calc(${(ev.t / total) * 100}% )`;
-      tick.style.width = `${spanPct}%`;
-    } else {
-      // Centered on its moment: the tick is 3px wide, so back up one.
-      tick.style.left = `calc(${(ev.t / total) * 100}% - 1px)`;
-    }
-    tick.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
-    attachTip(tick, () => ({
-      title: ev.kind.replace(/_/g, ' '),
-      facts: [
-        `effect ${ev.effect}`,
-        `at ${ev.t.toFixed(2)}s for ${ev.dur.toFixed(2)}s`,
-        ...Object.entries(ev.detail || {}).map(([k, v]) => `${k} ${v}`),
-        'click to edit · drag to move',
-      ],
-      stack: true,
-    }));
-    /* Click opens the editor; a horizontal drag past a few pixels moves the
-       instance and commits on release. The threshold is what keeps a shaky
-       click from becoming an accidental move. */
-    tick.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const strip = host.getBoundingClientRect();
-      const grabbed = e.clientX;
-      let moved = false;
-      const onMove = (m) => {
-        if (!moved && Math.abs(m.clientX - grabbed) < 4) return;
-        moved = true;
-        const frac = Math.min(Math.max((m.clientX - strip.left) / strip.width, 0), 1);
-        if (wide) tick.style.left = `${frac * 100}%`;
-        else tick.style.left = `calc(${frac * 100}% - 1px)`;
-      };
-      const onUp = (u) => {
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        if (!moved) { openEventEditor(id); return; }
-        const frac = Math.min(Math.max((u.clientX - strip.left) / strip.width, 0), 1);
-        moveEvent(ev, Math.round(frac * total * 20) / 20);
-      };
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    });
-    host.appendChild(tick);
-  }
-  if (eventEditorOpen() && sess.id === G.activeId) rebuildEventRows();
+  if (sess.id === G.activeId) paintDamageLane();
 }
 
-/* Fetches whatever the strip is missing, then paints. Called fire-and-forget
-   from runPreview - the strip must never delay a render - and from
-   activateSession, so a revisited tab shows its cached strip instantly. The
-   plan is keyed by the exact layer spec, which is why knob-fiddling that lands
-   back on a spec already planned costs nothing. */
 async function refreshTimeline() {
   const sess = state;
   const bar = $('timeline');
@@ -3138,17 +3078,38 @@ async function refreshTimeline() {
   paintTimelineMarkers(sess);
 }
 
-/* ── the timeline events editor ──────────────────────────────────────
-   The rows are the engine's own plan for the current spec - edits included -
-   so the window never shows a schedule the render would disagree with. Ops are
-   written onto the layer the event belongs to, the preview re-renders, and the
-   plan refresh brings the rows back in the edited shape.
+/* ── the damage editor ───────────────────────────────────────────────
+   One kind of placeable damage at a time, opened from the button beside its
+   knob. The panel docks low so the player stays visible - the point of moving
+   an instance is watching it land - and everything on it is the engine's own
+   plan for the current spec, so the lane never claims a schedule the render
+   would disagree with. Spans drag, their edges stretch, empty film adds, and
+   selecting an instance seeks the preview to it. */
 
-   Two kinds of target, one rule each. An instance the seed drew is edited by
-   ops naming its minted id; an instance the user added IS its op, so editing
-   one mutates the op in place and deleting one deletes the op. The engine
-   enforces the same split (see docs/events.md) - this mirror just keeps the op
-   list minimal instead of stacking contradictions. */
+const DAMAGE_KINDS = {
+  dropout: { label: 'Dropouts', effect: 'vhs', hasDur: false },
+  tracking_storm: { label: 'Tracking Storms', effect: 'vhs', hasDur: true },
+  skew_tear: { label: 'Skew Tears', effect: 'vhs', hasDur: false },
+  transport_glitch: { label: 'Transport Glitches', effect: 'vcr_transport', hasDur: true },
+};
+
+/* Which param row opens which kind, `#n` repeats included. */
+const PLACEABLE_PARAMS = {
+  'vhs.dropouts': 'dropout',
+  'vhs.tracking_error': 'tracking_storm',
+  'vhs.skew_tear': 'skew_tear',
+  'vcr_transport.random_glitch_rate': 'transport_glitch',
+};
+
+function placeableKindFor(path) {
+  return PLACEABLE_PARAMS[path.replace(/#\d+\./, '.')] || null;
+}
+
+G.damage = { kind: null, selected: null };
+
+function damageEditorOpen() {
+  return !$('damage-editor').classList.contains('hidden');
+}
 
 function evLayerOf(ev) {
   return state.layers[ev.layer] || activeLayer(state);
@@ -3158,7 +3119,7 @@ function findAddOp(l, id) {
   return (l.events || []).find((e) => e.op === 'add' && e.id === id);
 }
 
-/* One op per (op, id): re-moving a moved dropout replaces its move op rather
+/* One op per (op, id): re-moving a moved instance replaces its move op rather
    than queueing a second opinion behind it. */
 function upsertOp(l, op) {
   l.events = l.events || [];
@@ -3175,36 +3136,20 @@ function upsertOp(l, op) {
 function afterEventEdit() {
   state.stackId = null;          // the arrangement is no longer the saved one
   schedulePreview();
-  refreshTimeline().then(() => { if (eventEditorOpen()) rebuildEventRows(); });
+  refreshTimeline();
   renderTabs();
-}
-
-function eventEditorOpen() {
-  return !$('events-modal').classList.contains('hidden');
-}
-
-function openEventEditor(focusId = null) {
-  if (!state.file || state.audioSource) return;
-  $('events-modal').classList.remove('hidden');
-  $('ev-add-t').value = state.previewT.toFixed(2);
-  rebuildEventRows(focusId);
-}
-
-function closeEventEditor() {
-  $('events-modal').classList.add('hidden');
 }
 
 function removeEvent(ev) {
   const l = evLayerOf(ev);
   const id = ev.detail && ev.detail.id;
   const addOp = id && findAddOp(l, id);
-  if (addOp) {
-    l.events = l.events.filter((e) => e !== addOp);
-  } else if (id) {
-    // Any pending move or tune of it is moot once it is gone.
+  if (addOp) l.events = l.events.filter((e) => e !== addOp);
+  else if (id) {
     l.events = (l.events || []).filter((e) => !(e.id === id && e.op !== 'add'));
     upsertOp(l, { op: 'remove', id, effect: ev.effect, kind: ev.kind });
   }
+  if (G.damage.selected === id) G.damage.selected = null;
   afterEventEdit();
 }
 
@@ -3230,11 +3175,11 @@ let evAddSeq = 0;
 function addEventAt(effect, kind, t, detail = {}) {
   const l = activeLayer(state);
   l.events = l.events || [];
-  // The id is minted here so the plan can report it back and the row can find
-  // its op again; the prefix is what marks it as the user's own.
-  l.events.push({ op: 'add', id: `edit:add:${Date.now()}:${++evAddSeq}`,
-                  effect, kind, t, detail });
+  const id = `edit:add:${Date.now()}:${++evAddSeq}`;
+  l.events.push({ op: 'add', id, effect, kind, t, detail });
+  G.damage.selected = id;
   afterEventEdit();
+  return id;
 }
 
 function editedIds(sess = state) {
@@ -3248,185 +3193,325 @@ function editedIds(sess = state) {
 }
 
 /* A dial and a number that agree: drag the range or type the value, same
-   commit. This is the row-level answer to "knobs and value entry". */
-function evKnob(value, { min = 0, max = 1, step = 0.01, width = 64 }, commit) {
-  const wrap = document.createElement('span');
-  wrap.className = 'ev-knob';
+   commit. */
+function evKnob(value, { min = 0, max = 1, step = 0.01 }, commit) {
   const r = document.createElement('input');
   r.type = 'range'; r.className = 'range-fill';
   r.min = min; r.max = max; r.step = step; r.value = value;
-  r.style.width = `${width}px`;
   paintRange(r);
-  const n = document.createElement('input');
-  n.type = 'number'; n.className = 'ev-n';
-  n.min = min; n.max = max; n.step = step; n.value = value;
-  r.oninput = () => { n.value = r.value; paintRange(r); };
+  const n = document.createElement('span');
+  n.className = 'de-val';
+  n.textContent = Number(value).toFixed(2);
+  r.oninput = () => { n.textContent = Number(r.value).toFixed(2); paintRange(r); };
   r.onchange = () => commit(parseFloat(r.value));
-  n.onchange = () => {
-    const v = parseFloat(n.value);
-    if (!Number.isFinite(v)) return;
-    r.value = v; paintRange(r);
-    commit(Math.min(Math.max(v, min), max));
-  };
-  wrap.appendChild(r);
-  wrap.appendChild(n);
-  return wrap;
+  return [r, n];
 }
 
-/* A number input that commits on change, shared by every field in a row. */
-function evNum(value, { min = 0, max = null, step = 1, cls = 'ev-n' }, commit) {
-  const inp = document.createElement('input');
-  inp.type = 'number';
-  inp.className = cls;
-  inp.min = min; if (max != null) inp.max = max;
-  inp.step = step;
-  inp.value = value;
-  inp.onchange = () => {
-    const v = parseFloat(inp.value);
-    if (Number.isFinite(v)) commit(v);
-  };
-  return inp;
+/* Timecode: "7.5" or "1:07.5" both mean seconds on the clip. */
+function fmtTimecode(t) {
+  const m = Math.floor(t / 60);
+  const sec = t - m * 60;
+  return m ? `${m}:${sec.toFixed(1).padStart(4, '0')}` : sec.toFixed(1);
 }
 
-function rebuildEventRows(focusId = null) {
-  const host = $('ev-list');
-  host.innerHTML = '';
+function parseTimecode(text) {
+  const t = String(text || '').trim();
+  const m = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(t);
+  if (!m) return null;
+  return (m[1] ? parseInt(m[1], 10) * 60 : 0) + parseFloat(m[2]);
+}
+
+/* Seek to a clip time. When the background full-length preview for this exact
+   spec has landed, the seek is a currentTime jump inside it - no re-render.
+   Otherwise it falls back to the windowed render everyone knows. */
+function seekPreview(t) {
+  const max = Math.max(state.file.duration - G.duration, 0);
+  state.previewT = Math.min(Math.max(t, 0), max);
+  $('timecode').value = fmtTimecode(state.previewT);
+  syncTimelinePlayhead();
+  if (useFullPreviewSeek()) return;
+  schedulePreview();
+}
+
+function damageEvents() {
   const plan = state.eventsPlan;
-  const all = (plan && plan.events) || [];
-  /* The kind chips: damage one effect at a time. The set is whatever the plan
-     actually contains, so the bar never advertises a kind this chain cannot
-     produce. */
-  const kinds = [...new Set(all.map((e) => e.kind))];
-  const bar = $('ev-filter');
-  bar.innerHTML = '';
-  if (kinds.length > 1) {
-    const mk = (label, value) => {
-      const c = document.createElement('span');
-      c.className = 'chip' + ((G.evFilter || '') === value ? ' sel' : '');
-      c.textContent = label;
-      if (value) c.style.color = TICK_COLORS[value] || '';
-      c.onclick = () => { G.evFilter = value; rebuildEventRows(); };
-      bar.appendChild(c);
-    };
-    mk('all', '');
-    for (const k of kinds) mk(k.replace(/_/g, ' '), k);
-  } else {
-    G.evFilter = '';
+  return ((plan && plan.events) || []).filter((e) => e.kind === G.damage.kind);
+}
+
+function openDamageEditor(kind) {
+  if (!DAMAGE_KINDS[kind] || !state.file || state.audioSource) return;
+  G.damage.kind = kind;
+  G.damage.selected = null;
+  const meta = DAMAGE_KINDS[kind];
+  $('de-dot').style.background = TICK_COLORS[kind] || 'var(--dim)';
+  $('de-title').textContent = meta.label;
+  $('damage-editor').classList.remove('hidden');
+  document.body.classList.add('damage-editing');
+  paintDamageLane();
+}
+
+function closeDamageEditor() {
+  $('damage-editor').classList.add('hidden');
+  document.body.classList.remove('damage-editing');
+  G.damage.kind = null;
+  G.damage.selected = null;
+}
+
+function selectDamage(id, { seek = true } = {}) {
+  G.damage.selected = id;
+  paintDamageLane();
+  const ev = damageEvents().find((e) => e.detail && e.detail.id === id);
+  // Seeing it is the point: land the preview just ahead of the instance.
+  if (ev && seek) seekPreview(Math.max(ev.t - 0.4, 0));
+}
+
+function paintDamageLane() {
+  if (!damageEditorOpen()) return;
+  const lane = $('de-frames');
+  const frames = (state.strip && state.strip.frames) || [];
+  const fkey = `${state.id}|${frames.length}`;
+  if (lane.dataset.key !== fkey) {
+    lane.dataset.key = fkey;
+    lane.innerHTML = '';
+    for (const f of frames) {
+      const img = document.createElement('img');
+      img.src = fileUrl(f);
+      img.draggable = false;
+      lane.appendChild(img);
+    }
   }
-  const events = (G.evFilter ? all.filter((e) => e.kind === G.evFilter) : all);
-  $('ev-count').textContent = all.length
-    ? `${events.length}${G.evFilter ? ` of ${all.length}` : ''} planned, seed ${state.seed}`
-    : 'none planned';
-  const dur = state.file.duration;
+  const total = state.file.duration;
+  const ph = (state.previewT / total) * 100;
+  $('de-playhead').style.left = `${ph}%`;
+
+  const host = $('de-spans');
+  host.innerHTML = '';
+  const events = damageEvents();
+  $('de-count').textContent = `${events.length} instance${events.length === 1 ? '' : 's'} · seed ${state.seed}`;
   const edited = editedIds();
-  if (!events.length) {
-    const hint = document.createElement('div');
-    hint.className = 'hint';
-    hint.style.padding = '14px';
-    hint.textContent = state.eventsJob
-      ? 'Planning…'
-      : 'Nothing planned. This aesthetic has no discrete damage - or every instance has been removed.';
-    host.appendChild(hint);
-    return;
-  }
   for (const ev of events) {
     const id = ev.detail && ev.detail.id;
-    const row = document.createElement('div');
-    row.className = 'ev-row';
-    row.dataset.id = id || '';
-    row.dataset.kind = ev.kind;
-
-    const dot = document.createElement('span');
-    dot.className = 'ev-kind';
-    dot.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
-    row.appendChild(dot);
-
-    row.appendChild(evNum(ev.t.toFixed(2), { min: 0, max: dur, step: 0.05, cls: 'ev-t' },
-      (v) => moveEvent(ev, Math.min(Math.max(v, 0), dur))));
-    const sLab = document.createElement('label');
-    sLab.textContent = 's';
-    row.appendChild(sLab);
-
-    const what = document.createElement('span');
-    what.className = 'ev-what';
-    what.textContent = `${ev.kind.replace(/_/g, ' ')} · ${ev.effect}`;
-    row.appendChild(what);
-
-    if (ev.kind === 'dropout') {
-      const d = ev.detail;
-      const lab = (t) => { const el = document.createElement('label'); el.textContent = t; return el; };
-      row.appendChild(lab('row'));
-      row.appendChild(evNum(d.row, { min: 0, step: 1 }, (v) => tuneEvent(ev, { row: Math.round(v) })));
-      row.appendChild(lab('x'));
-      row.appendChild(evNum(d.x, { min: 0, step: 1 }, (v) => tuneEvent(ev, { x: Math.round(v) })));
-      row.appendChild(lab('len'));
-      row.appendChild(evNum(d.length_px, { min: 6, step: 1 }, (v) => tuneEvent(ev, { length_px: Math.round(v) })));
-      const pol = document.createElement('select');
-      for (const c of ['bright', 'dark']) {
-        const o = document.createElement('option');
-        o.value = c; o.textContent = c;
-        if (c === d.polarity) o.selected = true;
-        pol.appendChild(o);
-      }
-      pol.onchange = () => tuneEvent(ev, { polarity: pol.value });
-      row.appendChild(pol);
-    } else if (ev.kind === 'transport_glitch' || ev.kind === 'tracking_storm') {
-      const lab = document.createElement('label');
-      lab.textContent = 'lasts';
-      row.appendChild(lab);
-      row.appendChild(evNum(ev.dur.toFixed(2), { min: 0.05, step: 0.05 },
-        (v) => tuneEvent(ev, { dur_s: v })));
-      const sl = document.createElement('label');
-      sl.textContent = 's';
-      row.appendChild(sl);
-      const il = document.createElement('label');
-      il.textContent = 'intensity';
-      row.appendChild(il);
-      row.appendChild(evKnob(ev.detail.intensity ?? 1, { min: 0.05, max: 1, step: 0.01 },
-        (v) => tuneEvent(ev, { intensity: v })));
-    } else if (ev.kind === 'skew_tear') {
-      const il = document.createElement('label');
-      il.textContent = 'intensity';
-      row.appendChild(il);
-      row.appendChild(evKnob(ev.detail.intensity ?? 1, { min: 0.05, max: 2, step: 0.01 },
-        (v) => tuneEvent(ev, { intensity: v })));
-    } else if (ev.kind === 'transport_lock') {
-      const note = document.createElement('span');
-      note.className = 'dim';
-      note.textContent = 'the deck locking on - move it with Start Glitch in VCR Transport';
-      row.appendChild(note);
-    }
-
-    const grow = document.createElement('span');
-    grow.className = 'grow';
-    row.appendChild(grow);
-
-    if (id && (String(id).startsWith('edit:') || edited.has(id))) {
-      const tag = document.createElement('span');
-      tag.className = 'ev-edited';
-      tag.textContent = String(id).startsWith('edit:') ? 'yours' : 'edited';
-      row.appendChild(tag);
-    }
-
-    if (ev.kind !== 'transport_lock') {
-      const del = document.createElement('button');
-      del.className = 'ev-del';
-      del.textContent = '×';
-      del.title = 'Remove this instance from the render';
-      del.onclick = () => removeEvent(ev);
-      row.appendChild(del);
-    }
-    host.appendChild(row);
+    const el = document.createElement('div');
+    el.className = 'de-span';
+    if (id === G.damage.selected) el.classList.add('sel');
+    if (id && String(id).startsWith('edit:')) el.classList.add('added');
+    el.style.left = `${(ev.t / total) * 100}%`;
+    el.style.width = `${Math.max((ev.dur / total) * 100, 0.4)}%`;
+    el.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
+    wireSpan(el, ev, total);
+    host.appendChild(el);
   }
-  if (focusId) {
-    const hit = host.querySelector(`.ev-row[data-id="${CSS.escape(focusId)}"]`);
-    if (hit) { hit.scrollIntoView({ block: 'center' }); hit.classList.add('flash'); }
+  buildDamageForm();
+}
+
+/* Drag body = move; drag an edge = stretch. All of it in clip seconds, all of
+   it committed on release as one op. */
+function wireSpan(el, ev, total) {
+  const meta = DAMAGE_KINDS[ev.kind] || {};
+  if (meta.hasDur) {
+    for (const side of ['l', 'r']) {
+      const grip = document.createElement('div');
+      grip.className = `de-grip ${side}`;
+      grip.addEventListener('pointerdown', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        const lane = $('de-lane').getBoundingClientRect();
+        const t0 = ev.t, t1 = ev.t + ev.dur;
+        const onMove = (m) => {
+          const tm = Math.min(Math.max((m.clientX - lane.left) / lane.width, 0), 1) * total;
+          let a = side === 'l' ? Math.min(tm, t1 - 0.1) : t0;
+          let b = side === 'l' ? t1 : Math.max(tm, t0 + 0.1);
+          el.style.left = `${(a / total) * 100}%`;
+          el.style.width = `${((b - a) / total) * 100}%`;
+          el.dataset.pending = JSON.stringify([a, b]);
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          const pend = el.dataset.pending && JSON.parse(el.dataset.pending);
+          if (!pend) return;
+          const [a, b] = pend;
+          G.damage.selected = ev.detail.id;
+          // Stretching the left edge is a move and a stretch in one gesture.
+          if (Math.abs(a - ev.t) > 0.01) moveEvent(ev, Math.round(a * 20) / 20);
+          tuneEvent(ev, { dur_s: Math.round((b - a) * 20) / 20 });
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+      el.appendChild(grip);
+    }
+  }
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.classList.contains('de-grip')) return;
+    e.stopPropagation(); e.preventDefault();
+    const lane = $('de-lane').getBoundingClientRect();
+    const grabbed = e.clientX;
+    let moved = false;
+    const onMove = (m) => {
+      if (!moved && Math.abs(m.clientX - grabbed) < 4) return;
+      moved = true;
+      const frac = Math.min(Math.max((m.clientX - lane.left) / lane.width, 0), 1);
+      el.style.left = `${Math.min(frac * 100, 100 - parseFloat(el.style.width))}%`;
+    };
+    const onUp = (u) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (!moved) { selectDamage(ev.detail.id); return; }
+      const frac = Math.min(Math.max((u.clientX - lane.left) / lane.width, 0), 1);
+      G.damage.selected = ev.detail.id;
+      moveEvent(ev, Math.round(frac * total * 20) / 20);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+}
+
+function deRow(labelText, ...controls) {
+  const row = document.createElement('div');
+  row.className = 'de-row';
+  const lab = document.createElement('label');
+  lab.textContent = labelText;
+  row.appendChild(lab);
+  for (const c of controls) row.appendChild(c);
+  return row;
+}
+
+function buildDamageForm() {
+  const form = $('de-form');
+  const empty = $('de-empty');
+  const ev = damageEvents().find((e) => e.detail && e.detail.id === G.damage.selected);
+  form.classList.toggle('hidden', !ev);
+  empty.classList.toggle('hidden', !!ev);
+  form.innerHTML = '';
+  if (!ev) return;
+  const meta = DAMAGE_KINDS[ev.kind] || {};
+
+  const tIn = document.createElement('input');
+  tIn.type = 'text';
+  tIn.value = fmtTimecode(ev.t);
+  tIn.onchange = () => {
+    const t = parseTimecode(tIn.value);
+    if (t != null) moveEvent(ev, Math.min(Math.max(t, 0), state.file.duration));
+  };
+  form.appendChild(deRow('starts at', tIn));
+
+  if (meta.hasDur) {
+    const dIn = document.createElement('input');
+    dIn.type = 'number';
+    dIn.min = 0.1; dIn.step = 0.05; dIn.value = ev.dur.toFixed(2);
+    dIn.onchange = () => {
+      const v = parseFloat(dIn.value);
+      if (Number.isFinite(v) && v > 0.05) tuneEvent(ev, { dur_s: v });
+    };
+    form.appendChild(deRow('lasts', dIn));
+  }
+
+  if (ev.kind !== 'dropout') {
+    const maxI = ev.kind === 'skew_tear' ? 2 : 1;
+    form.appendChild(deRow('intensity',
+      ...evKnob(ev.detail.intensity ?? 1, { min: 0.05, max: maxI, step: 0.01 },
+        (v) => tuneEvent(ev, { intensity: v }))));
+  }
+
+  if (ev.kind === 'dropout') {
+    const mk = (label, key, val, min, max) => {
+      const i = document.createElement('input');
+      i.type = 'number'; i.min = min; i.max = max; i.step = 1; i.value = val;
+      i.onchange = () => {
+        const v = parseInt(i.value, 10);
+        if (Number.isFinite(v)) tuneEvent(ev, { [key]: v });
+      };
+      return deRow(label, i);
+    };
+    form.appendChild(mk('row', 'row', ev.detail.row, 0, 9999));
+    form.appendChild(mk('x', 'x', ev.detail.x, 0, 9999));
+    form.appendChild(mk('length', 'length_px', ev.detail.length_px, 6, 9999));
+    const pol = document.createElement('select');
+    for (const c of ['bright', 'dark']) {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      if (c === ev.detail.polarity) o.selected = true;
+      pol.appendChild(o);
+    }
+    pol.onchange = () => tuneEvent(ev, { polarity: pol.value });
+    form.appendChild(deRow('polarity', pol));
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'de-actions';
+  const jump = document.createElement('button');
+  jump.textContent = 'Watch it';
+  jump.title = 'Seek the preview to this instance';
+  jump.onclick = () => seekPreview(Math.max(ev.t - 0.4, 0));
+  const del = document.createElement('button');
+  del.id = 'de-del';
+  del.textContent = 'Remove';
+  del.onclick = () => removeEvent(ev);
+  actions.appendChild(jump);
+  actions.appendChild(del);
+  form.appendChild(actions);
+}
+
+/* ── full-length preview: seeks without re-renders ───────────────────
+   After a window render lands, the whole clip renders quietly in the
+   background at preview quality. Once it exists for the current spec, a seek
+   is a currentTime jump inside that file instead of a fresh render. Guarded on
+   the IPC existing, so the renderer works with or without the pipeline. */
+function fullSpecKey(sess = state) {
+  return JSON.stringify({ spec: layerSpec(sess), scale: G.scale });
+}
+
+async function maybeKickFullPreview() {
+  if (!window.aesth.previewFull || !state.file || state.audioSource) return;
+  const sess = state;
+  const key = fullSpecKey(sess);
+  if (sess.fullKey === key || sess.fullJob === key) return;
+  sess.fullJob = key;
+  try {
+    const [treated, original] = await Promise.all([
+      window.aesth.previewFull({
+        input: sess.file.path, layers: layerSpec(sess),
+        presetId: sess.presetId, variant: sess.variant, sets: sess.sets,
+        seed: sess.seed, intensity: sess.intensity, texture: sess.texture,
+        scale: G.scale, audioSource: sess.audioSource,
+      }),
+      window.aesth.snippet({ input: sess.file.path, start: 0,
+        duration: sess.file.duration, scale: G.scale, audioSource: sess.audioSource }),
+    ]);
+    if (treated && treated.output && fullSpecKey(sess) === key) {
+      sess.fullKey = key;
+      sess.fullSrc = treated.output;
+      sess.fullOrig = original && original.output;
+    }
+  } catch (_) {
+    // The window pipeline still works; the background render is a luxury.
+  } finally {
+    if (sess.fullJob === key) sess.fullJob = null;
   }
 }
 
-/* With auto on, every change re-renders by itself and Preview has nothing left
-   to do, so it stops taking up space pretending otherwise. Turn auto off and it
-   comes back as the way to ask for a render. */
+function useFullPreviewSeek() {
+  const sess = state;
+  if (!sess.fullSrc || sess.fullKey !== fullSpecKey(sess)) return false;
+  $('player-empty').classList.add('hidden');
+  hideStill();
+  const want = `full:${sess.fullSrc}`;
+  if (videoA.dataset.src !== want) {
+    videoA.dataset.src = want;
+    setVideo(videoA, sess.fullSrc);
+    if (sess.fullOrig) setVideo(videoB, sess.fullOrig);
+  }
+  const jump = () => {
+    try {
+      videoA.currentTime = sess.previewT;
+      videoB.currentTime = sess.previewT;
+    } catch (_) { /* not seekable yet; the loadeddata hook lands it */ }
+  };
+  if (videoA.readyState >= 1) jump();
+  else videoA.addEventListener('loadedmetadata', jump, { once: true });
+  return true;
+}
+
 function syncRenderButton() {
   $('btn-render').classList.toggle('hidden', G.autoPreview);
 }
@@ -3491,9 +3576,9 @@ function wireShortcuts() {
       if (e.code === 'Escape') { e.preventDefault(); closeErrorDetail(); }
       return;
     }
-    /* The events editor is typing-heavy; the keyboard is its own until Escape. */
-    if (eventEditorOpen()) {
-      if (e.code === 'Escape') { e.preventDefault(); closeEventEditor(); }
+    /* The damage editor is typing-heavy; the keyboard is its own until Escape. */
+    if (damageEditorOpen()) {
+      if (e.code === 'Escape') { e.preventDefault(); closeDamageEditor(); }
       return;
     }
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
@@ -3572,15 +3657,16 @@ function wireControls() {
     buildPresetList();
   });
 
-  const scrub = $('scrub');
-  scrub.addEventListener('input', () => {
-    state.previewT = parseFloat(scrub.value);
-    paintRange(scrub);
-    $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+  /* Type a time, land on it: seconds or minutes:seconds, Enter commits. The
+     strip is the pointer's timeline; this is the keyboard's. */
+  $('timecode').addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.code !== 'Enter') return;
+    const t = parseTimecode($('timecode').value);
+    if (t != null) seekPreview(t);
+    else $('timecode').value = fmtTimecode(state.previewT);
     syncTimelinePlayhead();
   });
-  scrub.addEventListener('change', () => schedulePreview());
-
   /* The strip is the same seek surface as the slider, just map-shaped: x is
      time across the whole clip. It borrows the slider's own max and 0.1 s
      grid, so the two controls can never disagree about where the preview
@@ -3590,13 +3676,15 @@ function wireControls() {
     const r = $('timeline').getBoundingClientRect();
     if (!r.width) return;
     const frac = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
-    const t = Math.min(frac * state.file.duration, parseFloat(scrub.max) || 0);
+    const max = Math.max(state.file.duration - G.duration, 0);
+    const t = Math.min(frac * state.file.duration, max);
     state.previewT = parseFloat(t.toFixed(1));
-    scrub.value = state.previewT.toFixed(1);
-    paintRange(scrub);
-    $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+    $('timecode').value = fmtTimecode(state.previewT);
     syncTimelinePlayhead();
-    if (commit) schedulePreview();
+    if (damageEditorOpen()) paintDamageLane();
+    if (commit) {
+      if (!useFullPreviewSeek()) schedulePreview();
+    }
   };
   /* Press and slide scrubs the strip like a timeline, not like a button: the
      playhead follows the pointer live, and the render fires once on release.
@@ -3631,13 +3719,11 @@ function wireControls() {
     G.duration = parseFloat(lenSel.value);
     saveStore();
     if (state.file && state.file.duration) {
-      scrub.max = Math.max(state.file.duration - G.duration, 0).toFixed(1);
-      if (state.previewT > parseFloat(scrub.max)) {
-        state.previewT = parseFloat(scrub.max);
-        scrub.value = state.previewT.toFixed(1);
-        $('scrub-label').textContent = `preview at ${state.previewT.toFixed(1)}s`;
+      const maxT = Math.max(state.file.duration - G.duration, 0);
+      if (state.previewT > maxT) {
+        state.previewT = maxT;
+        $('timecode').value = fmtTimecode(state.previewT);
       }
-      paintRange(scrub);
     }
     // The translucent span *is* the window: a new length changes its width.
     syncTimelinePlayhead();
@@ -3719,26 +3805,32 @@ function wireControls() {
   $('btn-save-custom').addEventListener('click', saveCustom);
   $('btn-save-stack').addEventListener('click', saveStack);
 
-  $('ev-close').addEventListener('click', closeEventEditor);
-  $('events-modal').addEventListener('mousedown', (e) => {
-    if (e.target === $('events-modal')) closeEventEditor();
+  $('de-close').addEventListener('click', closeDamageEditor);
+  $('de-add').addEventListener('click', () => {
+    if (!G.damage.kind) return;
+    const meta = DAMAGE_KINDS[G.damage.kind];
+    addEventAt(meta.effect, G.damage.kind, Math.round(state.previewT * 20) / 20, {});
   });
-  $('ev-add').addEventListener('click', () => {
-    const t = parseFloat($('ev-add-t').value);
-    if (!Number.isFinite(t)) return;
-    const kind = $('ev-add-kind').value;
-    // The op targets the effect that owns the kind; if the active layer's
-    // chain has no such effect the engine simply plans nothing for it, which
-    // the rows will show - honest, if unhelpful, so keep the two aligned.
-    const owner = { dropout: 'vhs', tracking_storm: 'vhs', skew_tear: 'vhs',
-                    transport_glitch: 'vcr_transport' }[kind] || 'vhs';
-    addEventAt(owner, kind, Math.min(Math.max(t, 0), state.file.duration), {});
+  $('de-reset').addEventListener('click', () => {
+    const kind = G.damage.kind;
+    if (!kind) return;
+    let touched = false;
+    for (const l of state.layers || []) {
+      const kept = (l.events || []).filter((e) => (e.kind || 'dropout') !== kind);
+      if (kept.length !== (l.events || []).length) { l.events = kept; touched = true; }
+    }
+    G.damage.selected = null;
+    if (touched) afterEventEdit();
   });
-  $('ev-reset').addEventListener('click', () => {
-    const l = activeLayer(state);
-    if (!(l.events || []).length) return;
-    l.events = [];
-    afterEventEdit();
+  /* Click on empty film adds an instance right there - the placement gesture
+     for occluding something you can see. */
+  $('de-lane').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.de-span')) return;
+    if (!G.damage.kind || !state.file) return;
+    const r = $('de-lane').getBoundingClientRect();
+    const t = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * state.file.duration;
+    const meta = DAMAGE_KINDS[G.damage.kind];
+    addEventAt(meta.effect, G.damage.kind, Math.round(t * 20) / 20, {});
   });
 
   $('btn-error-detail').addEventListener('click', () => showErrorDetail(G.lastFailure));
