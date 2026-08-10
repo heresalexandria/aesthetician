@@ -77,6 +77,7 @@ class Context:
         out_height: Optional[int] = None,
         texture: float = 1.0,
         t0: float = 0.0,
+        clip_frames: Optional[int] = None,
     ):
         self.width = width
         self.height = height
@@ -103,6 +104,13 @@ class Context:
         # scrubbed to, because "1.2 seconds in" meant 1.2 seconds into the
         # preview rather than into the clip.
         self.t0 = t0
+        # How long the whole source clip is, in frames - not this render, the
+        # clip. Event schedules have to be drawn against it: a schedule drawn
+        # against the window's own frame count normalises its noise tracks to
+        # the window, and a three-second preview then plans a different tape
+        # than the export - the storm you were editing simply is not there.
+        self.clip_frames = int(clip_frames) if clip_frames else n_frames
+        self._clip_noise: Optional[TemporalNoise] = None
         # Edits to the discrete-event schedule, applied by effects in `prepare`:
         # a list of {op, ...} dicts (see docs in render.py). Empty for a render
         # nobody has touched, which is every render there was before this
@@ -125,6 +133,22 @@ class Context:
 
     def rng(self, key: str) -> np.random.Generator:
         return stream(self.seed, key)
+
+    @property
+    def clip_noise(self) -> TemporalNoise:
+        """Noise tracks on the clip's own timeline, for event schedules.
+
+        `self.noise` spans this render and is right for the continuous look of
+        a window; schedules must agree across every window of the same clip, so
+        they index these tracks by absolute frame instead. For a full-length
+        render the two are the same object, which is what keeps full renders
+        byte-identical.
+        """
+        if self.clip_frames == self.n_frames:
+            return self.noise
+        if self._clip_noise is None:
+            self._clip_noise = TemporalNoise(self.seed, self.fps, self.clip_frames)
+        return self._clip_noise
 
     def abs_frame(self, fi: Optional[int] = None) -> int:
         """An output frame's index on the source clip's own timeline."""

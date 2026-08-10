@@ -98,6 +98,11 @@ class RenderOptions:
     # forty seconds into the tape - and anything scheduled against the clip has
     # to know that. Defaults to `t0`.
     source_t0: Optional[float] = None
+    # The whole source clip's duration in seconds, for the event schedulers.
+    # None means "this render is the whole clip". Windowed renders and later
+    # stack layers must carry the original, or their schedules are drawn
+    # against the window and disagree with the export's.
+    clip_duration: Optional[float] = None
     duration: Optional[float] = None
     scale: float = 1.0            # output scale factor (previews)
     crf: int = 17
@@ -106,6 +111,11 @@ class RenderOptions:
     @property
     def clip_t0(self) -> float:
         return self.t0 if self.source_t0 is None else self.source_t0
+
+
+def _clip_frames(info: "media.MediaInfo", opts: RenderOptions, fps: float) -> int:
+    dur = opts.clip_duration if opts.clip_duration is not None else info.duration
+    return max(int(round(dur * fps)), 1)
 
 
 def _merged_overrides(variant: Optional[Variant], user: dict[str, Any], which: str) -> dict[str, dict[str, Any]]:
@@ -244,6 +254,7 @@ def render_layers(
     # Trimming and preview scaling belong to the first pass only; afterwards the
     # intermediate already *is* the trimmed, scaled clip.
     tmp_root = tempfile.mkdtemp(prefix="aesth_stack_", dir=os.environ.get("AESTHETICIAN_TMP") or None)
+    src_info = media.probe(input_path)
     total = len(layers)
     try:
         current = input_path
@@ -257,6 +268,7 @@ def render_layers(
                 video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides,
                 event_edits=layer.event_edits,
+                clip_duration=opts.clip_duration if opts.clip_duration is not None else src_info.duration,
                 video_only=opts.video_only,
                 audio_only=opts.audio_only,
                 t0=opts.t0 if i == 0 else 0.0,
@@ -321,6 +333,7 @@ def render(
             out_height=out_h,
             texture=opts.texture,
             t0=opts.clip_t0,
+            clip_frames=_clip_frames(info, opts, fps),
         )
         ctx.event_edits = list(opts.event_edits)
 
@@ -418,6 +431,7 @@ def _render_audio_only(
             asset_root=default_asset_root(),
             texture=opts.texture,
             t0=opts.clip_t0,
+            clip_frames=_clip_frames(info, opts, info.fps),
         )
         chain: list[Effect] = []
         if not opts.video_only and preset.audio:
@@ -651,6 +665,7 @@ def render_still(
             out_height=out_h,
             texture=opts.texture,
             t0=opts.clip_t0,
+            clip_frames=_clip_frames(info, opts, fps),
         )
         ctx.event_edits = list(opts.event_edits)
 
@@ -768,6 +783,7 @@ def _plan_one(input_w: int, input_h: int, info: "media.MediaInfo", preset: Prese
         seed=opts.seed, intensity=opts.intensity, scratch_dir=tmp_root,
         asset_root=default_asset_root(), out_width=out_w, out_height=out_h,
         texture=opts.texture, t0=opts.clip_t0,
+        clip_frames=_clip_frames(info, opts, fps),
     )
     ctx.event_edits = list(opts.event_edits)
     over = _merged_overrides(preset.variant(opts.variant), opts.video_overrides, "video")
@@ -799,6 +815,7 @@ def plan_events(input_path: str, layers: list[Layer], opts: RenderOptions) -> di
                 seed=layer.seed, intensity=layer.intensity, texture=layer.texture,
                 variant=layer.variant, video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides, event_edits=layer.event_edits,
+                clip_duration=opts.clip_duration if opts.clip_duration is not None else info.duration,
                 t0=opts.t0 if i == 0 else 0.0, source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,
                 scale=opts.scale if i == 0 else 1.0, crf=opts.crf,

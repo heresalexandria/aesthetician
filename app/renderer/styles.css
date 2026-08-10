@@ -1030,63 +1030,78 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 }
 .note-img:hover { border-color: var(--accent-dim); }
 
-/* ── timeline events editor ──────────────────
-   A row per planned incident. The time field is the move, the trash is the
-   remove, the detail fields are the tune - there is no separate edit mode,
-   because the list is small and the knobs are the point. */
-#events-modal {
-  position: fixed; inset: 0; z-index: 65; display: flex;
-  align-items: center; justify-content: center;
-  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+
+/* ── timecode ───────────────────────────────
+   The one navigation control: type a time, land on it. The strip handles the
+   pointer; this handles precision. */
+#timecode {
+  width: 88px; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+  font-size: 12px; outline: none; font-variant-numeric: tabular-nums;
 }
-.modal-box.events-box { width: 760px; max-width: calc(100vw - 40px); }
-#ev-count { font-size: 11px; margin-left: 8px; }
-#ev-list {
-  margin: 12px 0 10px; max-height: 52vh; overflow: auto;
-  border: 1px solid var(--line); border-radius: 10px; background: #07080d;
+#timecode:focus { border-color: var(--accent-dim); }
+
+/* ── the damage editor ──────────────────────
+   Docked low so the player stays on screen: the whole point of editing an
+   instance is watching it land. */
+#damage-editor {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+  background: rgba(8,9,14,.97); border-top: 1px solid var(--line2);
+  box-shadow: 0 -18px 48px rgba(0,0,0,.5); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; height: 300px;
 }
-.ev-row {
-  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.04); font-size: 11.5px;
+#de-head {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px 8px;
+  font-weight: 600; font-size: 13px;
 }
-.ev-row:last-child { border-bottom: none; }
-.ev-row.flash { animation: evflash 1.2s ease-out; }
-@keyframes evflash { from { background: rgba(139,92,246,.25); } to { background: transparent; } }
-.ev-kind {
-  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+#de-dot { width: 10px; height: 10px; border-radius: 50%; }
+#de-count { font-weight: 400; font-size: 11px; }
+#de-head button { padding: 5px 12px; font-size: 11.5px; }
+#de-body { flex: 1; display: flex; gap: 14px; padding: 0 16px 14px; min-height: 0; }
+#de-lane-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#de-lane {
+  position: relative; flex: 1; border-radius: 10px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--line); cursor: copy;
 }
-.ev-row .ev-t { width: 74px; }
-.ev-row label { color: var(--dim); font-size: 10.5px; }
-.ev-row input[type="number"], .ev-row select {
+#de-frames { position: absolute; inset: 0; display: flex; opacity: .55; }
+#de-frames img { flex: 1; min-width: 0; object-fit: cover; height: 100%; }
+#de-playhead {
+  position: absolute; top: 0; bottom: 0; width: 2px; background: #fff;
+  opacity: .8; pointer-events: none;
+}
+#de-spans { position: absolute; inset: 0; }
+.de-span {
+  position: absolute; top: 14%; bottom: 14%; border-radius: 6px; cursor: grab;
+  opacity: .8; min-width: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.de-span:hover { opacity: 1; }
+.de-span.sel { box-shadow: 0 0 0 2px #fff, inset 0 0 0 1px rgba(0,0,0,.4); opacity: 1; }
+.de-span.added { box-shadow: inset 0 0 0 1px rgba(255,255,255,.8); }
+.de-span .de-grip {
+  position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize;
+}
+.de-span .de-grip.l { left: -2px; }
+.de-span .de-grip.r { right: -2px; }
+#de-hint { font-size: 10.5px; }
+#de-side { flex: 0 0 280px; overflow-y: auto; }
+#de-form { display: flex; flex-direction: column; gap: 9px; font-size: 11.5px; }
+.de-row { display: flex; align-items: center; gap: 8px; }
+.de-row label { flex: 0 0 64px; color: var(--dim); font-size: 11px; }
+.de-row input[type="text"], .de-row input[type="number"], .de-row select {
   background: var(--bg2); color: var(--text); border: 1px solid var(--line);
-  border-radius: 6px; padding: 2px 5px; font-size: 11px; outline: none;
+  border-radius: 6px; padding: 4px 7px; font-size: 11.5px; outline: none; width: 84px;
   font-variant-numeric: tabular-nums;
 }
-.ev-row input.ev-n { width: 56px; }
-.ev-row .ev-what { color: var(--dim); min-width: 96px; }
-.ev-row .ev-edited { color: #a88df8; font-size: 10px; letter-spacing: .5px; }
-.ev-row .ev-del {
+.de-row input[type="range"] { flex: 1; }
+.de-row .de-val { width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+#de-form .de-actions { display: flex; gap: 8px; margin-top: 4px; }
+#de-form .de-actions button { flex: 1; padding: 6px 0; font-size: 11.5px; }
+#de-del:hover { color: var(--danger); border-color: var(--danger); }
+/* The per-row opener beside each placeable knob. */
+.prow .p-edit {
   border: none; background: none; color: var(--dim); cursor: pointer;
-  font-size: 13px; padding: 0 4px;
+  font-size: 12px; padding: 0 3px;
 }
-.ev-row .ev-del:hover { color: var(--danger); }
-#ev-add-row { display: flex; align-items: center; gap: 8px; }
-#ev-add-row select, #ev-add-row input {
-  background: var(--bg2); color: var(--text); border: 1px solid var(--line);
-  border-radius: 6px; padding: 4px 6px; font-size: 11.5px; outline: none;
-}
-#ev-add-row input { width: 80px; }
-/* Ticks are now controls, not just ink. */
-.strip-tick { cursor: pointer; }
-#strip-count { cursor: pointer; }
-.strip-tick.added { box-shadow: 0 0 0 1px rgba(255,255,255,.75); }
-.strip-tick.edited { box-shadow: 0 0 0 1px rgba(168,141,248,.9); }
-
-/* Instances with duration paint as translucent spans; the ring rules they share
-   with ticks keep meaning the same thing. */
-.strip-tick.span { width: auto; opacity: .5; border-radius: 2px; }
-.strip-tick.span:hover { opacity: .8; }
-#ev-filter { display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
-#ev-filter .chip { font-size: 10.5px; padding: 2px 9px; }
-.ev-knob { display: inline-flex; align-items: center; gap: 5px; }
-.ev-knob input[type="range"] { height: 3px; }
+.prow .p-edit:hover { color: var(--accent); }
+body.damage-editing #timeline { display: none; }
