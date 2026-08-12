@@ -779,6 +779,70 @@ def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
         digicodec._available_encoders = real
 
 
+def test_interlaced_codec_era_survives_an_ffmpeg_without_top():
+    """codec_era's interlaced mode must not lean on the removed -top option.
+
+    Tapes to DVD asks MPEG-2 for real top-field-first structure, which used to
+    be requested with `-top 1`. ffmpeg 8 removed that CLI option, so on the
+    ffmpeg the app bundles the flag falls through to the codec AVOption `top`
+    - decode-only - and the whole encode is refused ("is not a encoding
+    option"). Field order is now flagged per-frame with setparams, which both
+    old and new builds understand. This runs the real file pass, checks no
+    command asks for -top, and reads the flags back out of the frames the
+    encoder produced - the genuine field structure is the preset's point.
+    """
+    import subprocess
+
+    from aesthetician.engine import media
+    from aesthetician.engine.graph import Context, get_effect
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    out_dir = os.path.join(root, "out")
+    os.makedirs(out_dir, exist_ok=True)
+    src = os.path.join(out_dir, "_t_ilace_src.mp4")
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=192x144:rate=30:duration=1",
+         "-pix_fmt", "yuv420p", src], check=True)
+
+    cmds: list[list[str]] = []
+    frame_flags: list[str] = []
+    real_run = media._run
+
+    def spy(cmd, **kw):
+        cmds.append(cmd)
+        proc = real_run(cmd, **kw)
+        if cmd[-1].endswith(".nut"):  # the intermediates are gone by the end
+            got = real_run(
+                [media.FFPROBE, "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "frame=interlaced_frame,top_field_first",
+                 "-of", "csv=p=0", cmd[-1]])
+            frame_flags.extend(got.stdout.decode().split())
+        return proc
+
+    ctx = Context(width=192, height=144, fps=30.0, n_frames=30, seed=1)
+    eff = get_effect("codec_era")(codec="mpeg2video", kbps=4200, gop=15,
+                                  passes=2, field_mode="interlaced_tff")
+    eff.resolve(ctx)
+    eff.prepare(ctx)
+    out = os.path.join(out_dir, "_t_ilace_out.mp4")
+    media._run = spy
+    try:
+        eff.file_pass(src, out, ctx)
+    finally:
+        media._run = real_run
+
+    encodes = [c for c in cmds if c[-1].endswith(".nut")]
+    assert len(encodes) == 2, [c[-1] for c in encodes]
+    for cmd in encodes:
+        assert "-top" not in cmd, "ffmpeg 8+ has no -top; TFF comes from setparams"
+        assert "+ilme+ildct" in cmd, cmd
+        assert "setparams=field_mode=tff" in cmd[cmd.index("-vf") + 1], cmd
+    # Both generations, every frame: interlaced and top field first.
+    assert frame_flags and all(f.startswith("1,1") for f in frame_flags), frame_flags[:4]
+    assert media.probe(out).n_frames >= 28
+
+
 def test_every_effect_can_be_switched_off_in_place():
     """`enabled` is the one dial guaranteed to reach nothing, on all of them.
 
