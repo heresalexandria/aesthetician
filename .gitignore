@@ -32,7 +32,7 @@
 *.bmp
 *.exr
 *.psd
-videos-samples/
+videos-samples
 out/
 output/
 outputs/
@@ -53,7 +53,7 @@ build/
 # outputs - re-include it here, since git never descends into an excluded dir.
 !app/build/
 dist/
-.venv/
+.venv
 venv/
 .pytest_cache/
 .mypy_cache/

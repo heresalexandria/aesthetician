@@ -2987,9 +2987,19 @@ function syncTimelinePlayhead() {
   const total = state.file && state.file.duration;
   if (!total) return;
   const left = (state.previewT / total) * 100;
+  const width = (Math.min(G.duration, total) / total) * 100;
   $('strip-playhead').style.left = `${left}%`;
   $('strip-window').style.left = `${left}%`;
-  $('strip-window').style.width = `${(Math.min(G.duration, total) / total) * 100}%`;
+  $('strip-window').style.width = `${width}%`;
+  // The editor lane carries the same cursor and preview-window span. While
+  // the editor is open the main strip is display:none, so without this a
+  // seek - Jump to it, the timecode box, selecting an instance - moved a
+  // playhead nobody could see and looked like it did nothing.
+  if (damageEditorOpen()) {
+    $('de-playhead').style.left = `${left}%`;
+    $('de-window').style.left = `${left}%`;
+    $('de-window').style.width = `${width}%`;
+  }
 }
 
 /* The frames are a property of the file, not of any knob, so the only reason
@@ -3088,9 +3098,18 @@ async function refreshTimeline() {
 
 const DAMAGE_KINDS = {
   dropout: { label: 'Dropouts', effect: 'vhs', hasDur: false },
-  tracking_storm: { label: 'Tracking Storms', effect: 'vhs', hasDur: true },
-  skew_tear: { label: 'Skew Tears', effect: 'vhs', hasDur: false },
-  transport_glitch: { label: 'Transport Glitches', effect: 'vcr_transport', hasDur: true },
+  tracking_storm: {
+    label: 'Tracking Storms', effect: 'vhs', hasDur: true,
+    band: { hMin: 0.02, hMax: 0.6, auto: 'the band rolls through the frame' },
+  },
+  skew_tear: {
+    label: 'Skew Tears', effect: 'vhs', hasDur: false,
+    band: { hMin: 0.01, hMax: 0.3, auto: 'the tape picks a spot near the top' },
+  },
+  transport_glitch: {
+    label: 'Transport Glitches', effect: 'vcr_transport', hasDur: true,
+    band: { hMin: 0.05, hMax: 0.8, auto: 'the shred covers the whole frame' },
+  },
 };
 
 /* Which param row opens which kind, `#n` repeats included. */
@@ -3207,6 +3226,43 @@ function evKnob(value, { min = 0, max = 1, step = 0.01 }, commit) {
   return [r, n];
 }
 
+/* A knob whose resting state is the tape's own choice: the readout says auto
+   until the slider is touched, and the ↺ hands the choice back. Committing
+   null is how "auto" goes over the wire. */
+function evAutoKnob(value, { min = 0, max = 1, step = 0.01, auto = '' }, commit) {
+  const set = value != null;
+  const r = document.createElement('input');
+  r.type = 'range'; r.className = 'range-fill';
+  r.min = min; r.max = max; r.step = step;
+  r.value = set ? value : (min + max) / 2;
+  paintRange(r);
+  const n = document.createElement('span');
+  n.className = 'de-val';
+  n.textContent = set ? Number(value).toFixed(2) : 'auto';
+  n.classList.toggle('auto', !set);
+  const back = document.createElement('button');
+  back.className = 'de-auto';
+  back.textContent = '↺';
+  back.title = `Back to auto - ${auto}`;
+  back.classList.toggle('hidden', !set);
+  if (!set) r.title = `Auto - ${auto}. Drag to take over.`;
+  r.oninput = () => {
+    n.classList.remove('auto');
+    n.textContent = Number(r.value).toFixed(2);
+    paintRange(r);
+  };
+  r.onchange = () => commit(parseFloat(r.value));
+  back.onclick = () => commit(null);
+  return [r, n, back];
+}
+
+/* Bring the preview window to a clip time, but only when it cannot already
+   see it: re-rendering a window that had it in frame teaches nothing. */
+function seekToShow(t) {
+  if (t >= state.previewT && t <= state.previewT + G.duration - 0.2) return;
+  seekPreview(Math.max(t - 0.4, 0));
+}
+
 /* Timecode: "7.5" or "1:07.5" both mean seconds on the clip. */
 function fmtTimecode(t) {
   const m = Math.floor(t / 60);
@@ -3261,8 +3317,9 @@ function selectDamage(id, { seek = true } = {}) {
   G.damage.selected = id;
   paintDamageLane();
   const ev = damageEvents().find((e) => e.detail && e.detail.id === id);
-  // Seeing it is the point: land the preview just ahead of the instance.
-  if (ev && seek) seekPreview(Math.max(ev.t - 0.4, 0));
+  // Seeing it is the point: bring the preview window over if it cannot
+  // already see the instance. Jump to it re-seeks on demand from anywhere.
+  if (ev && seek) seekToShow(ev.t);
 }
 
 function paintDamageLane() {
@@ -3281,8 +3338,7 @@ function paintDamageLane() {
     }
   }
   const total = state.file.duration;
-  const ph = (state.previewT / total) * 100;
-  $('de-playhead').style.left = `${ph}%`;
+  syncTimelinePlayhead();
 
   const host = $('de-spans');
   host.innerHTML = '';
@@ -3359,7 +3415,9 @@ function wireSpan(el, ev, total) {
       if (!moved) { selectDamage(ev.detail.id); return; }
       const frac = Math.min(Math.max((u.clientX - lane.left) / lane.width, 0), 1);
       G.damage.selected = ev.detail.id;
-      moveEvent(ev, Math.round(frac * total * 20) / 20);
+      const t = Math.round(frac * total * 20) / 20;
+      moveEvent(ev, t);
+      seekToShow(t);   // the point of moving an instance is watching it land
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -3391,7 +3449,10 @@ function buildDamageForm() {
   tIn.value = fmtTimecode(ev.t);
   tIn.onchange = () => {
     const t = parseTimecode(tIn.value);
-    if (t != null) moveEvent(ev, Math.min(Math.max(t, 0), state.file.duration));
+    if (t == null) return;
+    const tc = Math.min(Math.max(t, 0), state.file.duration);
+    moveEvent(ev, tc);
+    seekToShow(tc);   // typing a far-away time means wanting to see it there
   };
   form.appendChild(deRow('starts at', tIn));
 
@@ -3413,6 +3474,22 @@ function buildDamageForm() {
         (v) => tuneEvent(ev, { intensity: v }))));
   }
 
+  /* Where the burst sits on the picture. Auto is the tape's own habit - the
+     rolling band, the near-the-top tear, the whole-frame shred - and a pinned
+     value is the instance's alone: 0 hugs the top edge, 1 the bottom. */
+  if (meta.band) {
+    const pRow = deRow('position', ...evAutoKnob(ev.detail.band_pos,
+      { min: 0, max: 1, step: 0.01, auto: meta.band.auto },
+      (v) => tuneEvent(ev, { band_pos: v })));
+    pRow.title = 'Vertical position: 0 is the top of the frame, 1 the bottom.';
+    form.appendChild(pRow);
+    const hRow = deRow('height', ...evAutoKnob(ev.detail.band_height,
+      { min: meta.band.hMin, max: meta.band.hMax, step: 0.01, auto: meta.band.auto },
+      (v) => tuneEvent(ev, { band_height: v })));
+    hRow.title = 'Band height as a share of the frame.';
+    form.appendChild(hRow);
+  }
+
   if (ev.kind === 'dropout') {
     const mk = (label, key, val, min, max) => {
       const i = document.createElement('input');
@@ -3426,6 +3503,7 @@ function buildDamageForm() {
     form.appendChild(mk('row', 'row', ev.detail.row, 0, 9999));
     form.appendChild(mk('x', 'x', ev.detail.x, 0, 9999));
     form.appendChild(mk('length', 'length_px', ev.detail.length_px, 6, 9999));
+    form.appendChild(mk('thickness', 'rows', ev.detail.rows, 1, 2));
     const pol = document.createElement('select');
     for (const c of ['bright', 'dark']) {
       const o = document.createElement('option');
@@ -3440,8 +3518,9 @@ function buildDamageForm() {
   const actions = document.createElement('div');
   actions.className = 'de-actions';
   const jump = document.createElement('button');
-  jump.textContent = 'Watch it';
-  jump.title = 'Seek the preview to this instance';
+  jump.textContent = 'Jump to it';
+  jump.title = 'Move the preview window (the tinted span on the film) to land '
+    + 'just before this instance';
   jump.onclick = () => seekPreview(Math.max(ev.t - 0.4, 0));
   const del = document.createElement('button');
   del.id = 'de-del';
@@ -3667,13 +3746,13 @@ function wireControls() {
     else $('timecode').value = fmtTimecode(state.previewT);
     syncTimelinePlayhead();
   });
-  /* The strip is the same seek surface as the slider, just map-shaped: x is
-     time across the whole clip. It borrows the slider's own max and 0.1 s
-     grid, so the two controls can never disagree about where the preview
+  /* The strip and the editor lane are the same seek surface, just map-shaped:
+     x is time across the whole clip. Both borrow the slider's own max and
+     0.1 s grid, so no two controls can ever disagree about where the preview
      window is allowed to sit. */
-  const stripSeek = (clientX, commit) => {
+  const stripSeekAt = (el, clientX, commit) => {
     if (!state.file || !state.file.duration) return;
-    const r = $('timeline').getBoundingClientRect();
+    const r = el.getBoundingClientRect();
     if (!r.width) return;
     const frac = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
     const max = Math.max(state.file.duration - G.duration, 0);
@@ -3681,11 +3760,11 @@ function wireControls() {
     state.previewT = parseFloat(t.toFixed(1));
     $('timecode').value = fmtTimecode(state.previewT);
     syncTimelinePlayhead();
-    if (damageEditorOpen()) paintDamageLane();
     if (commit) {
       if (!useFullPreviewSeek()) schedulePreview();
     }
   };
+  const stripSeek = (clientX, commit) => stripSeekAt($('timeline'), clientX, commit);
   /* Press and slide scrubs the strip like a timeline, not like a button: the
      playhead follows the pointer live, and the render fires once on release.
      A plain click is the degenerate drag and behaves exactly as before. */
@@ -3822,9 +3901,24 @@ function wireControls() {
     G.damage.selected = null;
     if (touched) afterEventEdit();
   });
-  /* Click on empty film adds an instance right there - the placement gesture
-     for occluding something you can see. */
+  /* The lane is a timeline before it is a canvas: press or drag on empty film
+     scrubs the playhead, live, and the preview follows once on release - the
+     same contract as the strip under the player. Placing an instance is the
+     deliberate gesture, a double-click, so exploring the tape never leaves a
+     storm behind as a souvenir. */
   $('de-lane').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.de-span')) return;
+    stripSeekAt($('de-lane'), e.clientX, false);
+    const onMove = (m) => stripSeekAt($('de-lane'), m.clientX, false);
+    const onUp = (u) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      stripSeekAt($('de-lane'), u.clientX, true);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+  $('de-lane').addEventListener('dblclick', (e) => {
     if (e.target.closest('.de-span')) return;
     if (!G.damage.kind || !state.file) return;
     const r = $('de-lane').getBoundingClientRect();

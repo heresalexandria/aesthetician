@@ -68,9 +68,30 @@ An edit list rides each layer of the layer spec as `events`:
   {"op": "move",   "id": "vhs:dropout:67:1", "t": 4.10},
   {"op": "tune",   "id": "vhs:dropout:80:0", "detail": {"length_px": 200, "polarity": "dark"}},
   {"op": "add",    "kind": "dropout", "t": 6.50,
-   "detail": {"row": 120, "x": 40, "length_px": 160, "rows": 2}}
+   "detail": {"row": 120, "x": 40, "length_px": 160, "rows": 2}},
+  {"op": "tune",   "id": "vhs:tracking_storm:96:0",
+   "detail": {"band_pos": 0.85, "band_height": 0.12}}
 ]}
 ```
+
+### Band placement
+
+The banded kinds - `tracking_storm`, `skew_tear`, `transport_glitch` - accept
+two optional details on `add` and `tune`, controlling where on the picture the
+instance lands:
+
+- `band_pos` (0..1): vertical position, 0 hugging the top edge and 1 the
+  bottom, mapped so the band stays fully on screen.
+- `band_height` (fraction of the frame height): how tall the band is. Clamped
+  per kind - storms 0.02..0.6, tears 0.004..0.3, glitches 0.05..0.8.
+
+Unset, the tape decides, exactly as it always did: the tracking band rolls
+through the frame on its own noise, a tear picks a spot in the top 3-14%, a
+transport glitch shreds the whole frame. Each pin overrides only its own half -
+pin the position and the height still breathes, pin the height and the band
+still rolls. `null` un-pins: `{"band_pos": null}` hands the position back to
+the tape. The plan reports both keys on every banded event, `null` meaning
+auto, so a reader can tell a pinned instance from a roaming one.
 
 Rules, all load-bearing:
 
@@ -81,6 +102,10 @@ Rules, all load-bearing:
   absolute clip time and any unspecified detail is derived from the op itself,
   so it survives a reseed. Remove, move and tune are edits *of that seed's
   schedule* and die with the seed.
+- **Adds land on a zero dial.** An added instance renders even when the preset
+  never plans that kind of damage itself - a tear dropped on a preset whose
+  `skew_tear` sits at 0.0 tears at its own intensity, not at the dial's. (The
+  dial keeps scaling the tape's own instances.)
 - The render, the still and the plan all honor the same diff, so what the
   timeline claims after an edit is what the export does.
 - An empty or absent `events` list changes nothing, byte for byte.
