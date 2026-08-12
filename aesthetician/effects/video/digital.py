@@ -136,11 +136,18 @@ class CodecEra(Effect):
                    "softness of professionally bit-starved digital TV."),
     )
 
+    def _interlaced(self, codec: str) -> bool:
+        return self.v["field_mode"] == "interlaced_tff" and codec in _ILACE_CODECS
+
     def _codec_args(self, codec: str, fps_out: float | None) -> list[str]:
         enc = _ENCODER_FOR[codec]
         args = ["-c:v", enc, "-g", str(int(self.v["gop"]))]
-        if self.v["field_mode"] == "interlaced_tff" and codec in _ILACE_CODECS:
-            args += ["-flags", "+ilme+ildct", "-top", "1"]
+        if self._interlaced(codec):
+            # Field order is flagged per-frame with setparams in the filter
+            # chain: the -top CLI option is gone in ffmpeg 8+, and the codec
+            # AVOption it falls through to is decode-only, so the bundled
+            # ffmpeg rejects the whole encode.
+            args += ["-flags", "+ilme+ildct"]
         if codec == "mjpeg":
             q = int(self.v["qscale"]) or max(2, min(31, int(round(24 - 20 * (self.v["kbps"] / 8000.0)))))
             args += ["-q:v", str(q), "-pix_fmt", "yuvj420p"]
@@ -178,7 +185,14 @@ class CodecEra(Effect):
             first_chain.append(
                 f"hqdn3d={4.0 * dn:.3f}:{3.0 * dn:.3f}:{6.0 * dn:.3f}:{4.5 * dn:.3f}"
             )
+        gen_chain: list[str] = []
+        if self._interlaced(codec):
+            # Every generation re-flags TFF rather than trusting the decoder
+            # to carry it through the nut intermediate.
+            first_chain.append("setparams=field_mode=tff")
+            gen_chain.append("setparams=field_mode=tff")
         first_vf = ["-vf", ",".join(first_chain)]
+        gen_vf = ["-vf", ",".join(gen_chain)] if gen_chain else []
 
         temps: list[str] = []
         try:
@@ -186,7 +200,7 @@ class CodecEra(Effect):
             for gen in range(int(self.v["passes"])):
                 nxt = f"{out_path}.g{gen}.nut"
                 temps.append(nxt)
-                vf = first_vf if gen == 0 else []
+                vf = first_vf if gen == 0 else gen_vf
                 media._run(
                     [media.FFMPEG, "-v", "error", "-nostdin", "-y", "-i", cur,
                      *vf, *self._codec_args(codec, enc_fps), "-an", nxt]
