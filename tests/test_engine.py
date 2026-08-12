@@ -565,6 +565,130 @@ def test_tracking_storms_are_instances_with_teeth():
     assert len(got) == 1 and abs(got[0]["t"] - 1.0) < 0.05, got
 
 
+def test_bands_pin_where_the_tape_roamed():
+    """band_pos/band_height place an instance's damage on the picture.
+
+    The tape decides by default - the rolling tracking band, the near-the-top
+    tear, the whole-frame transport shred - and a pinned instance overrides
+    that alone: 0 hugs the top edge, 1 the bottom, height is a share of the
+    frame. Checked physically per kind by diffing an edited render against the
+    same preset untouched and reading where the disturbed rows sit. Also holds
+    the fix that adds land on presets whose dial sits at zero (tears and
+    dropouts had the storm bug), and that the plan reports pins back with null
+    meaning auto.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import Preset, RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_band_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    quiet = {"luma_noise": 0, "chroma_noise": 0, "head_switch": 0, "time_base_error": 0,
+             "flagging": 0, "jitter_v": 0, "sharpen": 0, "chroma_delay": 0,
+             "dropouts": 0.0, "dropout_burst": 0.0, "skew_tear": 0, "tracking_error": 0.0}
+    calm = Preset(id="t_band_c", name="t", family="t", era="", desc="",
+                  video=[("vhs", quiet)])
+    deck = Preset(id="t_band_t", name="t", family="t", era="", desc="",
+                  video=[("vcr_transport", {"start_glitch": False, "random_glitch_rate": 0.0})])
+    opts = lambda edits=(): RenderOptions(seed=1234, duration=3.0, scale=1.0, crf=0,
+                                          event_edits=list(edits))
+
+    W, H = 320, 240
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H)
+        return np.frombuffer(raw[: n * W * H], np.uint8).reshape(n, H, W).astype(np.float32)
+
+    def hot_rows(edited, base, f0, f1):
+        d = np.abs(frames(edited)[f0:f1] - frames(base)[f0:f1]).mean(axis=(0, 2))
+        rows = np.nonzero(d > max(d.max() * 0.25, 2.0))[0]
+        assert len(rows), "the edit must disturb some rows"
+        return int(rows.min()), int(rows.max())
+
+    base_c = os.path.join(root, "out", "_t_band_base_c.mp4")
+    base_t = os.path.join(root, "out", "_t_band_base_t.mp4")
+    render(src, base_c, calm, opts())
+    render(src, base_t, deck, opts())
+
+    def rendered(tag, preset, edits):
+        out = os.path.join(root, "out", f"_t_band_{tag}.mp4")
+        render(src, out, preset, opts(edits))
+        return out
+
+    # A storm pinned near the top vs near the bottom of the frame. Band height
+    # 0.15 of 240 is 36 px; centers land at bh/2 + pos*(H-bh) = 38 and 202.
+    for tag, pos, center in (("st_top", 0.1, 38), ("st_bot", 0.9, 202)):
+        out = rendered(tag, calm,
+                       [{"op": "add", "kind": "tracking_storm", "t": 1.0,
+                         "detail": {"dur_s": 0.6, "intensity": 0.9,
+                                    "band_pos": pos, "band_height": 0.15}}])
+        lo, hi = hot_rows(out, base_c, 32, 46)
+        assert center - 45 < lo and hi < center + 45, \
+            f"storm pos={pos}: rows {lo}..{hi} not around {center}"
+
+    # A transport glitch banded low on a deck that coughs nowhere on its own.
+    out = rendered("gl_low", deck,
+                   [{"op": "add", "kind": "transport_glitch", "t": 1.0,
+                     "detail": {"dur_s": 0.6, "intensity": 1.0,
+                                "band_pos": 0.85, "band_height": 0.2}}])
+    lo, hi = hot_rows(out, base_t, 32, 46)
+    assert lo > H * 0.55, f"banded glitch must stay low, disturbed {lo}..{hi}"
+
+    # A tear pinned mid-frame on a dial at zero - both halves were bugs: the
+    # tape's own tears sit at 3-14% from the top, and a zero dial used to
+    # swallow added tears (and added dropouts) entirely.
+    out = rendered("tear_mid", calm,
+                   [{"op": "add", "kind": "skew_tear", "t": 1.0,
+                     "detail": {"intensity": 1.5, "band_pos": 0.6, "band_height": 0.05}}])
+    lo, hi = hot_rows(out, base_c, 30, 32)
+    assert H * 0.45 < lo and hi < H * 0.75, f"pinned tear at rows {lo}..{hi}, wanted mid-frame"
+
+    out = rendered("drop_zero", calm,
+                   [{"op": "add", "kind": "dropout", "t": 1.0,
+                     "detail": {"row": 120, "x": 40, "length_px": 200}}])
+    lo, hi = hot_rows(out, base_c, 30, 31)
+    assert 110 <= lo and hi <= 130, f"added dropout on a zero dial at rows {lo}..{hi}"
+
+    # Tuning a band onto one of the tape's own storms moves that storm's band.
+    stormy = Preset(id="t_band_s", name="t", family="t", era="", desc="",
+                    video=[("vhs", {**quiet, "tracking_error": 0.55})])
+    plan = plan_events(src, [Layer(preset=stormy, seed=1234)], opts())
+    st = next(e for e in plan["events"] if e["kind"] == "tracking_storm")
+    assert st["detail"]["band_pos"] is None and st["detail"]["band_height"] is None, \
+        "an untouched storm must report auto placement"
+    tune = [{"op": "tune", "kind": "tracking_storm", "id": st["detail"]["id"],
+             "detail": {"band_pos": 0.9, "band_height": 0.12}}]
+    out = rendered("st_tune", stormy, tune)
+    fps = plan["fps"]
+    f0 = int(round(st["t"] * fps))
+    f1 = min(f0 + int(round(st["dur"] * fps)), 89)
+    # Against the calm render, which differs from stormy only by the tracking
+    # dial: inside this storm's frames every disturbed row is the tuned band's
+    # own, not the union with wherever the tape's rolling band used to be.
+    lo, hi = hot_rows(out, base_c, f0, f1)
+    assert lo > H * 0.5, f"tuned band must sit low, disturbed {lo}..{hi}"
+
+    # And the plan hands the pin back - then null hands it back to the tape.
+    plan2 = plan_events(src, [Layer(preset=stormy, seed=1234, event_edits=tune)], opts())
+    st2 = next(e for e in plan2["events"] if e["detail"]["id"] == st["detail"]["id"])
+    assert st2["detail"]["band_pos"] == 0.9 and st2["detail"]["band_height"] == 0.12, st2
+    clear = tune + [{"op": "tune", "kind": "tracking_storm", "id": st["detail"]["id"],
+                     "detail": {"band_pos": None, "band_height": None}}]
+    plan3 = plan_events(src, [Layer(preset=stormy, seed=1234, event_edits=clear)], opts())
+    st3 = next(e for e in plan3["events"] if e["detail"]["id"] == st["detail"]["id"])
+    assert st3["detail"]["band_pos"] is None and st3["detail"]["band_height"] is None, st3
+
+
 def test_events_are_scheduled_against_the_clip_not_the_window():
     """A preview is a short render from the middle of a clip, not a second clip.
 

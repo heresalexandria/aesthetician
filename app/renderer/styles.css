@@ -1061,10 +1061,17 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 #de-lane-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 #de-lane {
   position: relative; flex: 1; border-radius: 10px; overflow: hidden;
-  background: var(--bg); border: 1px solid var(--line); cursor: copy;
+  background: var(--bg); border: 1px solid var(--line); cursor: pointer;
 }
 #de-frames { position: absolute; inset: 0; display: flex; opacity: .55; }
 #de-frames img { flex: 1; min-width: 0; object-fit: cover; height: 100%; }
+/* The preview window, same ink as the main strip's: the stretch of tape the
+   player is actually showing. */
+#de-window {
+  position: absolute; top: 0; bottom: 0; pointer-events: none;
+  background: rgba(139, 92, 246, .18);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, .45);
+}
 #de-playhead {
   position: absolute; top: 0; bottom: 0; width: 2px; background: #fff;
   opacity: .8; pointer-events: none;
@@ -1095,6 +1102,13 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 }
 .de-row input[type="range"] { flex: 1; }
 .de-row .de-val { width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+.de-row .de-val.auto { color: var(--dim); font-style: italic; }
+/* The hand-it-back button on auto-capable knobs. */
+.de-row .de-auto {
+  flex: 0 0 auto; border: none; background: none; color: var(--dim);
+  cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1;
+}
+.de-row .de-auto:hover { color: var(--accent); }
 #de-form .de-actions { display: flex; gap: 8px; margin-top: 4px; }
 #de-form .de-actions button { flex: 1; padding: 6px 0; font-size: 11.5px; }
 #de-del:hover { color: var(--danger); border-color: var(--danger); }

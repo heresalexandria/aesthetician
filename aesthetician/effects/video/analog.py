@@ -173,10 +173,14 @@ def _streak_noise(g: np.random.Generator, h: int, w: int, coarse_x: int = 3) -> 
     return np.clip(nz * rowg, 0.0, 1.0)
 
 
-def _tracking_storm(frame: np.ndarray, g: np.random.Generator, amount: float) -> np.ndarray:
+def _tracking_storm(frame: np.ndarray, g: np.random.Generator, amount: float,
+                    wrow: np.ndarray | None = None) -> np.ndarray:
     """Full-frame mistracking: shredded lines, noise bands, desaturation.
 
     Shared by vcr_transport (start/pause/random glitches). amount in 0..1.
+    `wrow` is an optional per-row weight in 0..1 that confines the storm to a
+    band; it scales the finished draws rather than replacing any of them, so a
+    weightless call is byte-identical to what this always produced.
     """
     h, w = frame.shape[:2]
     a = float(np.clip(amount, 0.0, 1.0))
@@ -189,15 +193,48 @@ def _tracking_storm(frame: np.ndarray, g: np.random.Generator, amount: float) ->
     shred_rows = runsel < (0.12 + 0.45 * a)
     big = g.standard_normal(h).astype(np.float32) * (0.16 * w * a)
     off = np.where(shred_rows, off + big, off)
+    if wrow is not None:
+        off = off * wrow
     frame = _remap_x(frame, off)
     # noise wash on the shredded rows plus a rolling heavy band
     m = np.where(shred_rows, np.clip(0.25 + 0.75 * g.random(h).astype(np.float32), 0, 1) * 0.75 * a, 0.15 * a)
     nz = _streak_noise(g, h, w)
     y = _luma(frame)[..., None]
-    frame += (y - frame) * (0.6 * a)                     # chroma dies under mistracking
+    if wrow is None:
+        frame += (y - frame) * (0.6 * a)                 # chroma dies under mistracking
+    else:
+        frame += (y - frame) * ((0.6 * a) * wrow[:, None, None])
+        m = m * wrow
     mm = m.astype(np.float32)[:, None, None]
     frame = frame * (1.0 - mm) + nz[..., None] * mm
     return frame
+
+
+def _band_weights(h: int, pos: float, height: float) -> np.ndarray:
+    """Cosine bell over the rows of a band, 1 at its center, 0 outside.
+
+    `pos` runs 0..1 top to bottom and places the band's center across the span
+    that keeps it fully on screen, so 0 hugs the top edge and 1 the bottom.
+    `height` is the band's full height as a fraction of the frame.
+    """
+    bh = max(float(height) * h, 3.0)
+    p = bh / 2.0 + float(pos) * max(h - bh, 0.0)
+    d = (np.arange(h, dtype=np.float32) - p) / (bh * 0.5)
+    return (0.5 + 0.5 * np.cos(np.pi * np.clip(d, -1.0, 1.0))).astype(np.float32)
+
+
+def _band_detail(d: dict, key: str, lo: float, hi: float) -> float | None:
+    """An optional band detail off an event op: clamped when set, and JSON
+    null comes through as None - the way an edit hands placement back to the
+    tape."""
+    v = d.get(key)
+    return None if v is None else float(np.clip(float(v), lo, hi))
+
+
+def _round_band(v: float | None) -> float | None:
+    """Band details go to the plan as the tape holds them - None meaning the
+    tape's own placement - rounded only for the wire."""
+    return None if v is None else round(float(v), 3)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -558,36 +595,37 @@ class VHS(Effect):
         self._dropouts: dict[int, list[tuple]] = {}
         v = self.v
         rate = v["dropouts"] * self._MODE[v["mode"]][2]
-        if rate <= 0.0:
-            return
-        W, H = ctx.width, ctx.height
-        sx = W / BASE_W
-        # The burst multiplier rides the clip's own track: a bursty stretch of
-        # tape is bursty in every window that shows it.
-        burst_track = ctx.clip_noise.onef(f"{self.key}:doburst", 1.2)
-        af0 = ctx.abs_frame(0)
-        for fi in range(ctx.n_frames):
-            bi = min(af0 + fi, ctx.clip_noise.n - 1)
-            burst = 1.0 + v["dropout_burst"] * 7.0 * max(0.0, burst_track[bi]) ** 2
-            g = ctx.frame_rng(f"{self.key}:dropouts", fi)
-            n = int(g.poisson(rate / max(ctx.fps, 1.0) * burst))
-            if n <= 0:
-                continue
-            evs = []
-            for i in range(min(n, 40)):
-                L = int((20.0 + 280.0 * g.random() ** 2) * sx)
-                L = max(min(L, W - 2), 6)
-                x0 = int(g.integers(0, W - L))
-                r = int(g.integers(0, H))
-                dark = bool(g.random() < 0.12)
-                rows = 1 if g.random() < 0.65 else 2
-                # The id is minted on the base schedule, before any edit, and it
-                # travels with the instance from then on. Editing one dropout
-                # must not renumber its neighbours, or every edit after the
-                # first would land on the wrong instance.
-                evs.append({"id": f"{self.key}:dropout:{ctx.abs_frame(fi)}:{i}",
-                            "x": x0, "row": r, "L": L, "dark": dark, "rows": rows})
-            self._dropouts[fi] = evs
+        if rate > 0.0:
+            W, H = ctx.width, ctx.height
+            sx = W / BASE_W
+            # The burst multiplier rides the clip's own track: a bursty stretch
+            # of tape is bursty in every window that shows it.
+            burst_track = ctx.clip_noise.onef(f"{self.key}:doburst", 1.2)
+            af0 = ctx.abs_frame(0)
+            for fi in range(ctx.n_frames):
+                bi = min(af0 + fi, ctx.clip_noise.n - 1)
+                burst = 1.0 + v["dropout_burst"] * 7.0 * max(0.0, burst_track[bi]) ** 2
+                g = ctx.frame_rng(f"{self.key}:dropouts", fi)
+                n = int(g.poisson(rate / max(ctx.fps, 1.0) * burst))
+                if n <= 0:
+                    continue
+                evs = []
+                for i in range(min(n, 40)):
+                    L = int((20.0 + 280.0 * g.random() ** 2) * sx)
+                    L = max(min(L, W - 2), 6)
+                    x0 = int(g.integers(0, W - L))
+                    r = int(g.integers(0, H))
+                    dark = bool(g.random() < 0.12)
+                    rows = 1 if g.random() < 0.65 else 2
+                    # The id is minted on the base schedule, before any edit,
+                    # and it travels with the instance from then on. Editing
+                    # one dropout must not renumber its neighbours, or every
+                    # edit after the first would land on the wrong instance.
+                    evs.append({"id": f"{self.key}:dropout:{ctx.abs_frame(fi)}:{i}",
+                                "x": x0, "row": r, "L": L, "dark": dark, "rows": rows})
+                self._dropouts[fi] = evs
+        # Outside the gate on purpose: an added dropout is yours, not the
+        # tape's, and must land even on a preset whose dial plans none.
         self._apply_event_edits(ctx)
 
     def _schedule_storms(self, ctx: Context) -> None:
@@ -663,7 +701,9 @@ class VHS(Effect):
                 env *= (0.55 + 0.45 * g.random(length))
                 if 0 <= f0 < ctx.clip_frames:
                     self._storms.append({"id": e.get("id") or f"edit:add:{f0}",
-                                         "f0": f0, "seg": env})
+                                         "f0": f0, "seg": env,
+                                         "pos": _band_detail(d, "band_pos", 0.0, 1.0),
+                                         "bh": _band_detail(d, "band_height", 0.02, 0.6)})
                 continue
             hit = next((x for x in self._storms if x["id"] == e.get("id")), None)
             if hit is None:
@@ -686,16 +726,30 @@ class VHS(Effect):
                     old = hit["seg"]
                     xs = np.linspace(0, len(old) - 1, length)
                     hit["seg"] = np.interp(xs, np.arange(len(old)), old)
+                if "band_pos" in d:
+                    hit["pos"] = _band_detail(d, "band_pos", 0.0, 1.0)
+                if "band_height" in d:
+                    hit["bh"] = _band_detail(d, "band_height", 0.02, 0.6)
         # Rasterise only the slice of each storm that falls inside this render's
-        # window; the instance itself stays whole and clip-timed.
+        # window; the instance itself stays whole and clip-timed. The band
+        # placement rides along per frame - NaN meaning the tape's own rolling
+        # band - taken from whichever storm supplies the frame's activation, so
+        # an overlapping pinned storm wins exactly where it is the louder one.
         af0 = ctx.abs_frame(0)
+        self._track_pos = np.full(n, np.nan)
+        self._track_bh = np.full(n, np.nan)
         for st in self._storms:
             lo = st["f0"] - af0
             hi = lo + len(st["seg"])
             a, b = max(lo, 0), min(hi, n)
             if b > a:
-                self._track_act[a:b] = np.maximum(self._track_act[a:b],
-                                                  st["seg"][a - lo: b - lo])
+                seg = st["seg"][a - lo: b - lo]
+                take = seg > self._track_act[a:b]
+                self._track_act[a:b] = np.where(take, seg, self._track_act[a:b])
+                pos = np.nan if st.get("pos") is None else float(st["pos"])
+                bh = np.nan if st.get("bh") is None else float(st["bh"])
+                self._track_pos[a:b] = np.where(take, pos, self._track_pos[a:b])
+                self._track_bh[a:b] = np.where(take, bh, self._track_bh[a:b])
 
     def _schedule_tears(self, ctx: Context) -> None:
         """Skew tears as instances. Already events at heart - a Poisson mask
@@ -722,9 +776,13 @@ class VHS(Effect):
                 fi = int(round(float(e.get("t", 0.0)) * fps))      # clip frame
                 if 0 <= fi < ctx.clip_frames:
                     d = e.get("detail") or {}
+                    # sc 1.0: an added tear's intensity is the whole knob, not
+                    # a request scaled by a dial that may well sit at zero.
                     self._tears.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi,
-                                        "key_fi": fi,
-                                        "e": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 2.0))})
+                                        "key_fi": fi, "sc": 1.0,
+                                        "e": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 2.0)),
+                                        "pos": _band_detail(d, "band_pos", 0.0, 1.0),
+                                        "bh": _band_detail(d, "band_height", 0.004, 0.3)})
                 continue
             hit = next((x for x in self._tears if x["id"] == e.get("id")), None)
             if hit is None:
@@ -741,20 +799,30 @@ class VHS(Effect):
                 d = e.get("detail") or {}
                 if "intensity" in d:
                     hit["e"] = float(np.clip(float(d["intensity"]), 0.05, 2.0))
-        # frame -> (strength, geometry key): the tear frame at full strength and
-        # the frame after it relaxing back at half, exactly as the render did.
-        # Window-local render map. The geometry key is the clip frame the tear
-        # was minted on, translated to a window-relative index so frame_rng's
-        # absolute keying lands back on the mint frame from any window.
+                if "band_pos" in d:
+                    hit["pos"] = _band_detail(d, "band_pos", 0.0, 1.0)
+                if "band_height" in d:
+                    hit["bh"] = _band_detail(d, "band_height", 0.004, 0.3)
+        # frame -> (strength, geometry key, band pos, band height, dial): the
+        # tear frame at full strength and the frame after it relaxing back at
+        # half, exactly as the render did. Window-local render map. The
+        # geometry key is the clip frame the tear was minted on, translated to
+        # a window-relative index so frame_rng's absolute keying lands back on
+        # the mint frame from any window. Pos/height are None until someone
+        # pins them; the relaxing frame keeps its tear's placement. The dial
+        # multiplier is resolved here: the tape's tears ride the preset's
+        # skew_tear dial as always, an added tear rides 1.0.
         af0 = ctx.abs_frame(0)
-        self._tear_map: dict[int, tuple[float, int]] = {}
+        self._tear_map: dict[int, tuple] = {}
         occupied = {x["fi"] for x in self._tears}
         for t in self._tears:
             lf = t["fi"] - af0
+            sc = st if t.get("sc") is None else t["sc"]
             if 0 <= lf < n:
-                self._tear_map[lf] = (t["e"], t["key_fi"] - af0)
+                self._tear_map[lf] = (t["e"], t["key_fi"] - af0, t.get("pos"), t.get("bh"), sc)
             if 0 <= lf + 1 < n and (t["fi"] + 1) not in occupied:
-                self._tear_map.setdefault(lf + 1, (0.5 * t["e"], t["key_fi"] - af0))
+                self._tear_map.setdefault(lf + 1, (0.5 * t["e"], t["key_fi"] - af0,
+                                                   t.get("pos"), t.get("bh"), sc))
 
     def _apply_event_edits(self, ctx: Context) -> None:
         """The user's diff on top of the seeded schedule.
@@ -868,7 +936,9 @@ class VHS(Effect):
             if t < w1 and t + dur > w0:
                 out.append(Event(
                     t=t, dur=dur, kind="tracking_storm",
-                    detail={"id": st["id"], "intensity": round(float(st["seg"].max()), 3)},
+                    detail={"id": st["id"], "intensity": round(float(st["seg"].max()), 3),
+                            "band_pos": _round_band(st.get("pos")),
+                            "band_height": _round_band(st.get("bh"))},
                 ))
         for tr in getattr(self, "_tears", []):
             t = tr["fi"] / fps
@@ -876,7 +946,9 @@ class VHS(Effect):
                 out.append(Event(
                     t=t, dur=2.0 / fps,     # the tear and its relaxing frame
                     kind="skew_tear",
-                    detail={"id": tr["id"], "intensity": round(tr["e"], 3)},
+                    detail={"id": tr["id"], "intensity": round(tr["e"], 3),
+                            "band_pos": _round_band(tr.get("pos")),
+                            "band_height": _round_band(tr.get("bh"))},
                 ))
         return sorted(out, key=lambda e: e.t)
 
@@ -911,15 +983,24 @@ class VHS(Effect):
             off[:n_fl] += flag * 16.0 * sx * wob * prof
 
         st = v["skew_tear"]
-        if st > 0.0:
+        if st > 0.0 or getattr(self, "_tear_map", {}):
             # The schedule owns the when and the how-hard; the geometry is drawn
             # from the frame the tear was minted on, so a moved tear tears the
-            # same way in its new home.
-            e, fe = getattr(self, "_tear_map", {}).get(fi, (0.0, fi))
-            if e > 0.0:
+            # same way in its new home. The dial no longer gates it alone: an
+            # added tear must land even on a preset whose dial sits at zero,
+            # which is why the map carries each tear's own multiplier.
+            e, fe, tpos, tbh, sc = getattr(self, "_tear_map", {}).get(fi, (0.0, fi, None, None, st))
+            if e > 0.0 and sc > 0.0:
                 ge = ctx.frame_rng(f"{self.key}:skew", fe)   # tear keeps its place
+                # The tape's draws happen whether or not a pin replaces them:
+                # the direction and amplitude drawn after these must not change
+                # because someone moved the band.
                 y0 = int(H * (0.03 + 0.11 * ge.random()))
                 bh = max(int((5.0 + 12.0 * ge.random()) * sy), 3)
+                if tbh is not None:
+                    bh = max(int(tbh * H), 2)
+                if tpos is not None:
+                    y0 = int(tpos * max(H - bh, 0))
                 y1 = min(y0 + bh, H)
                 u = (rows[y0:y1] - y0) / max(y1 - y0 - 1, 1)
                 dirn = 1.0 if ge.random() < 0.72 else -1.0
@@ -927,8 +1008,8 @@ class VHS(Effect):
                 gj = ctx.frame_rng(f"{self.key}:skewjit")
                 jag = gj.standard_normal(y1 - y0).astype(np.float32)
                 # hard shear at the top edge of the band, decaying downward
-                off[y0:y1] += e * st * dirn * amp * (1.0 - u) ** 1.35
-                off[y0:y1] += e * st * 1.6 * sx * jag
+                off[y0:y1] += e * sc * dirn * amp * (1.0 - u) ** 1.35
+                off[y0:y1] += e * sc * 1.6 * sx * jag
 
         hs_strip = None
         hs = v["head_switch"]
@@ -959,10 +1040,22 @@ class VHS(Effect):
                 # Clip-indexed for the same reason as the schedule: the band a
                 # preview shows at 5.2s must be the band the export has there.
                 af = min(ctx.abs_frame(fi), ctx.clip_noise.n - 1)
-                bh = (36.0 + 84.0 * (0.5 + 0.5 * ctx.clip_noise.smooth(f"{self.key}:trh", 0.2)[af])) * sy
-                speed = H * (0.011 + 0.007 * ctx.clip_noise.smooth(f"{self.key}:trv", 0.1)[af])
-                wander = ctx.clip_noise.smooth(f"{self.key}:trpos", 0.5)[af] * 30.0 * sy
-                p = (0.31 * H + speed * af + wander) % (H + 2.0 * bh) - bh
+                # A pinned height or position from the instance overrides the
+                # tape's own; NaN is the tape's, byte for byte. Height first,
+                # because the auto position's roll wraps on the height.
+                bhu = float(self._track_bh[fi]) if fi < len(self._track_bh) else float("nan")
+                posu = float(self._track_pos[fi]) if fi < len(self._track_pos) else float("nan")
+                if np.isnan(bhu):
+                    bh = (36.0 + 84.0 * (0.5 + 0.5 * ctx.clip_noise.smooth(f"{self.key}:trh", 0.2)[af])) * sy
+                else:
+                    bh = max(bhu * H, 3.0)
+                if np.isnan(posu):
+                    speed = H * (0.011 + 0.007 * ctx.clip_noise.smooth(f"{self.key}:trv", 0.1)[af])
+                    wander = ctx.clip_noise.smooth(f"{self.key}:trpos", 0.5)[af] * 30.0 * sy
+                    p = (0.31 * H + speed * af + wander) % (H + 2.0 * bh) - bh
+                else:
+                    # 0 hugs the top edge, 1 the bottom, band fully on screen.
+                    p = bh / 2.0 + posu * max(H - bh, 0.0)
                 y0, y1 = int(max(0.0, p - bh / 2)), int(min(H, p + bh / 2))
                 if y1 - y0 > 2:
                     d = (rows[y0:y1] - p) / (bh * 0.5)
@@ -1194,7 +1287,9 @@ class VCRTransport(Effect):
                     d = e.get("detail") or {}
                     dur = max(int(float(d.get("dur_s", 0.5)) * fps), 2)
                     glitches.append({"id": e.get("id") or f"edit:add:{fi}", "fi": fi, "dur": dur,
-                                     "amp": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 1.0))})
+                                     "amp": float(np.clip(float(d.get("intensity", 1.0)), 0.05, 1.0)),
+                                     "pos": _band_detail(d, "band_pos", 0.0, 1.0),
+                                     "bh": _band_detail(d, "band_height", 0.05, 0.8)})
                 continue
             hit = next((x for x in glitches if x["id"] == e.get("id")), None)
             if hit is None:
@@ -1213,11 +1308,19 @@ class VCRTransport(Effect):
                     hit["dur"] = max(int(float(d["dur_s"]) * fps), 2)
                 if "intensity" in d:
                     hit["amp"] = float(np.clip(float(d["intensity"]), 0.05, 1.0))
+                if "band_pos" in d:
+                    hit["pos"] = _band_detail(d, "band_pos", 0.0, 1.0)
+                if "band_height" in d:
+                    hit["bh"] = _band_detail(d, "band_height", 0.05, 0.8)
         self._glitches = glitches
         # The envelope is window-local; each glitch contributes the slice of
-        # itself that this render can see.
+        # itself that this render can see. Band placement rides beside it per
+        # frame - NaN meaning the storm covers the whole frame, as it always
+        # did - from whichever glitch owns the frame's activation.
         af0 = ctx.abs_frame(0)
         env = np.zeros(n, np.float32)
+        self._genv_pos = np.full(n, np.nan, np.float32)
+        self._genv_bh = np.full(n, np.nan, np.float32)
         for gl in glitches:
             idx, dur = gl["fi"] - af0, gl["dur"]
             prof = np.full(dur, gl.get("amp", 1.0), np.float32)
@@ -1227,7 +1330,13 @@ class VCRTransport(Effect):
             prof[-edge:] = np.linspace(amp, 0.25 * amp, edge)
             lo, hi = max(idx, 0), min(idx + dur, n)
             if hi > lo:
-                env[lo:hi] = np.maximum(env[lo:hi], prof[lo - idx: hi - idx])
+                seg = prof[lo - idx: hi - idx]
+                take = seg > env[lo:hi]
+                env[lo:hi] = np.where(take, seg, env[lo:hi])
+                pos = np.nan if gl.get("pos") is None else float(gl["pos"])
+                bh = np.nan if gl.get("bh") is None else float(gl["bh"])
+                self._genv_pos[lo:hi] = np.where(take, pos, self._genv_pos[lo:hi])
+                self._genv_bh[lo:hi] = np.where(take, bh, self._genv_bh[lo:hi])
         self._glitch_env = env
         # Against the clip, not against this render: a preview taken from the
         # middle of a tape should not re-enact the deck locking on.
@@ -1238,7 +1347,9 @@ class VCRTransport(Effect):
         w0, w1 = ctx.t0, ctx.t0 + ctx.n_frames / fps
         out = [Event(t=gl["fi"] / fps, dur=gl["dur"] / fps, kind="transport_glitch",
                      detail={"id": gl["id"], "frames": gl["dur"],
-                             "intensity": round(gl.get("amp", 1.0), 3)})
+                             "intensity": round(gl.get("amp", 1.0), 3),
+                             "band_pos": _round_band(gl.get("pos")),
+                             "band_height": _round_band(gl.get("bh"))})
                for gl in getattr(self, "_glitches", [])
                if gl["fi"] / fps < w1 and (gl["fi"] + gl["dur"]) / fps > w0]
         # The lock-up only belongs to a render whose window actually contains it.
@@ -1270,10 +1381,20 @@ class VCRTransport(Effect):
             roll = int(H * 0.42 * a * ctx.noise.smooth(f"{self.key}:roll", 1.2)[fi])
             if roll:
                 frame = np.roll(frame, roll, axis=0)
-        a = max(a, float(self._glitch_env[min(fi, len(self._glitch_env) - 1)]))
+        j = min(fi, len(self._glitch_env) - 1)
+        ae = float(self._glitch_env[j])
+        a = max(a, ae)
         if a > 0.01:
             g = ctx.frame_rng(f"{self.key}:storm")
-            frame = _tracking_storm(frame, g, a)
+            # A glitch pinned to a band shreds only that band - unless the
+            # start-glitch lock-up is the louder storm this frame, which is
+            # whole-frame by nature.
+            wrow = None
+            if ae >= a and not (np.isnan(self._genv_pos[j]) and np.isnan(self._genv_bh[j])):
+                pos = 0.5 if np.isnan(self._genv_pos[j]) else float(self._genv_pos[j])
+                bh = 0.3 if np.isnan(self._genv_bh[j]) else float(self._genv_bh[j])
+                wrow = _band_weights(H, pos, bh)
+            frame = _tracking_storm(frame, g, a, wrow)
 
         if v["pause_bar"]:
             g = ctx.frame_rng(f"{self.key}:pausebar")
