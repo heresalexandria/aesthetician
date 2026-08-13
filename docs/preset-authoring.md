@@ -40,6 +40,11 @@ stacks a look over it - which is the intended way to age a caption. Cue text
 and timing are not preset material at all; they arrive as event edits
 (docs/events.md), so a captions preset is finished when its typography is.
 
+Author them as interchangeable: the app treats the words as a track and the
+preset as a coat of paint on it, so every one of these has to make sense drawn
+over somebody else's script. That means no assumptions about length, and a
+`pos_y` that reads as a considered spot rather than a default.
+
 ## proc_height (era vertical resolution - the image is simulated at this height)
 
 35mm/scope: none (native) · 16mm: 600–640 · 8mm/Super8: 500–560 · VHS SP: 540–560

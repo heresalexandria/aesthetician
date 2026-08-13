@@ -134,10 +134,16 @@ An added cue's `detail`:
   to the preset.
 
 The plan reports every cue with its resolved `bbox` - `[x0, y0, x1, y1]`
-normalized to the frame - which is how a front end can draw an exact drag
-handle over the rendered text, plus the raw override values (`null` meaning
-"the preset decides") and the wrapped line count. With no cues, the effect
-passes frames through byte for byte.
+normalized to the frame, measured on the **ink** rather than the em box, so a
+front end can draw a drag handle that sits on the letters - plus the raw
+override values (`null` meaning "the preset decides") and the wrapped line
+count. With no cues, the effect passes frames through byte for byte.
+
+Because none of it is seeded, a cue is portable in a way no other event is: the
+same `add` list renders under any captions preset. The app leans on that - it
+keeps the cues in a list of their own and emits this diff at render time, so
+changing caption style is a repaint and never a retype - but that is a front-end
+arrangement, and nothing here changed to allow it.
 
 ## Backward compatibility
 

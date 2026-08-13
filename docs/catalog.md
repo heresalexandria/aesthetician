@@ -970,7 +970,7 @@ A CEA-708 decoder with its factory defaults: clean mixed-case sans on a transluc
 **Picture:**
 - **Captions** - `captions.font=sans`, `captions.size=0.044`, `captions.line_chars=36`, `captions.max_lines=2`, `captions.align=center`, `captions.color=FFFFFF`, `captions.edge=none`, `captions.box=block`, `captions.box_color=101014`, `captions.box_opacity=0.68`, `captions.pos_y=0.88`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `cc-line21-1982` - Line-21 Closed Captions (1982)
 
@@ -981,7 +981,7 @@ A set-top decoder drawing Line-21 data: white monospace capitals in snug black c
 **Picture:**
 - **Captions** - `captions.font=cc_mono`, `captions.size=0.048`, `captions.text_case=upper`, `captions.line_chars=30`, `captions.max_lines=2`, `captions.align=center`, `captions.color=F2F2F2`, `captions.edge=none`, `captions.box=cells`, `captions.box_color=000000`, `captions.box_opacity=0.92`, `captions.pos_y=0.87`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `cc-rollup-1987` - Live Roll-Up Captions (1987)
 
@@ -992,7 +992,7 @@ Realtime stenography rolling up the screen: three rows of capitals scrolling in 
 **Picture:**
 - **Captions** - `captions.font=cc_mono`, `captions.size=0.046`, `captions.text_case=upper`, `captions.line_chars=32`, `captions.max_lines=3`, `captions.align=left`, `captions.color=F2F2F2`, `captions.edge=none`, `captions.box=cells`, `captions.box_color=000000`, `captions.box_opacity=0.92`, `captions.pos_x=0.5`, `captions.pos_y=0.86`, `captions.appear=roll_up`, `captions.appear_speed=1.0`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `cinema-subs-1968` - Theatrical Subtitles (1968)
 
@@ -1003,7 +1003,7 @@ Art-house print subtitles: unbacked white serif lines resting low, a soft shadow
 **Picture:**
 - **Captions** - `captions.font=serif`, `captions.size=0.047`, `captions.line_chars=38`, `captions.max_lines=2`, `captions.align=center`, `captions.color=F7F7F2`, `captions.edge=shadow`, `captions.edge_strength=0.35`, `captions.box=none`, `captions.pos_y=0.9`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `dvd-subs-1999` - DVD Player Subtitles (1999)
 
@@ -1014,7 +1014,7 @@ A living-room player compositing its subpicture stream: bold sans with a hard da
 **Picture:**
 - **Captions** - `captions.font=sans_bold`, `captions.size=0.046`, `captions.line_chars=36`, `captions.max_lines=2`, `captions.align=center`, `captions.color=F2F2F2`, `captions.edge=outline`, `captions.edge_strength=0.7`, `captions.box=none`, `captions.pos_y=0.89`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `fansub-vhs-1994` - Tape-Traded Fansub (1994)
 
@@ -1025,7 +1025,7 @@ A genlocked Amiga burning fan translations onto third-generation tape: hot yello
 **Picture:**
 - **Captions** - `captions.font=sans_bold`, `captions.size=0.05`, `captions.line_chars=34`, `captions.max_lines=2`, `captions.align=center`, `captions.color=F2DE3C`, `captions.edge=outline`, `captions.edge_strength=0.85`, `captions.box=none`, `captions.pos_y=0.88`, `captions.appear=cut`, `captions.jitter=0.3`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `intertitle-1923` - Silent Film Intertitle (1923)
 
@@ -1036,7 +1036,7 @@ A full title card cut into the picture: warm lettering on a near-black card that
 **Picture:**
 - **Captions** - `captions.font=bookface`, `captions.size=0.06`, `captions.line_chars=30`, `captions.max_lines=3`, `captions.align=center`, `captions.color=E8DCC0`, `captions.edge=none`, `captions.box=card`, `captions.box_color=0C0A08`, `captions.box_opacity=1.0`, `captions.pos_x=0.5`, `captions.pos_y=0.5`, `captions.appear=fade`, `captions.appear_speed=0.8`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `karaoke-1988` - Karaoke Fill (1988)
 
@@ -1047,7 +1047,7 @@ A laserdisc karaoke machine sweeping its lyric line: rimmed white capitals filli
 **Picture:**
 - **Captions** - `captions.font=sans_bold`, `captions.size=0.055`, `captions.line_chars=30`, `captions.max_lines=2`, `captions.align=center`, `captions.color=FFFFFF`, `captions.edge=outline`, `captions.edge_strength=0.8`, `captions.box=none`, `captions.pos_y=0.84`, `captions.appear=karaoke`, `captions.karaoke_color=F2C23C`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `lower-third-1985` - News Lower Third (1985)
 
@@ -1058,7 +1058,7 @@ A control-room character generator keying names over the strap: heavy condensed 
 **Picture:**
 - **Captions** - `captions.font=heavy`, `captions.size=0.052`, `captions.text_case=upper`, `captions.line_chars=30`, `captions.max_lines=2`, `captions.align=left`, `captions.color=FFFFFF`, `captions.edge=shadow`, `captions.edge_strength=0.4`, `captions.box=band`, `captions.box_color=10102E`, `captions.box_opacity=0.72`, `captions.pos_x=0.26`, `captions.pos_y=0.87`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `print-etch-1957` - Etched Print Subtitles (1957)
 
@@ -1069,7 +1069,7 @@ Subtitles burned into the release print itself: blazing white with nibbled edges
 **Picture:**
 - **Captions** - `captions.font=serif`, `captions.size=0.05`, `captions.line_chars=36`, `captions.max_lines=2`, `captions.align=center`, `captions.color=FFFFFF`, `captions.edge=etch`, `captions.edge_strength=0.65`, `captions.box=none`, `captions.pos_y=0.9`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `sdh-2007` - SDH Subtitles (2007)
 
@@ -1080,7 +1080,7 @@ Subtitles for the deaf and hard of hearing off a late DVD: clean mixed-case sans
 **Picture:**
 - **Captions** - `captions.font=sans`, `captions.size=0.042`, `captions.line_chars=42`, `captions.max_lines=3`, `captions.align=center`, `captions.color=FFFFFF`, `captions.edge=outline_shadow`, `captions.edge_strength=0.5`, `captions.box=none`, `captions.pos_y=0.89`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `teletext-1979` - Teletext Page 888 (1979)
 
@@ -1091,7 +1091,7 @@ Broadcast teletext subtitles: chunky double-wide pixels in service yellow on bla
 **Picture:**
 - **Captions** - `captions.font=teletext`, `captions.size=0.052`, `captions.line_chars=34`, `captions.max_lines=2`, `captions.align=center`, `captions.color=F2E12C`, `captions.edge=none`, `captions.box=cells`, `captions.box_color=000000`, `captions.box_opacity=1.0`, `captions.pos_y=0.88`, `captions.appear=cut`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `typewriter-doc-1976` - Documentary Typewriter (1976)
 
@@ -1102,7 +1102,7 @@ Location cards typed onto the frame: courier capitals spelled out letter by lett
 **Picture:**
 - **Captions** - `captions.font=typewriter`, `captions.size=0.042`, `captions.text_case=upper`, `captions.line_chars=34`, `captions.max_lines=2`, `captions.align=left`, `captions.color=F2F2EC`, `captions.edge=shadow`, `captions.edge_strength=0.45`, `captions.box=none`, `captions.pos_x=0.2`, `captions.pos_y=0.84`, `captions.appear=typewriter`, `captions.appear_speed=1.0`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ### `vcr-osd-1990` - VCR On-Screen Text (1990)
 
@@ -1113,7 +1113,7 @@ The deck's own character generator writing over playback: glowing dot-matrix cap
 **Picture:**
 - **Captions** - `captions.font=dotmatrix`, `captions.size=0.055`, `captions.text_case=upper`, `captions.line_chars=24`, `captions.max_lines=2`, `captions.align=left`, `captions.color=F2F2F2`, `captions.edge=glow`, `captions.edge_strength=0.5`, `captions.box=none`, `captions.pos_x=0.24`, `captions.pos_y=0.14`, `captions.appear=cut`, `captions.jitter=0.18`
 
-*22 adjustable parameters in this preset.*
+*23 adjustable parameters in this preset.*
 
 ## CARTOON
 

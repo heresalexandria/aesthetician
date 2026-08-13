@@ -115,6 +115,14 @@ function newLayer(overrides = {}) {
     variant: null,
     sets: {},
     events: [],          // the user's diff on the seeded event schedule
+    /* Caption cues: the words, when they show and where they sit. They are
+       content, not a diff against anything the seed drew, so they get their own
+       list rather than riding `events` as add-ops the way they used to. That
+       separation is the whole point - a caption style is an aesthetic you try
+       on, the script underneath it is work you did once and should never lose
+       to a change of style. layerSpec() turns them back into the add-ops the
+       engine has always read. */
+    cues: [],
     seed: 1 + Math.floor(Math.random() * 99999),
     intensity: 1.0,
     texture: 1.0,
@@ -123,7 +131,8 @@ function newLayer(overrides = {}) {
   };
 }
 
-const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'events', 'seed', 'intensity', 'texture'];
+const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'events', 'cues', 'seed',
+  'intensity', 'texture'];
 
 function newSession(info) {
   const sess = {
@@ -266,6 +275,9 @@ function activateSession(id) {
   G.activeId = id;
   state = sess;
   G.activeJob = null;              // any in-flight preview belongs to the old tab
+  // The editor was showing the last tab's timeline. Closed before anything is
+  // rebuilt, so a pane that wants to open it for *this* tab still can.
+  if (damageEditorOpen()) closeDamageEditor();
 
   $('drop-screen').classList.add('hidden');
   $('workspace').classList.remove('hidden');
@@ -296,6 +308,7 @@ function activateSession(id) {
   buildPresetList();
   buildLayersPanel();
   buildParamPane();
+  refreshCaptionLaunch();   // the button's count belongs to this tab
 
   // Restore this tab's already-rendered preview if it has one; the files live in
   // the preview cache, so switching back is instant and costs no re-render.
@@ -626,6 +639,9 @@ async function saveCustom() {
     variant: state.variant,
     sets: { ...state.sets },
     events: (state.events || []).map((e) => ({ ...e })),
+    // A caption style saved as a custom keeps its script too: "the version I
+    // made" is the words as much as the knobs.
+    cues: (state.cues || []).map((c) => ({ ...c })),
     intensity: state.intensity,
     texture: state.texture,
     seed: state.seed,
@@ -649,16 +665,17 @@ async function saveCustom() {
    whose whole point was a dialled-back Intensity came back at 1.0 and rendered
    as the plain preset. Both paths go through the same fields now. */
 function layerFromCustom(c) {
-  return newLayer({
+  return migrateCues(newLayer({
     presetId: c.base,
     customId: c.id,
     variant: c.variant || null,
     sets: { ...(c.sets || {}) },
     events: (c.events || []).map((e) => ({ ...e })),
+    cues: (c.cues || []).map((x) => ({ ...x })),
     seed: typeof c.seed === 'number' ? c.seed : 1 + Math.floor(Math.random() * 99999),
     intensity: typeof c.intensity === 'number' ? c.intensity : 1,
     texture: typeof c.texture === 'number' ? c.texture : 1,
-  });
+  }));
 }
 
 function applyCustom(cid, opts = {}) {
@@ -670,6 +687,8 @@ function applyCustom(cid, opts = {}) {
   state.variant = c.variant || null;
   state.sets = { ...(c.sets || {}) };
   state.events = (c.events || []).map((e) => ({ ...e }));
+  state.cues = (c.cues || []).map((x) => ({ ...x }));
+  migrateCues(activeLayer(state));
   state.intensity = typeof c.intensity === 'number' ? c.intensity : 1;
   state.texture = typeof c.texture === 'number' ? c.texture : 1;
   if (typeof c.seed === 'number') state.seed = c.seed;
@@ -734,7 +753,8 @@ function customDrifted() {
     || c.texture !== state.texture
     || c.seed !== state.seed
     || JSON.stringify(c.sets || {}) !== JSON.stringify(state.sets)
-    || JSON.stringify(c.events || []) !== JSON.stringify(state.events || []);
+    || JSON.stringify(c.events || []) !== JSON.stringify(state.events || [])
+    || JSON.stringify(c.cues || []) !== JSON.stringify(state.cues || []);
 }
 
 /* Names go into filenames, so keep them to something a filesystem enjoys. */
@@ -773,6 +793,7 @@ function captureStackLayers(sess = state) {
     variant: l.variant || null,
     sets: { ...(l.sets || {}) },
     events: (l.events || []).map((e) => ({ ...e })),
+    cues: (l.cues || []).map((c) => ({ ...c })),
     seed: l.seed,
     intensity: l.intensity,
     texture: l.texture,
@@ -822,7 +843,7 @@ async function saveStack() {
 /* One saved layer back into a live one. Seed included: "the version I made"
    means the noise landed where it landed. */
 function layerFromSaved(sl) {
-  return newLayer({
+  return migrateCues(newLayer({
     presetId: sl.base,
     // A custom the user has since deleted leaves the numbers intact and just
     // stops claiming its name.
@@ -830,11 +851,12 @@ function layerFromSaved(sl) {
     variant: sl.variant || null,
     sets: { ...(sl.sets || {}) },
     events: (sl.events || []).map((e) => ({ ...e })),
+    cues: (sl.cues || []).map((c) => ({ ...c })),
     seed: typeof sl.seed === 'number' ? sl.seed : 1 + Math.floor(Math.random() * 99999),
     intensity: typeof sl.intensity === 'number' ? sl.intensity : 1,
     texture: typeof sl.texture === 'number' ? sl.texture : 1,
     enabled: sl.enabled !== false,
-  });
+  }));
 }
 
 /* Layers whose base preset still exists in this build. */
@@ -2110,6 +2132,8 @@ function layerLabel(l) {
 
 function layerSub(l) {
   const bits = [];
+  const nc = (l.cues || []).length;
+  if (isCaptionLayer(l)) bits.push(nc ? `${nc} caption${nc === 1 ? '' : 's'}` : 'no captions yet');
   if (l.variant) bits.push(l.variant);
   const n = Object.keys(l.sets || {}).length;
   if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
@@ -2145,12 +2169,25 @@ function buildLayersPanel() {
   list.innerHTML = '';
 
   layers.forEach((l, i) => {
+    const cap = isCaptionLayer(l);
     const row = document.createElement('div');
     row.className = 'layer-row'
       + (i === state.activeLayer ? ' sel' : '')
+      + (cap ? ' cap' : '')
       + (l.enabled ? '' : ' off');
     row.draggable = true;
     row.dataset.lid = l.lid;
+    /* Where the caption track sits in the stack is the whole answer to "does
+       the tape chew the lettering": above the look it stays crisp, below it
+       gets treated along with everything else. Worth saying on the row, since
+       dragging it is the only way to choose. */
+    if (cap) {
+      row.title = i === layers.length - 1
+        ? 'Captions render last, so they stay crisp over the treated picture. '
+          + 'Drag below a look to have that look chew them.'
+        : 'Captions render here, so every layer above treats the lettering too. '
+          + 'Drag to the bottom of the list to keep them crisp.';
+    }
 
     const grip = document.createElement('span');
     grip.className = 'l-grip';
@@ -2180,7 +2217,14 @@ function buildLayersPanel() {
     text.className = 'l-text';
     const name = document.createElement('span');
     name.className = 'l-name';
-    name.textContent = layerLabel(l);
+    if (cap) {
+      const badge = document.createElement('span');
+      badge.className = 'l-cc';
+      badge.textContent = 'CC';
+      badge.title = 'The caption track: the words, and whichever style is drawing them';
+      name.appendChild(badge);
+    }
+    name.appendChild(document.createTextNode(layerLabel(l)));
     text.appendChild(name);
     const sub = layerSub(l);
     if (sub) {
@@ -2288,6 +2332,9 @@ function removeLayer(i) {
 function addLayer(pid, opts = {}) {
   if (!pid) return;
   if (isStackId(pid)) { appendStack(pid, opts); return; }
+  // A session has one caption track. Stacking a caption style onto a stack
+  // that already has one restyles it instead of growing a second script.
+  if (isCaptionStyle(pid) && captionLayer(state)) { applyCaptionStyle(pid, opts); return; }
   const custom = isCustomId(pid) ? customById(pid) : null;
   if (isCustomId(pid) && !custom) return;   // a row for a custom that just went away
   state.layers.push(custom ? layerFromCustom(custom) : newLayer({ presetId: pid }));
@@ -2309,12 +2356,18 @@ function applyOnly(id) {
 }
 
 function selectPreset(pid, opts = {}) {
+  /* The one thing a pick does not sweep away: a script, when what is arriving
+     is another way of drawing it. Everything else on the layer described the
+     old style and cannot mean anything under the new one. */
+  const l = activeLayer(state);
+  const keepCues = isCaptionStyle(pid) && isCaptionLayer(l) && (l.cues || []).length > 0;
   state.presetId = pid;
   state.customId = null;   // picking a stock preset leaves any custom behind
   state.stackId = null;    // and the arrangement is no longer the saved one
   state.variant = null;
   state.sets = {};
   state.events = [];
+  if (!keepCues) state.cues = [];
   syncSelection();       // the rows themselves have not changed, only which one is lit
   renderTabs();          // the tab shows which aesthetic the clip is wearing
   buildParamPane();
@@ -2344,6 +2397,7 @@ function layerHasWork(l) {
     || Boolean(l.variant)
     || Object.keys(l.sets || {}).length > 0
     || (l.events || []).length > 0
+    || (l.cues || []).length > 0
     || l.intensity !== 1
     || l.texture !== 1;
 }
@@ -2366,6 +2420,8 @@ function describeLayerWork(l) {
   const bits = [];
   const n = Object.keys(l.sets || {}).length;
   if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
+  const nc = (l.cues || []).length;
+  if (nc) bits.push(`${nc} caption${nc === 1 ? '' : 's'}`);
   const ne = (l.events || []).length;
   if (ne) bits.push(`${ne} timeline edit${ne === 1 ? '' : 's'}`);
   if (l.variant) bits.push(`the ${l.variant} variant`);
@@ -2393,6 +2449,14 @@ function openInNewTab(id) {
 async function pickFromList(id, opts = {}) {
   if (!id) return;
   const stack = isStackId(id);
+  /* A caption style is a way of drawing a script, not a layer's worth of work
+     to be replaced. With a track already in the stack the pick goes to it,
+     wherever it sits and whatever is selected: nothing is lost, so nothing is
+     asked, and one caption track never quietly becomes two. */
+  if (!stack && isCaptionStyle(id) && captionLayer(state)) {
+    applyCaptionStyle(id, opts);
+    return;
+  }
   const atRisk = stack ? sessionHasWork() : layerHasWork(activeLayer(state));
   if (!atRisk) { selectById(id, opts); return; }
 
@@ -2425,6 +2489,9 @@ async function pickFromList(id, opts = {}) {
    arrangement rather than the selected layer. */
 async function pickOnly(id) {
   if (!id) return;
+  // Same rule as a click: a caption style dresses the track it finds rather
+  // than collapsing the stack down onto a fresh, wordless one.
+  if (isCaptionStyle(id) && captionLayer(state)) { applyCaptionStyle(id); return; }
   if (!sessionHasWork()) { applyOnly(id); return; }
   const many = (state.layers || []).filter((l) => l.presetId).length;
   const layer = activeLayer(state);
@@ -2490,11 +2557,15 @@ function chainWithKeys(chain) {
   });
 }
 
-function variantOverrides() {
-  if (!state.variant) return {};
-  const p = G.schema.presets[state.presetId];
-  const v = p.variants.find((x) => x.id === state.variant);
+function variantOverridesOf(l) {
+  if (!l || !l.variant) return {};
+  const p = G.schema.presets[l.presetId];
+  const v = p && (p.variants || []).find((x) => x.id === l.variant);
   return v ? { ...v.video, ...v.audio } : {};
+}
+
+function variantOverrides() {
+  return variantOverridesOf(activeLayer(state));
 }
 
 function clearParamPane() {
@@ -2544,15 +2615,17 @@ function buildParamPane() {
   const holder = $('param-list');
   holder.innerHTML = '';
   const vo = variantOverrides();
-  /* A captions preset is half aesthetic, half editor: the words live on the
-     timeline, so the pane leads with the door to them. Landing on a captions
-     preset with nothing written yet opens that door by itself, once per layer. */
+  /* A caption style is half aesthetic, half editor: the words are a track of
+     their own, so the pane leads with the door to them. Landing on a caption
+     style with nothing written yet opens that door by itself, once per layer.
+     The knobs below stay exactly what they were - per-style tweaking is the
+     other half of the point. */
   if (p.family === 'captions' && !state.audioSource && state.file) {
     holder.appendChild(captionLaunchCard());
     const al = activeLayer(state);
     if (al && !al.capSeen) {
       al.capSeen = true;
-      if (!captionOpsCount() && !damageEditorOpen()) openDamageEditor('caption');
+      if (!captionCueCount() && !damageEditorOpen()) openDamageEditor('caption');
     }
   }
   const sections = state.audioSource
@@ -2574,6 +2647,10 @@ function buildParamPane() {
       holder.appendChild(effectCard(entry, vo));
     }
   }
+  // The editor's style strip repeats what this pane says about the caption
+  // track - which style, which variant, how many tweaks - so it is rebuilt from
+  // the same place, and a pill or a knob touched here cannot leave it stale.
+  if (captionEditorOpen()) buildCaptionStyles();
 }
 
 /* The "N tweaks · Reset all" strip under the master dials: visible only while
@@ -2834,13 +2911,17 @@ function schedulePreview(immediate = false, delayMs = null) {
 
 /* The stack as the engine wants it: bottom layer first, disabled ones dropped.
    Only render-affecting fields, because this is also what the preview cache is
-   keyed on - anything cosmetic in here would cost a re-render for nothing. */
+   keyed on - anything cosmetic in here would cost a re-render for nothing.
+
+   Cues rejoin the event diff here and nowhere else: the engine's language has
+   not changed (docs/events.md), only where the app keeps the words between
+   renders. */
 function layerSpec(sess = state) {
   return liveLayers(sess).map((l) => ({
     preset: l.presetId,
     variant: l.variant || null,
     sets: l.sets || {},
-    events: l.events || [],
+    events: [...(l.events || []), ...cueOps(l)],
     seed: l.seed,
     intensity: l.intensity,
     texture: l.texture,
@@ -3146,8 +3227,12 @@ function damageEditorOpen() {
   return !$('damage-editor').classList.contains('hidden');
 }
 
+/* The plan numbers its layers by position in the *spec*, which is the live
+   layers only - an empty slot or a switched-off layer is not in it. Indexing
+   the session's own list with that number would land on the wrong layer the
+   moment either exists. */
 function evLayerOf(ev) {
-  return state.layers[ev.layer] || activeLayer(state);
+  return liveLayers(state)[ev.layer] || activeLayer(state);
 }
 
 function findAddOp(l, id) {
@@ -3174,21 +3259,42 @@ function afterEventEdit() {
   refreshTimeline();
   renderTabs();
   refreshCaptionLaunch();
+  buildLayersPanel();            // the caption row carries its own cue count
+  // refreshTimeline repaints the lane too, but only after it has been out to
+  // the engine for a plan. Cues do not need one, so they land now.
+  if (captionEditorOpen()) paintDamageLane();
 }
 
-/* The captions door in the param pane keeps its count honest without a full
-   pane rebuild, which would yank focus from whatever knob was being touched. */
+/* The captions door in the param pane, and the button in the player controls,
+   keep their counts honest without a full pane rebuild - which would yank
+   focus from whatever knob or text box was being touched. */
 function refreshCaptionLaunch() {
+  const n = captionCueCount();
   const card = document.getElementById('cap-launch');
-  if (!card) return;
-  const labels = captionLaunchLabels(captionOpsCount());
-  const info = card.querySelector('.cap-launch-info');
-  const open = card.querySelector('button.accent');
-  if (info) info.textContent = labels.info;
-  if (open) open.textContent = labels.button;
+  if (card) {
+    const labels = captionLaunchLabels(n);
+    const info = card.querySelector('.cap-launch-info');
+    const open = card.querySelector('button.accent');
+    if (info) info.textContent = labels.info;
+    if (open) open.textContent = labels.button;
+  }
+  const btn = $('btn-captions');
+  if (!btn) return;
+  btn.classList.toggle('hidden', !(state.file && state.file.path) || state.audioSource);
+  btn.classList.toggle('lit', captionEditorOpen());
+  const badge = $('cap-count');
+  badge.textContent = n ? String(n) : '';
+  badge.classList.toggle('hidden', !n);
+  btn.title = n
+    ? `${n} caption${n === 1 ? '' : 's'} on this clip - write, time, place and restyle them`
+    : 'Write burned-in captions for this clip, then try any caption style on them';
 }
 
+/* Damage and captions share every gesture in the editor - drag a span, stretch
+   an edge, type a start time - so they share these three entry points and part
+   ways only at the store underneath. */
 function removeEvent(ev) {
+  if (ev.kind === 'caption') { removeCue(ev.detail.id); return; }
   const l = evLayerOf(ev);
   const id = ev.detail && ev.detail.id;
   const addOp = id && findAddOp(l, id);
@@ -3202,6 +3308,7 @@ function removeEvent(ev) {
 }
 
 function moveEvent(ev, t) {
+  if (ev.kind === 'caption') { moveCue(ev.detail.id, t); return; }
   const l = evLayerOf(ev);
   const id = ev.detail && ev.detail.id;
   const addOp = id && findAddOp(l, id);
@@ -3211,6 +3318,7 @@ function moveEvent(ev, t) {
 }
 
 function tuneEvent(ev, detail) {
+  if (ev.kind === 'caption') { updateCue(ev.detail.id, detail); return; }
   const l = evLayerOf(ev);
   const id = ev.detail && ev.detail.id;
   const addOp = id && findAddOp(l, id);
@@ -3221,14 +3329,9 @@ function tuneEvent(ev, detail) {
 
 let evAddSeq = 0;
 function addEventAt(effect, kind, t, detail = {}) {
+  if (kind === 'caption') return addCue(t, detail);
   const l = activeLayer(state);
   l.events = l.events || [];
-  if (kind === 'caption') {
-    // A fresh cue arrives ready to type over, and the form knows to hand the
-    // caret straight to the text box.
-    detail = { text: 'Caption text', dur_s: 2.5, ...detail };
-    G.damage.focusText = true;
-  }
   const id = `edit:add:${Date.now()}:${++evAddSeq}`;
   l.events.push({ op: 'add', id, effect, kind, t, detail });
   G.damage.selected = id;
@@ -3324,35 +3427,84 @@ function seekPreview(t) {
   schedulePreview();
 }
 
+/* Damage is the engine's own schedule, so it can only come from the plan.
+   Cues are ours, so they come from the cue list and borrow only the bbox from
+   the plan - which means the lane, the form and the cue count are correct the
+   moment anything changes, and only the drag handle on the picture waits for
+   a render to catch up with it. */
+function captionEvents() {
+  const bboxes = {};
+  for (const e of ((state.eventsPlan && state.eventsPlan.events) || [])) {
+    if (e.kind === 'caption' && e.detail && e.detail.id) bboxes[e.detail.id] = e.detail;
+  }
+  return captionCues()
+    .slice()
+    .sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1))
+    .map((c) => {
+      const planned = bboxes[c.id] || {};
+      return {
+        t: c.t, dur: Math.max(Number(c.dur_s) || 0, 0.05), kind: 'caption', effect: 'captions',
+        detail: { ...c, bbox: planned.bbox || null, lines: planned.lines },
+      };
+    });
+}
+
 function damageEvents() {
+  if (G.damage.kind === 'caption') return captionEvents();
   const plan = state.eventsPlan;
   return ((plan && plan.events) || []).filter((e) => e.kind === G.damage.kind);
 }
 
 function openDamageEditor(kind) {
   if (!DAMAGE_KINDS[kind] || !state.file || state.audioSource) return;
+  const meta = DAMAGE_KINDS[kind];
+  // Reaching for captions is reason enough to have a caption track: a first
+  // one arrives wearing a plain, legible style, ready to be tried against the
+  // rest of the library from the strip above the film.
+  if (meta.caption) {
+    if (!ensureCaptionTrack()) return;
+    syncSelection();
+    buildLayersPanel();
+    buildParamPane();
+    renderTabs();
+    schedulePreview();
+  }
   G.damage.kind = kind;
   G.damage.selected = null;
-  const meta = DAMAGE_KINDS[kind];
   $('de-dot').style.background = TICK_COLORS[kind] || 'var(--dim)';
   $('de-title').textContent = meta.label;
   $('de-script').classList.toggle('hidden', !meta.caption);
+  $('de-styles').classList.toggle('hidden', !meta.caption);
+  $('de-reset').textContent = meta.caption ? 'Clear all' : 'Reset kind';
+  $('de-reset').title = meta.caption
+    ? 'Delete every caption on this track. The style stays as it is.'
+    : 'Drop every edit of this kind on this layer';
   $('de-hint').textContent = meta.caption
     ? 'Double-click empty film to add a caption · drag a span to move it · drag its edges to change '
       + 'how long it holds · drag the box on the picture to place it (Alt moves every caption)'
     : 'Drag the film to scrub the preview · double-click empty film to add · drag a span to move it '
       + '· drag its edges to stretch';
   $('damage-editor').classList.remove('hidden');
+  $('damage-editor').classList.toggle('cap', !!meta.caption);
   document.body.classList.add('damage-editing');
+  document.body.classList.toggle('caption-editing', !!meta.caption);
+  if (meta.caption) buildCaptionStyles();
   paintDamageLane();
+  refreshCaptionLaunch();
+}
+
+function captionEditorOpen() {
+  return damageEditorOpen() && G.damage.kind === 'caption';
 }
 
 function closeDamageEditor() {
   $('damage-editor').classList.add('hidden');
   document.body.classList.remove('damage-editing');
+  document.body.classList.remove('caption-editing');
   $('cap-drag').classList.add('hidden');
   G.damage.kind = null;
   G.damage.selected = null;
+  refreshCaptionLaunch();
 }
 
 function selectDamage(id, { seek = true } = {}) {
@@ -3386,9 +3538,12 @@ function paintDamageLane() {
   host.innerHTML = '';
   const events = damageEvents();
   const isCap = G.damage.kind === 'caption';
-  // Captions are all the user's own words; the seed has no say in them.
+  // Captions are all the user's own words; the seed has no say in them. What
+  // does matter is which style is drawing them, so the count says so.
+  const cl = isCap && captionLayer();
   $('de-count').textContent = isCap
     ? `${events.length} caption${events.length === 1 ? '' : 's'}`
+      + (cl ? ` · ${layerLabel(cl)}` : '')
     : `${events.length} instance${events.length === 1 ? '' : 's'} · seed ${state.seed}`;
   for (const ev of events) {
     const id = ev.detail && ev.detail.id;
@@ -3601,36 +3756,238 @@ function buildDamageForm() {
   form.appendChild(evActionsRow(ev, 'instance'));
 }
 
-/* ── captions ────────────────────────────────────────────────────────
-   Cues ride the same event-op rails as damage, but the editor speaks a
-   different language: words, holds, and places instead of intensities and
-   bands. The engine's plan reports each cue's on-screen bbox, so the drag
-   handle on the picture is exact, not a guess. */
+/* ── the caption track ───────────────────────────────────────────────
+   Captions come in two halves that used to be welded together, and the weld
+   was the problem: the words lived in a layer's event diff, so picking a
+   different caption style - which is picking a different preset for that layer
+   - threw the whole script away. Nobody could try a look on their own
+   subtitles without retyping them.
 
-function captionOpsCount(l = activeLayer(state)) {
-  return ((l && l.events) || []).filter((e) => e.op === 'add' && e.kind === 'caption').length;
+   So the halves are separate now. A layer's `cues` are the script: what is
+   said, when, how long, and any per-cue placement. The layer's *preset* is the
+   style: the face, the backing, the motion, the era. One caption track per
+   session wears one style at a time, and swapping styles is a repaint, never a
+   retype. layerSpec() welds them back together for the engine, which never had
+   to learn any of this.
+
+   The engine's plan still reports each cue's on-screen bbox, so the drag
+   handle on the picture is exact rather than a guess - but the lane itself is
+   drawn from the cues directly, so it is right the instant a style changes
+   instead of a render later. */
+
+/* A neutral, legible default for someone who reached for captions rather than
+   for a caption aesthetic. Any build missing it falls back to whatever the
+   library's first captions preset happens to be. */
+const DEFAULT_CAPTION_STYLE = 'sdh-2007';
+
+function captionStyleIds() {
+  const ps = (G.schema && G.schema.presets) || {};
+  return Object.keys(ps).filter((id) => ps[id].family === 'captions')
+    .sort((a, b) => String(ps[a].era).localeCompare(String(ps[b].era)));
 }
 
-/* One source for the launch card's words, used at build and refresh alike. */
-function captionLaunchLabels(n) {
+function isCaptionStyle(pid) {
+  const p = pid && G.schema && G.schema.presets && G.schema.presets[pid];
+  return !!(p && p.family === 'captions');
+}
+
+function isCaptionLayer(l) {
+  return !!(l && isCaptionStyle(l.presetId));
+}
+
+/* The session's caption track, if it has one. Deliberately the *first* such
+   layer: picking a caption style routes here rather than stacking a second
+   track, because two caption tracks is almost never what anybody meant. */
+function captionLayerIndex(sess = state) {
+  return (sess.layers || []).findIndex(isCaptionLayer);
+}
+
+function captionLayer(sess = state) {
+  const i = captionLayerIndex(sess);
+  return i < 0 ? null : sess.layers[i];
+}
+
+function captionCues(sess = state) {
+  const l = captionLayer(sess);
+  return (l && l.cues) || [];
+}
+
+function captionCueCount(sess = state) {
+  return captionCues(sess).length;
+}
+
+let cueSeq = 0;
+
+/* Every optional field is spelled out with an explicit null rather than left
+   off: null is how a cue says "the style decides" over the wire, and a missing
+   key would read the same but survive a round trip differently. */
+const CUE_KEYS = ['text', 'dur_s', 'pos_x', 'pos_y', 'align', 'color', 'size', 'italic'];
+
+function newCue(t, detail = {}) {
   return {
-    info: n ? `${n} caption${n === 1 ? '' : 's'} on the timeline` : 'No captions on the timeline yet',
-    button: n ? 'Edit captions' : 'Add captions',
+    id: `cue:${Date.now()}:${++cueSeq}`,
+    t: Math.max(Number(t) || 0, 0),
+    text: '',
+    dur_s: 2.5,
+    pos_x: null, pos_y: null, align: null, color: null, size: null,
+    italic: false,
+    ...detail,
   };
 }
 
-/* The captions effect's resolved knobs for the active layer: preset chain
+/* Cues as the engine reads them. Only a layer actually wearing a caption style
+   emits any: a script on a layer that has been switched to a tape look is kept,
+   but there is nothing there to draw it. */
+function cueOps(l) {
+  if (!isCaptionLayer(l)) return [];
+  return (l.cues || []).map((c) => {
+    const detail = {};
+    for (const k of CUE_KEYS) detail[k] = c[k] === undefined ? null : c[k];
+    return { op: 'add', id: c.id, effect: 'captions', kind: 'caption', t: c.t, detail };
+  });
+}
+
+/* Older builds saved captions as add/move/tune/remove ops inside `events`, and
+   customs and stacks in the wild still carry them. Replaying that little diff
+   into the cue list is the honest migration - reading only the adds would
+   silently undo every edit that had been made to them. */
+function migrateCues(l) {
+  const ops = l.events || [];
+  if (!ops.some((e) => e && e.kind === 'caption')) return l;
+  const cues = [...(l.cues || [])];
+  for (const e of ops) {
+    if (!e || e.kind !== 'caption') continue;
+    if (e.op === 'add') {
+      cues.push({ ...newCue(e.t, e.detail || {}), id: e.id || `cue:legacy:${++cueSeq}` });
+      continue;
+    }
+    const at = cues.findIndex((c) => c.id === e.id);
+    if (at < 0) continue;
+    if (e.op === 'remove') cues.splice(at, 1);
+    else if (e.op === 'move') cues[at].t = Math.max(Number(e.t) || 0, 0);
+    else if (e.op === 'tune') Object.assign(cues[at], e.detail || {});
+  }
+  l.cues = cues;
+  l.events = ops.filter((e) => !e || e.kind !== 'caption');
+  return l;
+}
+
+// ── cue edits ────────────────────────────────────────────────────────
+function findCue(id) {
+  return captionCues().find((c) => c.id === id) || null;
+}
+
+function updateCue(id, patch) {
+  const c = findCue(id);
+  if (!c) return;
+  Object.assign(c, patch);
+  afterEventEdit();
+}
+
+function moveCue(id, t) {
+  updateCue(id, { t: Math.max(Number(t) || 0, 0) });
+}
+
+function removeCue(id) {
+  const l = captionLayer();
+  if (!l) return;
+  l.cues = (l.cues || []).filter((c) => c.id !== id);
+  if (G.damage.selected === id) G.damage.selected = null;
+  afterEventEdit();
+}
+
+function addCue(t, detail = {}) {
+  const l = ensureCaptionTrack();
+  if (!l) return null;
+  const cue = newCue(t, { text: 'Caption text', ...detail });
+  l.cues = l.cues || [];
+  l.cues.push(cue);
+  G.damage.selected = cue.id;
+  G.damage.focusText = true;   // a fresh cue arrives ready to type over
+  afterEventEdit();
+  return cue.id;
+}
+
+/* The session's caption track, made if it is not there yet. A blank layer is
+   the obvious home for it; otherwise the track goes on top of the stack, where
+   crisp lettering over a treated picture is the common case - dragging it
+   under a tape layer to have the tape chew it is one gesture away. */
+function ensureCaptionTrack(styleId = null) {
+  let i = captionLayerIndex(state);
+  if (i < 0) {
+    const style = styleId
+      || (isCaptionStyle(DEFAULT_CAPTION_STYLE) ? DEFAULT_CAPTION_STYLE : captionStyleIds()[0]);
+    if (!style) return null;
+    const cur = activeLayer(state);
+    if (cur && !cur.presetId) {
+      i = state.activeLayer;
+    } else {
+      state.layers.push(newLayer());
+      i = state.layers.length - 1;
+    }
+    Object.assign(state.layers[i], { presetId: style, customId: null, variant: null, sets: {} });
+    state.stackId = null;
+  }
+  state.activeLayer = i;
+  // The pane follows the track, because while you are writing captions the
+  // knobs worth having are the caption style's. `capSeen` is set here rather
+  // than in the pane: the door it guards is the one being walked through.
+  state.layers[i].capSeen = true;
+  return state.layers[i];
+}
+
+/* Wearing a different style. Everything about the look is replaced - variant
+   and tweaks belonged to the old style and would land on parameters the new
+   one never set - and the script is left strictly alone. */
+function applyCaptionStyle(pid, opts = {}) {
+  const l = ensureCaptionTrack(pid);
+  if (!l) return;
+  if (l.presetId !== pid) {
+    Object.assign(l, { presetId: pid, customId: null, variant: null, sets: {} });
+    state.stackId = null;
+  }
+  syncSelection();
+  renderTabs();
+  buildParamPane();       // which relights the strip's chip and its variants
+  buildLayersPanel();
+  paintDamageLane();
+  schedulePreview(true, opts.previewDelay);
+}
+
+/* Step through the caption styles in era order - how you audition a script
+   against the whole library without leaving the editor. */
+function stepCaptionStyle(delta) {
+  const ids = captionStyleIds();
+  if (!ids.length) return;
+  const l = captionLayer();
+  const at = l ? ids.indexOf(l.presetId) : -1;
+  const next = at < 0 ? 0 : (at + delta + ids.length) % ids.length;
+  applyCaptionStyle(ids[next]);
+}
+
+/* One source for the launch card's words, used at build and refresh alike. The
+   card doubles as the editor's own switch, so it says which way it points. */
+function captionLaunchLabels(n, open = captionEditorOpen()) {
+  return {
+    info: n ? `${n} caption${n === 1 ? '' : 's'} on this track` : 'No captions written yet',
+    button: open ? 'Hide editor' : (n ? 'Edit captions' : 'Add captions'),
+  };
+}
+
+/* The captions effect's resolved knobs for the caption track: preset chain
    values, variant overrides, then manual sets. The script splitter reads wrap
-   width and row count from here so it packs what the style will show. */
+   width and row count from here so it packs what the style will actually show. */
 function captionParams() {
   const out = {};
   const eff = G.schema.effects.captions;
   if (!eff) return out;
   for (const prm of eff.params) out[prm.name] = prm.default;
-  const p = G.schema.presets[state.presetId];
+  const l = captionLayer() || activeLayer(state);
+  if (!l) return out;
+  const p = G.schema.presets[l.presetId];
   const entry = p && (p.video || []).find(([eid]) => eid === 'captions');
   if (entry) Object.assign(out, entry[1] || {});
-  for (const [k, v] of Object.entries({ ...variantOverrides(), ...state.sets })) {
+  for (const [k, v] of Object.entries({ ...variantOverridesOf(l), ...(l.sets || {}) })) {
     const m = /^captions\.(.+)$/.exec(String(k).replace(/#\d+\./, '.'));
     if (m) out[m[1]] = v;
   }
@@ -3640,14 +3997,17 @@ function captionParams() {
 function captionLaunchCard() {
   const card = document.createElement('div');
   card.id = 'cap-launch';
-  const labels = captionLaunchLabels(captionOpsCount());
+  const labels = captionLaunchLabels(captionCueCount());
   const info = document.createElement('div');
   info.className = 'cap-launch-info';
   info.textContent = labels.info;
   const open = document.createElement('button');
   open.className = 'accent';
   open.textContent = labels.button;
-  open.onclick = () => openDamageEditor('caption');
+  open.onclick = () => {
+    if (captionEditorOpen()) closeDamageEditor();
+    else openDamageEditor('caption');
+  };
   const paste = document.createElement('button');
   paste.textContent = 'Paste script…';
   paste.title = 'Drop in a whole script or .srt text and spread it across the clip';
@@ -3656,6 +4016,78 @@ function captionLaunchCard() {
   card.appendChild(open);
   card.appendChild(paste);
   return card;
+}
+
+/* ── the style strip ─────────────────────────────────────────────────
+   The editor's own aesthetic picker, sitting directly over the words it
+   restyles. Every caption style in the library as a chip wearing its own
+   thumbnail, the current one lit, its variants underneath. This is the thing
+   the old arrangement could not do at all: one click, same script, different
+   era, and the preview re-renders around it. */
+function buildCaptionStyles() {
+  const row = $('de-styles');
+  if (!row) return;
+  row.innerHTML = '';
+  const l = captionLayer();
+  const cur = l && l.presetId;
+  const strip = document.createElement('div');
+  strip.className = 'cs-strip';
+  for (const id of captionStyleIds()) {
+    const p = G.schema.presets[id];
+    const chip = document.createElement('button');
+    chip.className = 'cs-chip' + (id === cur ? ' sel' : '');
+    chip.title = `${p.name} · ${p.era}\n${p.desc}`;
+    const t = G.thumbs && G.thumbs[id];
+    if (t && t.poster) {
+      const img = document.createElement('img');
+      img.src = fileUrl(t.poster);
+      img.draggable = false;
+      chip.appendChild(img);
+    }
+    const name = document.createElement('span');
+    name.textContent = p.name;
+    chip.appendChild(name);
+    chip.onclick = () => applyCaptionStyle(id);
+    strip.appendChild(chip);
+  }
+  row.appendChild(strip);
+  // The strip is longer than the panel, and the style you are wearing is the
+  // one you are navigating from - it has to be on screen without a hunt.
+  const lit = strip.querySelector('.cs-chip.sel');
+  if (lit) requestAnimationFrame(() => lit.scrollIntoView({ block: 'nearest', inline: 'center' }));
+
+  const sub = document.createElement('div');
+  sub.className = 'cs-sub';
+  const p = cur && G.schema.presets[cur];
+  if (p && p.variants.length) {
+    const base = document.createElement('span');
+    base.className = 'variant-pill' + (l.variant ? '' : ' sel');
+    base.textContent = 'standard';
+    base.onclick = () => { l.variant = null; buildParamPane(); buildCaptionStyles(); schedulePreview(true); };
+    sub.appendChild(base);
+    for (const v of p.variants) {
+      const pill = document.createElement('span');
+      pill.className = 'variant-pill' + (l.variant === v.id ? ' sel' : '');
+      pill.textContent = v.name;
+      pill.title = v.desc;
+      pill.onclick = () => { l.variant = v.id; buildParamPane(); buildCaptionStyles(); schedulePreview(true); };
+      sub.appendChild(pill);
+    }
+  }
+  const n = Object.keys((l && l.sets) || {}).length;
+  if (n) {
+    const tweaks = document.createElement('button');
+    tweaks.className = 'cs-tweaks';
+    tweaks.textContent = `${n} tweak${n === 1 ? '' : 's'} · reset`;
+    tweaks.title = 'Discard the manual changes made to this style in the parameter pane';
+    tweaks.onclick = () => { l.sets = {}; buildParamPane(); buildCaptionStyles(); schedulePreview(true); };
+    sub.appendChild(tweaks);
+  }
+  const hint = document.createElement('span');
+  hint.className = 'cs-hint';
+  hint.textContent = '[ and ] step styles';
+  sub.appendChild(hint);
+  row.appendChild(sub);
 }
 
 function buildCaptionForm(form, ev) {
@@ -3864,9 +4296,9 @@ async function applyScriptModal() {
   }
   if (!cues.length) { flash('Nothing to caption in that text'); return; }
   let mode = 'append';
-  if (captionOpsCount()) {
+  if (captionCueCount()) {
     mode = await askChoice({
-      title: 'Captions already on this layer',
+      title: 'Captions already on this track',
       sub: 'Replace them with the new script, or keep them and add these after?',
       choices: [
         { key: 'replace', label: 'Replace', className: 'accent' },
@@ -3876,15 +4308,10 @@ async function applyScriptModal() {
     });
     if (!mode) return;
   }
-  const l = activeLayer(state);
-  l.events = l.events || [];
-  if (mode === 'replace') l.events = l.events.filter((e) => e.kind !== 'caption');
-  for (const c of cues) {
-    l.events.push({
-      op: 'add', id: `edit:add:${Date.now()}:${++evAddSeq}`, effect: 'captions',
-      kind: 'caption', t: c.t, detail: { text: c.text, dur_s: c.dur_s },
-    });
-  }
+  const l = ensureCaptionTrack();
+  if (!l) return;
+  l.cues = mode === 'replace' ? [] : (l.cues || []);
+  for (const c of cues) l.cues.push(newCue(c.t, { text: c.text, dur_s: c.dur_s }));
   G.damage.selected = null;
   afterEventEdit();
   flash(`${cues.length} caption${cues.length === 1 ? '' : 's'} ${fromSrt ? 'kept their subtitle timing' : 'spread across the clip'}`);
@@ -3918,7 +4345,7 @@ function playerContentRect() {
 
 function syncCapDrag() {
   const el = $('cap-drag');
-  const ev = damageEditorOpen() && G.damage.kind === 'caption' && G.damage.selected
+  const ev = captionEditorOpen() && G.damage.selected
     ? damageEvents().find((x) => x.detail && x.detail.id === G.damage.selected)
     : null;
   const bbox = ev && ev.detail && ev.detail.bbox;
@@ -3969,11 +4396,17 @@ function wireCapDrag() {
       const px = Math.round(Math.min(Math.max(cx, 0), 1) * 1000) / 1000;
       const py = Math.round(Math.min(Math.max(cy, 0), 1) * 1000) / 1000;
       if (moveAll) {
-        // The whole track moves: these are the preset knobs, so every cue
-        // without its own pin follows.
-        state.sets['captions.pos_x'] = px;
-        state.sets['captions.pos_y'] = py;
+        // The whole track moves: these are the style's own knobs, so every cue
+        // without its own pin follows. They belong to the caption layer, which
+        // is not necessarily the one selected in the pane.
+        const cl = captionLayer();
+        if (cl) {
+          cl.sets = cl.sets || {};
+          cl.sets['captions.pos_x'] = px;
+          cl.sets['captions.pos_y'] = py;
+        }
         buildParamPane();
+        buildCaptionStyles();
         schedulePreview();
         refreshTimeline();
       } else {
@@ -4114,9 +4547,17 @@ function wireShortcuts() {
       if (e.code === 'Escape') { e.preventDefault(); closeScriptModal(); }
       return;
     }
-    /* The damage editor is typing-heavy; the keyboard is its own until Escape. */
+    /* The damage editor is typing-heavy; the keyboard is its own until Escape.
+       The one exception is auditioning caption styles, which is the whole
+       reason to be in there with a script already written - and [ and ] are
+       not characters anybody is trying to put into a subtitle mid-word. */
     if (damageEditorOpen()) {
       if (e.code === 'Escape') { e.preventDefault(); closeDamageEditor(); }
+      else if (captionEditorOpen() && !typingTarget(e) && !meta
+               && (e.key === '[' || e.key === ']')) {
+        e.preventDefault();
+        stepCaptionStyle(e.key === ']' ? 1 : -1);
+      }
       return;
     }
     if (meta && e.code === 'KeyO') { e.preventDefault(); browseForFile(); return; }
@@ -4349,9 +4790,29 @@ function wireControls() {
     const meta = DAMAGE_KINDS[G.damage.kind];
     addEventAt(meta.effect, G.damage.kind, Math.round(state.previewT * 20) / 20, {});
   });
-  $('de-reset').addEventListener('click', () => {
+  $('de-reset').addEventListener('click', async () => {
     const kind = G.damage.kind;
     if (!kind) return;
+    if (kind === 'caption') {
+      // Words are typed, not generated: throwing away a script is worth a
+      // question in a way that dropping a seed's dropouts never was.
+      const n = captionCueCount();
+      if (!n) return;
+      const go = await askChoice({
+        title: `Delete ${n} caption${n === 1 ? '' : 's'}?`,
+        sub: 'The whole script goes. The style stays exactly as it is.',
+        choices: [
+          { key: 'go', label: 'Delete them', className: 'accent' },
+          { key: null, label: 'Cancel' },
+        ],
+      });
+      if (!go) return;
+      const cl = captionLayer();
+      if (cl) cl.cues = [];
+      G.damage.selected = null;
+      afterEventEdit();
+      return;
+    }
     let touched = false;
     for (const l of state.layers || []) {
       const kept = (l.events || []).filter((e) => (e.kind || 'dropout') !== kind);
@@ -4384,6 +4845,15 @@ function wireControls() {
     const t = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * state.file.duration;
     const meta = DAMAGE_KINDS[G.damage.kind];
     addEventAt(meta.effect, G.damage.kind, Math.round(t * 20) / 20, {});
+  });
+
+  /* Captions are reachable from the controls under the player, not only by
+     picking one of the caption aesthetics off the list. Writing the words is
+     its own job, and it now comes before choosing what they look like. */
+  $('btn-captions').addEventListener('click', () => {
+    if (!state.file || state.audioSource) return;
+    if (captionEditorOpen()) closeDamageEditor();
+    else openDamageEditor('caption');
   });
 
   $('de-script').addEventListener('click', openScriptModal);

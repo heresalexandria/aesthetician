@@ -35,8 +35,11 @@ input ──► video chain (streamed frames + real-codec file passes) ──►
 
 `engine/text.py` is the caption typography layer: a manifest of bundled
 open-license fonts (`aesthetician/data/fonts/`), deterministic Pillow
-rasterization with wrap/align/edge/backing treatments, and the shared 5x7
-dot-matrix glyph table the OSD effects draw from.
+rasterization with balanced wrapping, align, edge and backing treatments, and
+the shared 5x7 dot-matrix glyph table the OSD effects draw from. Outlines come
+off a distance field so the rim follows the letterform at a constant width, and
+each block reports its ink extents as well as its layout boxes - placement and
+the bbox the plan publishes use the ink, backings use the em box.
 
 ## Effects (`aesthetician/effects/`)
 

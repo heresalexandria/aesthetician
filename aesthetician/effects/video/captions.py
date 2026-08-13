@@ -79,6 +79,9 @@ class Captions(Effect):
                    "character generators, etch for optically printed film subtitles."),
         Param("edge_strength", "Edge Strength", "float", 0.5, lo=0.0, hi=1.0, group="Look",
               desc="How heavy the chosen edge treatment is."),
+        StrParam("edge_color", "Edge Color", "str", "000000", group="Look",
+                 desc="Hex color of the outline and drop shadow. Near-black is what every "
+                      "decoder and subtitling house used; lift it for a softer rim."),
         Param("box", "Background", "enum", "none",
               choices=("none", "cells", "block", "band", "card"), group="Look",
               desc="Backing behind the text: cells for per-row decoder bars, block for one "
@@ -183,6 +186,7 @@ class Captions(Effect):
                 line_chars=int(v["line_chars"]), spacing=float(v["line_spacing"]),
                 align=cue["align"] or v["align"], color=color,
                 edge=v["edge"], edge_strength=float(v["edge_strength"]),
+                edge_color=textmod.hex_rgb(v["edge_color"], (0.0, 0.0, 0.0)),
                 box=box if which == "base" else "none",
                 box_color=textmod.hex_rgb(v["box_color"], (0.0, 0.0, 0.0)),
                 box_opacity=float(v["box_opacity"]),
@@ -347,6 +351,14 @@ class Captions(Effect):
 
 
 def _text_rect(blk: textmod.TextBlock) -> tuple[int, int, int, int]:
+    """The ink: what a viewer sees, and so what a cue is placed and dragged by."""
+    return blk.ink
+
+
+def _layout_rect(blk: textmod.TextBlock) -> tuple[int, int, int, int]:
+    """The em box the lines were set on - ascender to descender, full advance
+    widths. Backings are sized from this, so a strap keeps the same height
+    whether its line happens to carry a descender or not."""
     xs0 = [b[0] for b in blk.line_boxes] or [0]
     ys0 = [b[1] for b in blk.line_boxes] or [0]
     xs1 = [b[2] for b in blk.line_boxes] or [blk.w]
@@ -389,10 +401,17 @@ def _frame_fill(frame: np.ndarray, blk: textmod.TextBlock, x0: int, y0: int, W: 
         frame *= 1.0 - a
         frame += c * a
         return
-    tx0, ty0, tx1, ty1 = _text_rect(blk)
-    vp = max(int(round((ty1 - ty0) * 0.22 / max(len(blk.line_boxes), 1))), 3)
-    r0 = int(np.clip(y0 + ty0 - vp, 0, H))
-    r1 = int(np.clip(y0 + ty1 + vp, 0, H))
+    # The strap keeps the height it takes from the em box, but sits centered on
+    # the ink: a line of capitals carries no descender, and hanging the type in
+    # the upper half of its own band is the tell of a caption drawn by geometry
+    # rather than by eye.
+    _lx0, ly0, _lx1, ly1 = _layout_rect(blk)
+    _tx0, ty0, _tx1, ty1 = _text_rect(blk)
+    vp = max(int(round((ly1 - ly0) * 0.22 / max(len(blk.line_boxes), 1))), 3)
+    half = (ly1 - ly0) / 2.0 + vp
+    mid = y0 + (ty0 + ty1) / 2.0
+    r0 = int(np.clip(round(mid - half), 0, H))
+    r1 = int(np.clip(round(mid + half), 0, H))
     if r1 > r0:
         frame[r0:r1] *= 1.0 - a
         frame[r0:r1] += c * a
