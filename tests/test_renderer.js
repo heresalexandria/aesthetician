@@ -57,7 +57,8 @@ sandbox.window.localStorage = sandbox.localStorage;
 
 const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8');
 const R = vm.runInNewContext(
-  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt })`,
+  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
+       G, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds })`,
   sandbox,
 );
 
@@ -227,6 +228,90 @@ function test_a_pasted_script_spreads_without_losing_words() {
   assert.strictEqual(R.splitScriptToCues('   \n\n  ', dur).length, 0, 'whitespace makes no cues');
 }
 
+/* ── the caption track ───────────────────────────────────────────────
+   Cues are content and the caption preset is a style, and the renderer keeps
+   them apart precisely so a change of style cannot cost a script. These are
+   the seams where that separation could quietly break: the moment cues are
+   handed back to the engine, and the moment an old save is read in. */
+
+/* Everything the app writes into a cue has to be something the engine's
+   captions effect will act on - and the effect's `tune` branch is the honest
+   list, because it names every editable field literally. A key added on one
+   side and not the other is silent: the render simply ignores it. */
+function test_every_cue_field_is_one_the_engine_reads() {
+  const src = fs.readFileSync(
+    path.join(ROOT, 'aesthetician', 'effects', 'video', 'captions.py'), 'utf8');
+  const engine = new Set();
+  for (const m of src.matchAll(/"([a-z_]+)" in d\b/g)) engine.add(m[1]);
+  for (const m of src.matchAll(/for k in \(((?:\s*"[a-z_]+",?)+)\s*\):/g)) {
+    for (const k of m[1].matchAll(/"([a-z_]+)"/g)) engine.add(k[1]);
+  }
+  assert.ok(engine.size > 5, `only found ${engine.size} tunable cue fields - parser drifted`);
+  assert.deepStrictEqual([...R.CUE_KEYS].sort(), [...engine].sort());
+}
+
+/* A cue becomes exactly one `add` op, carrying every optional field explicitly:
+   null is how a cue says "the style decides", and a missing key would read the
+   same on the way out but not on the way back. Cues on a layer that is not
+   wearing a caption style emit nothing - the words are kept, but there is
+   nothing there to draw them. */
+function test_cues_become_the_engines_own_add_ops() {
+  R.G.schema = S;
+  const l = R.newLayer({ presetId: 'cc-line21-1982' });
+  l.cues = [R.newCue(1.5, { text: 'HELLO', dur_s: 2 }),
+    R.newCue(4, { text: 'AGAIN', pos_y: 0.2, color: 'F2DE3C' })];
+  const ops = R.cueOps(l);
+  assert.strictEqual(ops.length, 2);
+  for (const op of ops) {
+    assert.strictEqual(op.op, 'add');
+    assert.strictEqual(op.kind, 'caption');
+    assert.strictEqual(op.effect, 'captions');
+    assert.ok(op.id, 'every cue must name itself, so edits can find it again');
+    assert.deepStrictEqual(Object.keys(op.detail).sort(), [...R.CUE_KEYS].sort());
+  }
+  assert.strictEqual(ops[0].detail.pos_y, null, 'unset must go over the wire as null');
+  assert.strictEqual(ops[1].detail.pos_y, 0.2);
+  assert.strictEqual(ops[1].detail.color, 'F2DE3C');
+
+  const tape = R.newLayer({ presetId: 'vhs-1985-sp' });
+  tape.cues = [R.newCue(1, { text: 'orphaned' })];
+  assert.strictEqual(R.cueOps(tape).length, 0, 'only a caption style draws cues');
+
+  assert.ok(R.isCaptionStyle('cc-line21-1982') && !R.isCaptionStyle('vhs-1985-sp'));
+  assert.ok(R.captionStyleIds().length >= 10, 'the caption styles should all be pickable');
+}
+
+/* Saves made before cues had a list of their own carry them as a diff inside
+   `events`. Reading only the adds back would silently undo every edit that had
+   been made to them, so the whole little diff gets replayed - and the damage
+   ops sharing that list are left strictly alone. */
+function test_a_legacy_caption_diff_replays_into_cues() {
+  R.G.schema = S;
+  const l = R.migrateCues(R.newLayer({
+    presetId: 'cc-line21-1982',
+    events: [
+      { op: 'add', id: 'a', kind: 'caption', t: 1, detail: { text: 'ONE', dur_s: 2 } },
+      { op: 'add', id: 'b', kind: 'caption', t: 5, detail: { text: 'TWO', dur_s: 2 } },
+      { op: 'add', id: 'c', kind: 'caption', t: 8, detail: { text: 'THREE', dur_s: 2 } },
+      { op: 'tune', id: 'a', kind: 'caption', detail: { text: 'ONE EDITED', pos_y: 0.3 } },
+      { op: 'move', id: 'b', kind: 'caption', t: 9 },
+      { op: 'remove', id: 'c', kind: 'caption' },
+      { op: 'tune', id: 'ghost', kind: 'caption', detail: { text: 'never existed' } },
+      { op: 'add', id: 'vhs:dropout:3:0', kind: 'dropout', t: 2, detail: { row: 40 } },
+    ],
+  }));
+  assert.strictEqual(l.cues.length, 2, 'the removed cue should be gone, the ghost ignored');
+  assert.strictEqual(l.cues[0].text, 'ONE EDITED');
+  assert.strictEqual(l.cues[0].pos_y, 0.3);
+  assert.strictEqual(l.cues[0].id, 'a', 'ids travel with the cue, so pins keep their target');
+  assert.strictEqual(l.cues[1].t, 9);
+  assert.strictEqual(l.events.length, 1, 'damage edits are not captions and must survive');
+  assert.strictEqual(l.events[0].kind, 'dropout');
+  // A layer that never had captions is handed back untouched.
+  const clean = R.newLayer({ presetId: 'vhs-1985-sp', events: [{ op: 'remove', id: 'x', kind: 'dropout' }] });
+  assert.strictEqual(R.migrateCues(clean).cues.length, 0);
+}
+
 const tests = [
   test_the_grid_holds_every_authored_value,
   test_a_live_value_never_prints_as_the_minimum,
@@ -236,6 +321,9 @@ const tests = [
   test_texture_hint_names_real_params,
   test_srt_timing_survives_the_paste,
   test_a_pasted_script_spreads_without_losing_words,
+  test_every_cue_field_is_one_the_engine_reads,
+  test_cues_become_the_engines_own_add_ops,
+  test_a_legacy_caption_diff_replays_into_cues,
 ];
 
 let failed = 0;

@@ -99,6 +99,12 @@
           <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></svg>
           <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/></svg>
         </button>
+        <!-- The words are their own job, reachable without going through the
+             aesthetic list first. The badge is the cue count on this clip. -->
+        <button id="btn-captions" class="hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 10.5a2.5 2.5 0 1 0 0 3M17.5 10.5a2.5 2.5 0 1 0 0 3"/></svg>
+          <span>Captions</span><span id="cap-count" class="hidden"></span>
+        </button>
         <div id="scrub-wrap">
           <span class="dim" id="scrub-label">preview at</span>
           <input id="timecode" type="text" spellcheck="false" title="Jump to a time - seconds (7.5) or minutes:seconds (1:07.5)"/>
@@ -251,6 +257,9 @@
       <button id="de-reset" title="Drop every edit of this kind on this layer">Reset kind</button>
       <button id="de-close">Close</button>
     </div>
+    <!-- The caption style picker, sitting directly over the words it restyles.
+         The script below is untouched by anything clicked here. -->
+    <div id="de-styles" class="hidden"></div>
     <div id="de-body">
       <div id="de-lane-wrap">
         <div id="de-lane">

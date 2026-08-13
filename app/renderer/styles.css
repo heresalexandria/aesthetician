@@ -636,6 +636,21 @@ button.big { padding: 9px 20px; }
 button.danger { background: rgba(240,106,114,.12); border-color: rgba(240,106,114,.4); color: var(--danger); }
 button.danger:hover { border-color: var(--danger); }
 button:disabled { opacity: .45; cursor: default; }
+/* The captions door, always in the controls when there is a picture to burn
+   them into - writing the words comes before choosing what they look like. */
+#btn-captions {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; font-size: 11.5px; color: var(--dim);
+}
+#btn-captions svg { width: 15px; height: 15px; display: block; }
+#btn-captions:hover { color: var(--text); }
+#btn-captions.lit { color: #cdbcff; border-color: var(--accent-dim); background: var(--accent-soft); }
+#cap-count {
+  min-width: 15px; padding: 0 4px; border-radius: 20px; text-align: center;
+  font-size: 9.5px; font-weight: 700; color: #17131f; background: #f2e9c8;
+  font-variant-numeric: tabular-nums;
+}
+
 #btn-ab { font-weight: 600; letter-spacing: .5px; }
 #btn-ab:active, #btn-ab.held { background: var(--grad); color: #fff; border-color: transparent; }
 
@@ -987,6 +1002,14 @@ body.audio-session #timeline { display: none; }
 .l-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .l-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .l-sub { font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The caption track reads as a track, not another aesthetic in the pile: its
+   contents are yours, and where it sits in the order is a decision. */
+.layer-row.cap { background: linear-gradient(90deg, rgba(242,233,200,.09), var(--bg3) 60%); }
+.l-cc {
+  display: inline-block; margin-right: 6px; padding: 0 4px;
+  border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  vertical-align: 1px; color: #17131f; background: #f2e9c8;
+}
 .l-drop {
   flex: 0 0 auto; border: none; background: none; color: var(--dim);
   font-size: 15px; line-height: 1; padding: 0 3px; cursor: pointer;
@@ -1050,6 +1073,10 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
   box-shadow: 0 -18px 48px rgba(0,0,0,.5); backdrop-filter: blur(8px);
   display: flex; flex-direction: column; height: 300px;
 }
+/* The caption editor carries the style strip as well, so it stands taller.
+   The player above still has to stay visible - watching a cue land is the
+   reason the panel docks instead of taking the screen. */
+#damage-editor.cap { height: 386px; }
 #de-head {
   display: flex; align-items: center; gap: 10px; padding: 10px 16px 8px;
   font-weight: 600; font-size: 13px;
@@ -1119,6 +1146,12 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 }
 .prow .p-edit:hover { color: var(--accent); }
 body.damage-editing #timeline { display: none; }
+/* The editor is a fixed dock over the workspace, and the caption one is taller
+   still. Giving the centre column the same amount of floor keeps the player
+   above the panel instead of behind it - the point of docking rather than
+   taking the screen is that you can watch a cue land while you edit it. */
+body.damage-editing #center-pane { padding-bottom: 236px; }
+body.caption-editing #center-pane { padding-bottom: 322px; }
 
 /* ── captions ────────────────────────────────────────────────────────
    The cue editor borrows the damage editor's bones; these are the parts that
@@ -1137,6 +1170,40 @@ body.damage-editing #timeline { display: none; }
   display: flex; align-items: center; overflow: hidden;
   color: #17131f; min-width: 14px;
 }
+
+/* ── the caption style strip ─────────────────────────────────────────
+   Sits between the editor's header and the film, because that is the order the
+   work happens in: this is what the words below are wearing. It scrolls
+   sideways rather than wrapping - the library keeps growing, and a picker that
+   reflows to three rows would push the film off the bottom of the dock. */
+#de-styles { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 6px; }
+.cs-strip {
+  display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden;
+  padding-bottom: 4px; scrollbar-width: thin;
+}
+.cs-chip {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+  padding: 3px 9px 3px 3px; border-radius: 8px; font-size: 11px;
+  background: var(--bg3); border: 1px solid var(--line); color: var(--dim);
+  white-space: nowrap; cursor: pointer;
+}
+.cs-chip img {
+  width: 26px; height: 26px; border-radius: 6px; object-fit: cover;
+  background: var(--bg); display: block;
+}
+.cs-chip:hover { color: var(--text); border-color: var(--line2); }
+.cs-chip.sel {
+  color: #cdbcff; border-color: var(--accent-dim); background: var(--accent-soft);
+  font-weight: 600;
+}
+.cs-chip.sel img { box-shadow: inset 0 0 0 1px var(--accent-dim); }
+.cs-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.cs-tweaks {
+  padding: 2px 8px; font-size: 10.5px; border-radius: 20px;
+  background: none; border: 1px dashed var(--line2); color: var(--dim);
+}
+.cs-tweaks:hover { color: var(--text); }
+.cs-hint { margin-left: auto; font-size: 10px; color: var(--dim); opacity: .75; }
 .de-span.cap .de-cap-snip {
   padding: 0 6px; font-size: 10px; line-height: 1.15; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

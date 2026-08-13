@@ -1025,6 +1025,67 @@ def test_caption_text_primitives_hold_their_guarantees():
     assert hex_rgb("not-a-color", fallback=(0.0, 0.0, 0.0)) == (0.0, 0.0, 0.0)
 
 
+def test_caption_lines_wrap_even_instead_of_greedy():
+    """Two-line captions come out balanced, the way a subtitle house would set them.
+
+    Greedy wrapping packs the first line to the wrap width and drops whatever is left onto the
+    second, which is how you get a full line over a two-word stub - the single most common thing
+    that makes a burned-in subtitle look homemade. The layout has to be even instead, without
+    ever exceeding the width or losing a character, and without rewrapping across the manual
+    newlines a writer put in on purpose.
+    """
+    from aesthetician.engine.text import wrap_lines
+
+    line = "The night train is late again tonight"     # 37 chars, wraps at 24
+    lines = wrap_lines(line, 24)
+    assert len(lines) == 2, lines
+    assert all(len(s) <= 24 for s in lines), lines
+    # Greedy would give a 24 and a 12; even beats lopsided by a wide margin.
+    assert abs(len(lines[0]) - len(lines[1])) <= 6, lines
+    assert " ".join(lines).split() == line.split(), lines
+
+    # Text that already fits is one line - balancing must never split for its own sake.
+    assert wrap_lines("Short enough", 32) == ["Short enough"]
+    # A hand-broken cue keeps the breaks it was given.
+    assert wrap_lines("- Who's there?\n- Nobody.", 40) == ["- Who's there?", "- Nobody."]
+
+
+def test_caption_edges_hug_the_letterform_and_stay_inside_the_block():
+    """The rim follows the glyph at a fixed distance, and nothing spills off the canvas.
+
+    The outline used to be an iterated 3x3 max-filter, which is a *square* structuring element:
+    every round letter came out with right-angled corners on its rim, and at small sizes that
+    reads as the caption being cut out of cardboard. It is a distance field now, so the rim is
+    the same width in every direction - which is exactly what this measures, out from the corner
+    of a stem along an axis and then along the diagonal at the same reach.
+
+    The second half is the padding: edge treatments grow the block, and a rim or shadow clipped
+    by the canvas it was drawn on would show up as a straight cut through the lettering once it
+    was composited.
+    """
+    from aesthetician.engine.text import render_block
+
+    line_h, es = 60, 1.0
+    blk = render_block("H", font="sans_bold", line_h=line_h, edge="outline", edge_strength=es,
+                       color=(1.0, 1.0, 1.0))
+    r = int(round(line_h * (0.045 + 0.075 * es)))
+    x0, y0, _x1, _y1 = blk.ink
+    assert blk.alpha[y0, x0] > 0.5, "the ink box should start on ink"
+    # Straight out from the corner of the stem, well inside the rim's reach: solid.
+    assert blk.alpha[y0, x0 - (r - 2)] > 0.9, "no rim to the left of the stem"
+    assert blk.alpha[y0 - (r - 2), x0] > 0.9, "no rim above the stem"
+    # Diagonally out at the full reach the rim has fallen away, because it is a distance from
+    # the letter rather than a box drawn around it. A square dilate lights this pixel.
+    assert blk.alpha[y0 - r, x0 - r] < 0.1, "the rim has square corners"
+
+    # A blurred shadow has an infinite tail, so the bar is what an 8-bit composite can
+    # actually carry: nothing on the border may survive quantization.
+    for edge in ("outline", "shadow", "outline_shadow", "glow"):
+        b = render_block("Hg", font="serif", line_h=48, edge=edge, edge_strength=1.0)
+        border = np.concatenate([b.alpha[0], b.alpha[-1], b.alpha[:, 0], b.alpha[:, -1]])
+        assert border.max() < 1.0 / 255.0, f"{edge} runs off the edge of its own block"
+
+
 def test_captions_are_a_true_no_op_with_no_cues():
     """A captions effect with nothing to draw must be invisible, not just quiet.
 

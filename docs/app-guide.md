@@ -275,16 +275,27 @@ apply, and a stack with nothing left standing is shown struck through.
 
 ## Timed captions
 
-The **captions** family burns subtitle and caption text into the picture:
-Line-21 decoder cells, live roll-up news captioning, Teletext page 888, DVD
-player subs, theatrical prints, tape-traded fansubs, karaoke fills, silent-film
-intertitle cards and more. The words themselves live on the timeline, not in a
-knob, and every style's type, colors, backing, placement and motion stay
-tweakable in the parameter pane like any other aesthetic.
+Captions come in two halves, and the app keeps them apart on purpose.
 
-Pick a captions preset and the caption editor opens along the bottom (the
-**Edit captions** card in the parameter pane reopens it later). It works like
-the damage editor, but for words:
+**The script** is yours: what is said, when, how long it holds, and where each
+line sits. It lives on a **caption track** - one per clip.
+
+**The style** is an aesthetic like any other: Line-21 decoder cells, live
+roll-up news captioning, Teletext page 888, DVD player subs, theatrical prints,
+tape-traded fansubs, karaoke fills, silent-film intertitle cards and more. Every
+one of them has the usual knobs - type, colors, backing, placement, motion - in
+the parameter pane.
+
+Changing the style never touches the script. Write the words once, then try the
+whole library on them.
+
+### Writing the words
+
+**Captions** in the controls under the player opens the editor, whatever else
+the clip is wearing. The first time, it makes the caption track for you with a
+plain, legible style on it; the badge on the button is how many captions the
+clip has. (Picking any caption aesthetic from the list opens the same door, and
+the **Edit captions** card in the parameter pane reopens it later.)
 
 - **Paste script…** takes a whole script, or the text of an `.srt` file. Plain
   text splits into cues spread across the clip in proportion to reading time,
@@ -299,14 +310,33 @@ the damage editor, but for words:
 - **Drag the dashed box on the picture** to place the selected caption
   anywhere in the frame - lower thirds, up top, next to a speaker. Hold
   **Alt** while dragging to move the whole track instead; a cue without its
-  own pin follows the preset's placement knobs.
+  own pin follows the style's placement knobs.
 - **Prev / Next** walk the cue list, seeking the preview to each one.
+- **Clear all** deletes the script and leaves the style alone.
 
-Captions stack like any other aesthetic. Put the captions layer on top and the
-text stays crisp over the treated picture; put it underneath a VHS or film
-layer and the lettering gets chewed by tape noise and grain along with
-everything else, the way a burned-in subtitle really did. Exports honor
-exactly what the timeline claims.
+### Trying styles on
+
+The strip across the top of the editor is every caption style in the library.
+Click one and the same words redraw in it, immediately; **`[`** and **`]`** step
+through them without leaving the keyboard. Variants sit underneath, and any
+knob you turn in the parameter pane shows up there as a tweak you can reset in
+one click.
+
+Picking a caption aesthetic from the browse list does the same thing: it
+restyles the track you already have rather than starting a second one, and
+never asks whether you want to lose your work, because you do not.
+
+### Where the track sits
+
+The caption track is a layer, so it takes a place in the stack like any other
+and the **Layers** panel shows it with a `CC` badge and its cue count. Leave it
+at the bottom of the list - rendering last - and the text stays crisp over the
+treated picture. Drag it above a VHS or film layer and the lettering gets
+chewed by tape noise and grain along with everything else, the way a burned-in
+subtitle really did. Exports honor exactly what the timeline claims.
+
+Saved customs and stacks carry the script along with the knobs, and a save made
+by an older build - when cues rode the timeline diff - is read back whole.
 
 ## Understanding the knobs
 
