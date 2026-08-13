@@ -273,6 +273,41 @@ Like a custom, a stack stores preset **ids** rather than copies of their chains.
 If a build no longer has one of them that layer is skipped and the rest still
 apply, and a stack with nothing left standing is shown struck through.
 
+## Timed captions
+
+The **captions** family burns subtitle and caption text into the picture:
+Line-21 decoder cells, live roll-up news captioning, Teletext page 888, DVD
+player subs, theatrical prints, tape-traded fansubs, karaoke fills, silent-film
+intertitle cards and more. The words themselves live on the timeline, not in a
+knob, and every style's type, colors, backing, placement and motion stay
+tweakable in the parameter pane like any other aesthetic.
+
+Pick a captions preset and the caption editor opens along the bottom (the
+**Edit captions** card in the parameter pane reopens it later). It works like
+the damage editor, but for words:
+
+- **Paste script…** takes a whole script, or the text of an `.srt` file. Plain
+  text splits into cues spread across the clip in proportion to reading time,
+  each starting a new caption at every blank line; `.srt` text keeps its own
+  timing. Refine from there rather than typing cue by cue.
+- **Double-click empty film** to add a cue at that moment, ready to type over.
+  **+ Add at playhead** does the same at the playhead.
+- **Drag a span** to move a cue; **drag its edges** to change how long it
+  holds. Click one to select it and the panel on the right holds its words,
+  timing, placement and per-cue style (alignment, color, size, italic - the
+  off-screen-voice convention).
+- **Drag the dashed box on the picture** to place the selected caption
+  anywhere in the frame - lower thirds, up top, next to a speaker. Hold
+  **Alt** while dragging to move the whole track instead; a cue without its
+  own pin follows the preset's placement knobs.
+- **Prev / Next** walk the cue list, seeking the preview to each one.
+
+Captions stack like any other aesthetic. Put the captions layer on top and the
+text stays crisp over the treated picture; put it underneath a VHS or film
+layer and the lettering gets chewed by tape noise and grain along with
+everything else, the way a burned-in subtitle really did. Exports honor
+exactly what the timeline claims.
+
 ## Understanding the knobs
 
 Hover any control - slider, toggle, dropdown, or an effect's header - and a

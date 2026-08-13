@@ -13,6 +13,7 @@ import numpy as np
 import cv2
 
 from ...engine.graph import Context, Effect, Param, register
+from ...engine.text import DOT_GLYPHS
 
 
 class StrParam(Param):
@@ -33,50 +34,13 @@ class StrParam(Param):
 
 
 # ── 5x7 dot-matrix font ────────────────────────────────────────────────
+# The glyph art lives in engine/text.py so the caption faces share it. The OSD
+# effects deliberately keep their historical character set: anything outside it
+# still renders as blank space, exactly as it always did.
 
-_GLYPHS = {
-    "0": ".XXX.|X...X|X..XX|X.X.X|XX..X|X...X|.XXX.",
-    "1": "..X..|.XX..|..X..|..X..|..X..|..X..|.XXX.",
-    "2": ".XXX.|X...X|....X|...X.|..X..|.X...|XXXXX",
-    "3": "XXXXX|....X|...X.|..XX.|....X|X...X|.XXX.",
-    "4": "...X.|..XX.|.X.X.|X..X.|XXXXX|...X.|...X.",
-    "5": "XXXXX|X....|XXXX.|....X|....X|X...X|.XXX.",
-    "6": "..XX.|.X...|X....|XXXX.|X...X|X...X|.XXX.",
-    "7": "XXXXX|....X|...X.|..X..|.X...|.X...|.X...",
-    "8": ".XXX.|X...X|X...X|.XXX.|X...X|X...X|.XXX.",
-    "9": ".XXX.|X...X|X...X|.XXXX|....X|...X.|.XX..",
-    "A": ".XXX.|X...X|X...X|XXXXX|X...X|X...X|X...X",
-    "B": "XXXX.|X...X|X...X|XXXX.|X...X|X...X|XXXX.",
-    "C": ".XXX.|X...X|X....|X....|X....|X...X|.XXX.",
-    "D": "XXXX.|X...X|X...X|X...X|X...X|X...X|XXXX.",
-    "E": "XXXXX|X....|X....|XXXX.|X....|X....|XXXXX",
-    "F": "XXXXX|X....|X....|XXXX.|X....|X....|X....",
-    "G": ".XXX.|X...X|X....|X.XXX|X...X|X...X|.XXXX",
-    "H": "X...X|X...X|X...X|XXXXX|X...X|X...X|X...X",
-    "I": ".XXX.|..X..|..X..|..X..|..X..|..X..|.XXX.",
-    "J": "..XXX|...X.|...X.|...X.|...X.|X..X.|.XX..",
-    "K": "X...X|X..X.|X.X..|XX...|X.X..|X..X.|X...X",
-    "L": "X....|X....|X....|X....|X....|X....|XXXXX",
-    "M": "X...X|XX.XX|X.X.X|X.X.X|X...X|X...X|X...X",
-    "N": "X...X|X...X|XX..X|X.X.X|X..XX|X...X|X...X",
-    "O": ".XXX.|X...X|X...X|X...X|X...X|X...X|.XXX.",
-    "P": "XXXX.|X...X|X...X|XXXX.|X....|X....|X....",
-    "Q": ".XXX.|X...X|X...X|X...X|X.X.X|X..X.|.XX.X",
-    "R": "XXXX.|X...X|X...X|XXXX.|X.X..|X..X.|X...X",
-    "S": ".XXXX|X....|X....|.XXX.|....X|....X|XXXX.",
-    "T": "XXXXX|..X..|..X..|..X..|..X..|..X..|..X..",
-    "U": "X...X|X...X|X...X|X...X|X...X|X...X|.XXX.",
-    "V": "X...X|X...X|X...X|X...X|X...X|.X.X.|..X..",
-    "W": "X...X|X...X|X...X|X.X.X|X.X.X|XX.XX|X...X",
-    "X": "X...X|X...X|.X.X.|..X..|.X.X.|X...X|X...X",
-    "Y": "X...X|X...X|.X.X.|..X..|..X..|..X..|..X..",
-    "Z": "XXXXX|....X|...X.|..X..|.X...|X....|XXXXX",
-    ":": ".....|..XX.|..XX.|.....|..XX.|..XX.|.....",
-    "/": "....X|....X|...X.|..X..|.X...|X....|X....",
-    "-": ".....|.....|.....|XXXXX|.....|.....|.....",
-    ".": ".....|.....|.....|.....|.....|.XX..|.XX..",
-    " ": ".....|.....|.....|.....|.....|.....|.....",
-}
+_OSD_KEYS = tuple("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") + (":", "/", "-", ".", " ")
+
+_GLYPHS = {k: DOT_GLYPHS[k] for k in _OSD_KEYS}
 
 _FONT = {
     ch: np.array([[c == "X" for c in row] for row in rows.split("|")], np.float32)

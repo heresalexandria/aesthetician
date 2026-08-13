@@ -180,10 +180,14 @@ def _project_wheel(builder_python: str) -> Path:
     """Build (and cache) a pure-python wheel of the aesthetician package."""
     wheel_dir = CACHE_DIR / "wheels"
     wheel_dir.mkdir(parents=True, exist_ok=True)
-    # Rebuild whenever any source file is newer than the cached wheel.
+    # Rebuild whenever any source file is newer than the cached wheel. Every
+    # tracked kind of file counts, not just .py: the package ships data too
+    # (caption fonts). Byproducts (__pycache__, dotfiles) stay out of the
+    # freshness math or a test run would invalidate the cache every time.
     existing = sorted(wheel_dir.glob("aesthetician-*.whl"))
     newest_src = max(
-        (p.stat().st_mtime for p in REPO_ROOT.joinpath("aesthetician").rglob("*.py")),
+        (p.stat().st_mtime for p in REPO_ROOT.joinpath("aesthetician").rglob("*")
+         if p.is_file() and "__pycache__" not in p.parts and not p.name.startswith(".")),
         default=0.0,
     )
     newest_src = max(newest_src, REPO_ROOT.joinpath("pyproject.toml").stat().st_mtime)

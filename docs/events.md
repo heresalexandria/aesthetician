@@ -114,6 +114,31 @@ Rules, all load-bearing:
 its envelope, so a moved glitch leaves no shadow of itself in the curve the
 frames actually read.
 
+### Caption cues
+
+The `captions` effect (family `captions`) speaks the same op language with one
+inversion: there is no seeded schedule at all. The tape never writes a caption;
+every cue is an `add`, so the whole track survives any reseed, and `remove`,
+`move` and `tune` only ever touch cues the spec itself created.
+
+An added cue's `detail`:
+
+- `text` - the words. Manual line breaks are honored; longer text wraps to the
+  preset's wrap width.
+- `dur_s` - how long the cue holds (default 2.5).
+- `pos_x`, `pos_y` (0..1) - the center of the caption block. Unset or `null`,
+  the preset's own placement knobs decide - so a track moves together until a
+  cue is deliberately pinned somewhere else.
+- `align` (`left`/`center`/`right`), `color` (hex), `size` (fraction of frame
+  height), `italic` (bool) - per-cue style overrides, `null` handing each back
+  to the preset.
+
+The plan reports every cue with its resolved `bbox` - `[x0, y0, x1, y1]`
+normalized to the frame - which is how a front end can draw an exact drag
+handle over the rendered text, plus the raw override values (`null` meaning
+"the preset decides") and the wrapped line count. With no cues, the effect
+passes frames through byte for byte.
+
 ## Backward compatibility
 
 `events` on a layer is additive with an empty default, like every parameter
