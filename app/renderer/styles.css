@@ -1119,3 +1119,62 @@ body.has-layers .preset-card:hover .card-add { display: flex; }
 }
 .prow .p-edit:hover { color: var(--accent); }
 body.damage-editing #timeline { display: none; }
+
+/* ── captions ────────────────────────────────────────────────────────
+   The cue editor borrows the damage editor's bones; these are the parts that
+   are words instead of bands: snippet text in the lane spans, a textarea in
+   the side panel, the paste-script sheet, and the drag handle on the picture. */
+#cap-launch {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 10px; padding: 10px 12px;
+  background: var(--accent-soft); border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+}
+#cap-launch .cap-launch-info { flex: 1; font-size: 12px; color: var(--text); }
+#cap-launch button { font-size: 11.5px; padding: 5px 10px; white-space: nowrap; }
+
+.de-span.cap {
+  display: flex; align-items: center; overflow: hidden;
+  color: #17131f; min-width: 14px;
+}
+.de-span.cap .de-cap-snip {
+  padding: 0 6px; font-size: 10px; line-height: 1.15; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none; user-select: none;
+}
+
+#de-cap-text {
+  width: 100%; min-height: 58px; resize: vertical; margin-bottom: 8px;
+  padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font: inherit; font-size: 12.5px;
+  line-height: 1.35; outline: none;
+}
+#de-cap-text:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
+
+#script-modal {
+  position: fixed; inset: 0; z-index: 60; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(6,7,11,.62); backdrop-filter: blur(3px);
+}
+.modal-box.script-box { width: 560px; }
+#script-text {
+  width: 100%; min-height: 220px; resize: vertical; margin-top: 12px;
+  padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font: inherit; font-size: 12.5px;
+  line-height: 1.4; outline: none;
+}
+#script-text:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
+
+#cap-drag {
+  position: absolute; z-index: 8; cursor: move;
+  border: 1.5px dashed var(--accent);
+  border-radius: 4px; background: rgba(139,92,246,.10);
+}
+#cap-drag.dragging { background: rgba(139,92,246,.18); }
+#cap-drag span {
+  position: absolute; left: -1.5px; bottom: calc(100% + 3px);
+  max-width: 240px; padding: 2px 7px; border-radius: 5px;
+  background: var(--accent); color: #fff; font-size: 10px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}

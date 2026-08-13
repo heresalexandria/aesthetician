@@ -33,6 +33,11 @@ input ──► video chain (streamed frames + real-codec file passes) ──►
 - **presets.py** - preset/variant model and registry. Overrides address
   parameters as `effect_key.param` (duplicated effects get `#2`, `#3`…).
 
+`engine/text.py` is the caption typography layer: a manifest of bundled
+open-license fonts (`aesthetician/data/fonts/`), deterministic Pillow
+rasterization with wrap/align/edge/backing treatments, and the shared 5x7
+dot-matrix glyph table the OSD effects draw from.
+
 ## Effects (`aesthetician/effects/`)
 
 Auto-registered on import; each declares UI-ready parameter metadata

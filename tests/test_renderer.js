@@ -57,7 +57,7 @@ sandbox.window.localStorage = sandbox.localStorage;
 
 const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8');
 const R = vm.runInNewContext(
-  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT })`,
+  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt })`,
   sandbox,
 );
 
@@ -185,6 +185,48 @@ function test_texture_hint_names_real_params() {
   }
 }
 
+/* Pasted .srt text keeps its own timing: indices and styling tags dropped,
+   hours/minutes/seconds/millis added up, bodies kept whole. Anything that does
+   not look like SRT is prose and belongs to the splitter instead. */
+function test_srt_timing_survives_the_paste() {
+  const srt = [
+    '1', '00:00:01,500 --> 00:00:03,000', 'First line', 'and its second row', '',
+    '2', '00:01:02,250 --> 00:01:04,000', '<i>Styled</i> words', '',
+  ].join('\n');
+  const cues = R.parseSrt(srt);
+  assert.ok(cues && cues.length === 2, `expected 2 cues, got ${cues && cues.length}`);
+  assert.strictEqual(cues[0].t, 1.5);
+  assert.strictEqual(cues[0].text, 'First line\nand its second row');
+  assert.ok(Math.abs(cues[0].dur_s - 1.5) < 0.06, `dur ${cues[0].dur_s}`);
+  assert.strictEqual(cues[1].t, 62.25);
+  assert.strictEqual(cues[1].text, 'Styled words');
+  assert.strictEqual(R.parseSrt('just some prose, no timing anywhere'), null);
+}
+
+/* The splitter's contract: nothing dropped, nothing reordered, everything on
+   the clip, cues never overlapping - so a pasted script is refined, not
+   repaired. */
+function test_a_pasted_script_spreads_without_losing_words() {
+  const script = 'One short thought. A second, considerably longer sentence that will need '
+    + 'to wrap or split somewhere sensible.\n\nA new paragraph starts its own caption. Tail.';
+  const dur = 30;
+  const cues = R.splitScriptToCues(script, dur, { lineChars: 24, maxLines: 2 });
+  assert.ok(cues.length >= 3, `expected several cues, got ${cues.length}`);
+  const rejoined = cues.map((c) => c.text).join(' ').replace(/\s+/g, ' ');
+  const original = script.replace(/\s+/g, ' ');
+  assert.strictEqual(rejoined, original, 'splitting dropped or reordered words');
+  let last = 0;
+  for (const c of cues) {
+    assert.ok(c.t >= last - 1e-9, `cue at ${c.t} starts before the previous one ended (${last})`);
+    assert.ok(c.dur_s >= 0.3, `cue shorter than the floor: ${c.dur_s}`);
+    assert.ok(c.t + c.dur_s <= dur + 0.5, `cue overruns the clip: ${c.t} + ${c.dur_s}`);
+    last = c.t + c.dur_s;
+  }
+  // strictEqual on length: the array was born in the vm realm, so deepStrictEqual
+  // would fail it on prototype identity alone.
+  assert.strictEqual(R.splitScriptToCues('   \n\n  ', dur).length, 0, 'whitespace makes no cues');
+}
+
 const tests = [
   test_the_grid_holds_every_authored_value,
   test_a_live_value_never_prints_as_the_minimum,
@@ -192,6 +234,8 @@ const tests = [
   test_quantize_is_idempotent,
   test_texture_hint_mirrors_the_engine,
   test_texture_hint_names_real_params,
+  test_srt_timing_survives_the_paste,
+  test_a_pasted_script_spreads_without_losing_words,
 ];
 
 let failed = 0;

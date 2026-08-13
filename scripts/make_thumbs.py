@@ -122,6 +122,47 @@ def square(frame, size: int, bias: float, box: tuple[int, int, int, int] | None 
     return cv2.resize(frame, (size, size), interpolation=interp)
 
 
+# Captions presets render nothing without cues, so their thumbs carry one
+# sample line each - in the voice of the era the style comes from.
+CAPTION_SAMPLES = {
+    "cc-line21-1982": "WE'LL BE RIGHT BACK",
+    "cc-rollup-1987": ">> AND NOW THE WEATHER",
+    "teletext-1979": "888 SUBTITLES",
+    "cc-dtv-2004": "Captions, the digital way",
+    "cinema-subs-1968": "I never left the harbor.",
+    "print-etch-1957": "The night train is late.",
+    "dvd-subs-1999": "You are watching chapter three.",
+    "fansub-vhs-1994": "This tape subbed by fans",
+    "sdh-2007": "[ distant thunder ]",
+    "lower-third-1985": "LIVE: DOWNTOWN",
+    "vcr-osd-1990": "PLAY",
+    "typewriter-doc-1976": "PRIPYAT, 1986",
+    "karaoke-1988": "SING ALONG WITH US",
+    "intertitle-1923": "And so it begins.",
+}
+
+
+def caption_edits(preset, cfg) -> list:
+    """One sample cue for a captions-family preset, timed so the style's own
+    motion (typing, rolling, the karaoke sweep) happens inside the thumb."""
+    if preset.family != "captions":
+        return []
+    text = CAPTION_SAMPLES.get(preset.id, "Caption text")
+    appear = ""
+    for eid, params in preset.video:
+        if eid == "captions":
+            appear = str(params.get("appear", ""))
+    t = cfg["t0"] if appear in ("typewriter", "roll_up", "paint_on") else 0.0
+    dur = cfg["t0"] + cfg["duration"] + 1.0 if appear == "karaoke" else 9999.0
+    detail = {"text": text, "dur_s": dur}
+    # The thumb is a square crop that usually loses the lower third, so the
+    # sample rides near center. Styles that place themselves keep their spot.
+    if preset.id not in ("vcr-osd-1990", "intertitle-1923"):
+        detail["pos_y"] = 0.55 if preset.id == "lower-third-1985" else 0.45
+    return [{"op": "add", "kind": "caption", "id": "thumb:cap", "t": t,
+             "detail": detail}]
+
+
 def lead_in_seconds(preset) -> float:
     """Extra seconds to render *before* t0 for presets whose look starts with a
     one-off intro artifact anchored to the first frame (tape junk after PLAY,
@@ -209,6 +250,7 @@ def make_one(pid: str, cfg: dict) -> dict:
                     seed=cfg["seed"], t0=max(cfg["t0"] - lead, 0.0),
                     duration=cfg["duration"] + lead,
                     scale=cfg["scale"], video_only=True, crf=14,
+                    event_edits=caption_edits(preset, cfg),
                 ),
             )
             cap = cv2.VideoCapture(mp4)

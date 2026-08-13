@@ -16,6 +16,7 @@ dependencies = [
     "click>=8.1",
     "rich>=13.7",
     "requests>=2.31",
+    "pillow>=10.3",
 ]
 
 [project.scripts]
@@ -23,6 +24,9 @@ aesthetician = "aesthetician.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["aesthetician*"]
+
+[tool.setuptools.package-data]
+aesthetician = ["data/fonts/*.ttf", "data/fonts/*.otf", "data/fonts/*.txt", "data/fonts/*.md"]
 
 [tool.ruff]
 line-length = 110

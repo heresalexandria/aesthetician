@@ -981,6 +981,363 @@ def test_temporal_tracks_need_the_real_length():
     assert clip.white("k")[0] == alone.white("k")[0]
 
 
+def test_caption_text_primitives_hold_their_guarantees():
+    """wrap_lines, reveal_chars and hex_rgb: the primitives every caption face bottoms out on.
+
+    wrap_lines has to keep every character somewhere - a caption editor cannot silently eat
+    text - and reveal_chars has to only ever grow as more of a cue is typed on, since typewriter
+    and paint_on sample it fresh every frame and a mask that shrank would flicker backwards.
+    hex_rgb is the one place a caption color string meets a parser a form can feed anything to.
+    """
+    from aesthetician.engine.text import hex_rgb, render_block, reveal_chars, wrap_lines
+
+    # Manual newlines are paragraph breaks, never rewrapped.
+    assert wrap_lines("HELLO\nWORLD", 32) == ["HELLO", "WORLD"]
+    # Wrapping honors the width...
+    wide = "a b c d e f g h i j k l m n o p q r s t"
+    wrapped = wrap_lines(wide, 10)
+    assert all(len(line) <= 10 for line in wrapped), wrapped
+    # ...and drops no word, whitespace aside.
+    assert " ".join(wrapped).split() == wide.split()
+    # A single word longer than the width is force-split, not dropped or truncated.
+    long_word = "supercalifragilisticexpialidocious"
+    assert "".join(wrap_lines(long_word, 8)) == long_word
+    # No text at all is a line, not a crash.
+    assert wrap_lines("", 10) == [""]
+
+    blk = render_block("HELLO WORLD FOO", font="mono", line_h=20, line_chars=8, align="left")
+    sums = [int(reveal_chars(blk, n).sum()) for n in range(blk.n_chars + 1)]
+    assert all(b >= a for a, b in zip(sums, sums[1:])), "reveal must never shrink as n grows"
+    assert sums[0] == 0 and sums[-1] > 0, sums
+    # Asking for more characters than the block has snaps to the whole frame - a safety net for
+    # a caller racing past a cue's own length, not another step of the per-character reveal.
+    assert reveal_chars(blk, blk.n_chars + 5).sum() == blk.h * blk.w
+
+    # An empty cue has to rasterize to something sane, not raise.
+    empty = render_block("", font="sans", line_h=16)
+    assert empty.n_chars == 0
+    assert empty.rgb.shape[:2] == empty.alpha.shape
+    assert reveal_chars(empty, 0).sum() == 0
+
+    assert hex_rgb("FFCC00") == (1.0, 0.8, 0.0)
+    assert hex_rgb("#fc0") == (1.0, 0.8, 0.0)
+    assert hex_rgb("garbage") == (1.0, 1.0, 1.0)
+    assert hex_rgb("not-a-color", fallback=(0.0, 0.0, 0.0)) == (0.0, 0.0, 0.0)
+
+
+def test_captions_are_a_true_no_op_with_no_cues():
+    """A captions effect with nothing to draw must be invisible, not just quiet.
+
+    Cues live entirely in event edits (docs/events.md), so an empty edit list is the ordinary
+    state of every render nobody has touched yet - the same state a preset was in before
+    captions existed at all. `process` has to answer that with the identical frame object, not
+    a frame that merely looks the same, and a real render has to answer it with identical bytes
+    no matter what the style knobs say, since none of them can matter without a cue to apply
+    them to.
+    """
+    import hashlib
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import RenderOptions, render
+    from aesthetician.engine.presets import get_preset
+
+    # The cheapest form of the claim: no cues means process() never touches the frame at all.
+    ctx = Context(64, 48, 30.0, 10, seed=1)
+    eff = get_effect("captions")()
+    eff.resolve(ctx)
+    eff.prepare(ctx)
+    frame = np.random.default_rng(0).random((48, 64, 3)).astype(np.float32)
+    ctx.fi_out = 0
+    assert eff.process(frame, ctx) is frame, "a cueless effect must not even copy the frame"
+    assert eff.events(ctx) == []
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_noop_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=2", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    preset = get_preset("cc-line21-1982")
+    plain = RenderOptions(seed=3, duration=1.5, scale=1.0, crf=0)
+    # A completely different style, still with no cue to apply it to.
+    styled = RenderOptions(seed=3, duration=1.5, scale=1.0, crf=0,
+                           video_overrides={"captions.color": "00FF00", "captions.box": "block",
+                                            "captions.edge": "glow", "captions.size": 0.09})
+    cued = RenderOptions(seed=3, duration=1.5, scale=1.0, crf=0,
+                         event_edits=[{"op": "add", "id": "cap:a", "t": 0.3,
+                                       "detail": {"text": "HI", "dur_s": 0.5}}])
+
+    def h(path):
+        return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+    out_a = os.path.join(root, "out", "_t_cap_noop_a.mp4")
+    out_b = os.path.join(root, "out", "_t_cap_noop_b.mp4")
+    out_c = os.path.join(root, "out", "_t_cap_noop_c.mp4")
+    render(src, out_a, preset, plain)
+    render(src, out_b, preset, styled)
+    render(src, out_c, preset, cued)
+    assert h(out_a) == h(out_b), "style knobs must not matter when there is nothing to style"
+    assert h(out_a) != h(out_c), "a real cue must actually change the render"
+
+
+def test_caption_cues_land_where_and_when_they_say():
+    """A cue's pixels show up exactly inside the box the plan reports, and nowhere else.
+
+    events() hands back a normalized bbox precisely so a front end can draw drag handles that
+    match the picture; this is the check that the promise is real, by rendering rather than
+    trusting the geometry math. A frame inside the cue's window must differ from a cueless
+    render inside that box, and a frame outside the window must not differ at all - captions is
+    a frame effect with no schedule of its own, so nothing about it should leak past the cue's
+    own span.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import RenderOptions, render
+    from aesthetician.engine.render import Layer, plan_events
+    from aesthetician.engine.presets import get_preset
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_where_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    preset = get_preset("cc-line21-1982")
+    edits = [{"op": "add", "id": "cap:a", "t": 1.0,
+              "detail": {"text": "HELLO WORLD", "dur_s": 1.0}}]
+    plan = plan_events(src, [Layer(preset=preset, seed=1, event_edits=edits)],
+                       RenderOptions(seed=1, scale=1.0))
+    ev = next(e for e in plan["events"] if e["kind"] == "caption")
+    fps = plan["fps"]
+
+    W, H = 320, 240
+    x0, y0, x1, y1 = ev["detail"]["bbox"]
+    px0, py0 = int(round(x0 * W)), int(round(y0 * H))
+    px1, py1 = int(round(x1 * W)), int(round(y1 * H))
+
+    cued_opts = RenderOptions(seed=1, duration=3.0, scale=1.0, crf=0, event_edits=edits)
+    plain_opts = RenderOptions(seed=1, duration=3.0, scale=1.0, crf=0)
+    cued = os.path.join(root, "out", "_t_cap_where_cued.mp4")
+    plain = os.path.join(root, "out", "_t_cap_where_plain.mp4")
+    render(src, cued, preset, cued_opts)
+    render(src, plain, preset, plain_opts)
+
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H * 3)
+        return np.frombuffer(raw[: n * W * H * 3], np.uint8).reshape(n, H, W, 3).astype(np.int16)
+
+    fc, fp = frames(cued), frames(plain)
+    inside_fi = int(round(1.5 * fps))
+    before_fi = int(round(0.2 * fps))
+    after_fi = int(round(2.5 * fps))
+
+    inside = np.abs(fc[inside_fi, py0:py1, px0:px1] - fp[inside_fi, py0:py1, px0:px1])
+    assert inside.mean() > 20, "the cue's own box must visibly change while it holds"
+
+    for fi in (before_fi, after_fi):
+        assert np.array_equal(fc[fi], fp[fi]), f"frame {fi} is outside the cue's span"
+
+
+def test_caption_edits_add_move_tune_and_skip_unknown_ids():
+    """add, move and tune compose in one edit list, and a bad id is skipped, never guessed at.
+
+    Cues live purely in the edit list - there is no procedural schedule to diff against, unlike
+    dropouts - so every op has to be checked against the cues the *earlier* ops in the same list
+    produced: a move naming a cue the same edit just added, a tune landing on it afterwards, and
+    stray ops naming an id nothing ever created quietly doing nothing, per docs/events.md.
+    """
+    import subprocess
+
+    from aesthetician.engine import RenderOptions
+    from aesthetician.engine.render import Layer, plan_events
+    from aesthetician.engine.presets import get_preset
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_ops_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=160x120:rate=30:duration=6", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    preset = get_preset("cc-line21-1982")
+    edits = [
+        {"op": "add", "id": "cap:a", "t": 1.0, "detail": {"text": "FIRST", "dur_s": 1.0}},
+        {"op": "add", "id": "cap:b", "t": 3.0, "detail": {"text": "SECOND", "dur_s": 1.0}},
+        {"op": "move", "id": "cap:b", "t": 5.0},
+        {"op": "tune", "id": "cap:a", "detail": {"text": "CHANGED", "dur_s": 2.0}},
+        {"op": "remove", "id": "cap:zzz"},
+        {"op": "tune", "id": "cap:zzz", "detail": {"text": "NOPE"}},
+    ]
+    plan = plan_events(src, [Layer(preset=preset, seed=1, event_edits=edits)],
+                       RenderOptions(seed=1, scale=1.0))
+    evs = sorted((e for e in plan["events"] if e["kind"] == "caption"), key=lambda e: e["t"])
+    assert len(evs) == 2, evs
+
+    a, b = evs
+    assert abs(a["t"] - 1.0) < 1e-6 and a["detail"]["text"] == "CHANGED", a
+    assert abs(a["detail"]["dur_s"] - 2.0) < 1e-6, a
+    assert abs(b["t"] - 5.0) < 1e-6 and b["detail"]["text"] == "SECOND", b
+    assert b["detail"]["id"] == "cap:b"
+
+
+def test_caption_position_override_and_null_clears_it():
+    """A cue's own pos_y wins over the preset's, and null hands it back.
+
+    Every placement knob on a cue is optional: unset, the preset's lower-third default places
+    it, the way cc-line21-1982 always has. Pinning one is a tune with a value; un-pinning it is
+    the same tune with JSON null, exactly like the tracking-storm band pins in docs/events.md.
+    The plan is the honest record of which state a cue is in, so this reads it back both ways.
+    """
+    import subprocess
+
+    from aesthetician.engine import RenderOptions
+    from aesthetician.engine.render import Layer, plan_events
+    from aesthetician.engine.presets import get_preset
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_pos_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=160x120:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    preset = get_preset("cc-line21-1982")
+    pinned = [{"op": "add", "id": "cap:a", "t": 1.0,
+               "detail": {"text": "HELLO WORLD", "dur_s": 1.0, "pos_y": 0.2}}]
+    opts = RenderOptions(seed=1, scale=1.0)
+
+    plan = plan_events(src, [Layer(preset=preset, seed=1, event_edits=pinned)], opts)
+    ev = next(e for e in plan["events"] if e["kind"] == "caption")
+    assert ev["detail"]["pos_y"] == 0.2
+    x0, y0, x1, y1 = ev["detail"]["bbox"]
+    assert abs((y0 + y1) / 2 - 0.2) < 0.05, ev["detail"]["bbox"]
+
+    cleared = pinned + [{"op": "tune", "id": "cap:a", "detail": {"pos_y": None}}]
+    plan2 = plan_events(src, [Layer(preset=preset, seed=1, event_edits=cleared)], opts)
+    ev2 = next(e for e in plan2["events"] if e["kind"] == "caption")
+    assert ev2["detail"]["pos_y"] is None
+    x0, y0, x1, y1 = ev2["detail"]["bbox"]
+    assert (y0 + y1) / 2 > 0.7, "null must hand placement back to the preset's lower third"
+
+
+def test_caption_renders_reproduce_byte_for_byte():
+    """Same seed, same cue, same bytes - including through jitter and a per-character reveal.
+
+    Nothing about drawing a cue should read from anything but the seed: not wall-clock, not
+    dict iteration order, not thread scheduling in the encoder. jitter draws its wobble from
+    ctx.frame_rng and typewriter draws its cursor blink from the absolute frame number, so both
+    are exercised here rather than just the plain cut-and-hold case every other test covers.
+    """
+    import hashlib
+    import subprocess
+
+    from aesthetician.engine import RenderOptions, render
+    from aesthetician.engine.presets import get_preset
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_det_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=3", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    edits = [{"op": "add", "id": "cap:a", "t": 0.5,
+              "detail": {"text": "HELLO WORLD", "dur_s": 1.5}}]
+
+    def h(path):
+        return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+    cases = [
+        ("typewriter-doc-1976", {}),                            # per-character typewriter reveal
+        ("fansub-vhs-1994", {"captions.jitter": 0.4}),          # position/brightness jitter
+    ]
+    for pid, over in cases:
+        preset = get_preset(pid)
+        opts = RenderOptions(seed=42, duration=2.0, scale=1.0, crf=0,
+                             event_edits=edits, video_overrides=over)
+        out_a = os.path.join(root, "out", f"_t_cap_det_{pid}_a.mp4")
+        out_b = os.path.join(root, "out", f"_t_cap_det_{pid}_b.mp4")
+        render(src, out_a, preset, opts)
+        render(src, out_b, preset, opts)
+        assert h(out_a) == h(out_b), pid
+
+
+def test_caption_cues_still_show_through_a_stacked_look():
+    """A caption layer holds up under a look stacked on top of it, the way it will in practice.
+
+    Captions almost never renders alone: cc-line21-1982 (or any caption preset) is meant to sit
+    under a tape or film look so the era chews the lettering the way it chewed everything else.
+    render_layers feeds layer one's actual output into layer two, so this is the only test here
+    that proves a cue survives being re-encoded and processed by a second preset rather than
+    living in an isolated single-effect chain.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.engine import RenderOptions
+    from aesthetician.engine.render import Layer, plan_events, render_layers
+    from aesthetician.engine.presets import get_preset
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_cap_stack_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=2", "-c:v", "libx264",
+         "-crf", "0", "-pix_fmt", "yuv420p", src], check=True)
+
+    cap_preset = get_preset("cc-line21-1982")
+    vhs_preset = get_preset("vhs-1985-sp")
+    edits = [{"op": "add", "id": "cap:a", "t": 0.3,
+              "detail": {"text": "HELLO WORLD", "dur_s": 1.0}}]
+
+    plan = plan_events(src, [Layer(preset=cap_preset, seed=9, event_edits=edits)],
+                       RenderOptions(seed=9, scale=1.0))
+    ev = next(e for e in plan["events"] if e["kind"] == "caption")
+    fps = plan["fps"]
+
+    opts = RenderOptions(seed=9, duration=1.5, scale=1.0, crf=0)
+    with_cue = [Layer(preset=cap_preset, seed=9, event_edits=edits),
+               Layer(preset=vhs_preset, seed=9)]
+    no_cue = [Layer(preset=cap_preset, seed=9, event_edits=[]),
+             Layer(preset=vhs_preset, seed=9)]
+
+    out_cue = os.path.join(root, "out", "_t_cap_stack_cue.mp4")
+    out_none = os.path.join(root, "out", "_t_cap_stack_none.mp4")
+    render_layers(src, out_cue, with_cue, opts)
+    render_layers(src, out_none, no_cue, opts)
+
+    W, H = 320, 240
+
+    def frames(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+        n = len(raw) // (W * H * 3)
+        return np.frombuffer(raw[: n * W * H * 3], np.uint8).reshape(n, H, W, 3).astype(np.int16)
+
+    fc, fn = frames(out_cue), frames(out_none)
+    x0, y0, x1, y1 = ev["detail"]["bbox"]
+    px0, py0 = int(round(x0 * W)), int(round(y0 * H))
+    px1, py1 = int(round(x1 * W)), int(round(y1 * H))
+    mid_fi = int(round((ev["t"] + ev["dur"] / 2) * fps))
+    diff = np.abs(fc[mid_fi, py0:py1, px0:px1] - fn[mid_fi, py0:py1, px0:px1])
+    assert diff.mean() > 20, "the cue must still read through a stacked look"
+
+
 if __name__ == "__main__":
     # Several tests synthesise their fixtures with ffmpeg and probe them with
     # ffprobe. Say so up front: without this it surfaces as a FileNotFoundError

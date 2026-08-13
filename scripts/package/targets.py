@@ -34,7 +34,7 @@ FFMPEG_WIN_URL = (
 
 # Runtime dependencies installed into the bundled interpreter. Kept in sync with
 # pyproject.toml [project.dependencies]; the project itself is installed too.
-DEPS = ("numpy", "scipy", "opencv-python-headless", "click", "rich", "requests")
+DEPS = ("numpy", "scipy", "opencv-python-headless", "click", "rich", "requests", "pillow")
 
 
 @dataclass(frozen=True)

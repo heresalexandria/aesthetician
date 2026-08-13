@@ -32,6 +32,14 @@ exhibition.py effects, projection).
 → transmission (radio/phone/codec) → device (a_speaker) → room (a_room/a_slap)
 → beds last (a_projector, a_bed, a_hum).
 
+The `captions` effect belongs to the presentation stage: text is drawn onto
+whatever the chain has already made of the picture. The captions *family*
+keeps deliberately pure single-effect chains with no `proc_height`, so the
+lettering rasterizes at delivery resolution and only degrades when the user
+stacks a look over it - which is the intended way to age a caption. Cue text
+and timing are not preset material at all; they arrive as event edits
+(docs/events.md), so a captions preset is finished when its typography is.
+
 ## proc_height (era vertical resolution - the image is simulated at this height)
 
 35mm/scope: none (native) · 16mm: 600–640 · 8mm/Super8: 500–560 · VHS SP: 540–560

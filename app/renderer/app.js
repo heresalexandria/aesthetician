@@ -1664,7 +1664,7 @@ const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAA
    because those rows leave the picture untouched (their thumbnails are all the
    same untreated frame, so alphabetical order opened the app on 29 of them). */
 const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
-  'decay', 'exhibition', 'print', 'transmission', 'stylized', 'audio'];
+  'decay', 'exhibition', 'print', 'transmission', 'stylized', 'captions', 'audio'];
 
 function famRank(f) {
   // With an audio source, the audio-first presets are the relevant ones, so they
@@ -2544,6 +2544,17 @@ function buildParamPane() {
   const holder = $('param-list');
   holder.innerHTML = '';
   const vo = variantOverrides();
+  /* A captions preset is half aesthetic, half editor: the words live on the
+     timeline, so the pane leads with the door to them. Landing on a captions
+     preset with nothing written yet opens that door by itself, once per layer. */
+  if (p.family === 'captions' && !state.audioSource && state.file) {
+    holder.appendChild(captionLaunchCard());
+    const al = activeLayer(state);
+    if (al && !al.capSeen) {
+      al.capSeen = true;
+      if (!captionOpsCount() && !damageEditorOpen()) openDamageEditor('caption');
+    }
+  }
   const sections = state.audioSource
     ? [['SOUND', p.audio]]                 // the video chain cannot apply here
     : [['PICTURE', p.video], ['SOUND', p.audio]];
@@ -2978,6 +2989,7 @@ const TICK_COLORS = {
   transport_lock: '#f06a72',
   tracking_storm: '#6fd7b8',
   skew_tear: '#a88df8',
+  caption: '#f2e9c8',
 };
 
 /* CSS position only: scrubbing moves the head many times a second, and paying
@@ -3110,6 +3122,10 @@ const DAMAGE_KINDS = {
     label: 'Transport Glitches', effect: 'vcr_transport', hasDur: true,
     band: { hMin: 0.05, hMax: 0.8, auto: 'the shred covers the whole frame' },
   },
+  /* Captions are placeable like damage but authored unlike it: there is no
+     seeded schedule to edit, every cue is an add, and the form is words and
+     placement instead of intensity and bands. */
+  caption: { label: 'Captions', effect: 'captions', hasDur: true, caption: true },
 };
 
 /* Which param row opens which kind, `#n` repeats included. */
@@ -3157,6 +3173,19 @@ function afterEventEdit() {
   schedulePreview();
   refreshTimeline();
   renderTabs();
+  refreshCaptionLaunch();
+}
+
+/* The captions door in the param pane keeps its count honest without a full
+   pane rebuild, which would yank focus from whatever knob was being touched. */
+function refreshCaptionLaunch() {
+  const card = document.getElementById('cap-launch');
+  if (!card) return;
+  const labels = captionLaunchLabels(captionOpsCount());
+  const info = card.querySelector('.cap-launch-info');
+  const open = card.querySelector('button.accent');
+  if (info) info.textContent = labels.info;
+  if (open) open.textContent = labels.button;
 }
 
 function removeEvent(ev) {
@@ -3194,6 +3223,12 @@ let evAddSeq = 0;
 function addEventAt(effect, kind, t, detail = {}) {
   const l = activeLayer(state);
   l.events = l.events || [];
+  if (kind === 'caption') {
+    // A fresh cue arrives ready to type over, and the form knows to hand the
+    // caret straight to the text box.
+    detail = { text: 'Caption text', dur_s: 2.5, ...detail };
+    G.damage.focusText = true;
+  }
   const id = `edit:add:${Date.now()}:${++evAddSeq}`;
   l.events.push({ op: 'add', id, effect, kind, t, detail });
   G.damage.selected = id;
@@ -3301,6 +3336,12 @@ function openDamageEditor(kind) {
   const meta = DAMAGE_KINDS[kind];
   $('de-dot').style.background = TICK_COLORS[kind] || 'var(--dim)';
   $('de-title').textContent = meta.label;
+  $('de-script').classList.toggle('hidden', !meta.caption);
+  $('de-hint').textContent = meta.caption
+    ? 'Double-click empty film to add a caption · drag a span to move it · drag its edges to change '
+      + 'how long it holds · drag the box on the picture to place it (Alt moves every caption)'
+    : 'Drag the film to scrub the preview · double-click empty film to add · drag a span to move it '
+      + '· drag its edges to stretch';
   $('damage-editor').classList.remove('hidden');
   document.body.classList.add('damage-editing');
   paintDamageLane();
@@ -3309,6 +3350,7 @@ function openDamageEditor(kind) {
 function closeDamageEditor() {
   $('damage-editor').classList.add('hidden');
   document.body.classList.remove('damage-editing');
+  $('cap-drag').classList.add('hidden');
   G.damage.kind = null;
   G.damage.selected = null;
 }
@@ -3343,8 +3385,11 @@ function paintDamageLane() {
   const host = $('de-spans');
   host.innerHTML = '';
   const events = damageEvents();
-  $('de-count').textContent = `${events.length} instance${events.length === 1 ? '' : 's'} · seed ${state.seed}`;
-  const edited = editedIds();
+  const isCap = G.damage.kind === 'caption';
+  // Captions are all the user's own words; the seed has no say in them.
+  $('de-count').textContent = isCap
+    ? `${events.length} caption${events.length === 1 ? '' : 's'}`
+    : `${events.length} instance${events.length === 1 ? '' : 's'} · seed ${state.seed}`;
   for (const ev of events) {
     const id = ev.detail && ev.detail.id;
     const el = document.createElement('div');
@@ -3354,10 +3399,18 @@ function paintDamageLane() {
     el.style.left = `${(ev.t / total) * 100}%`;
     el.style.width = `${Math.max((ev.dur / total) * 100, 0.4)}%`;
     el.style.background = TICK_COLORS[ev.kind] || 'var(--dim)';
+    if (ev.kind === 'caption') {
+      el.classList.add('cap');
+      const snip = document.createElement('span');
+      snip.className = 'de-cap-snip';
+      snip.textContent = String(ev.detail.text || '').replace(/\n/g, ' ');
+      el.appendChild(snip);
+    }
     wireSpan(el, ev, total);
     host.appendChild(el);
   }
   buildDamageForm();
+  syncCapDrag();
 }
 
 /* Drag body = move; drag an edge = stretch. All of it in clip seconds, all of
@@ -3434,16 +3487,9 @@ function deRow(labelText, ...controls) {
   return row;
 }
 
-function buildDamageForm() {
-  const form = $('de-form');
-  const empty = $('de-empty');
-  const ev = damageEvents().find((e) => e.detail && e.detail.id === G.damage.selected);
-  form.classList.toggle('hidden', !ev);
-  empty.classList.toggle('hidden', !!ev);
-  form.innerHTML = '';
-  if (!ev) return;
-  const meta = DAMAGE_KINDS[ev.kind] || {};
-
+/* The rows every instance form shares, whatever its kind: where it starts,
+   and the way out. One copy, so clamping and seek behavior cannot drift. */
+function evStartRow(ev) {
   const tIn = document.createElement('input');
   tIn.type = 'text';
   tIn.value = fmtTimecode(ev.t);
@@ -3454,7 +3500,44 @@ function buildDamageForm() {
     moveEvent(ev, tc);
     seekToShow(tc);   // typing a far-away time means wanting to see it there
   };
-  form.appendChild(deRow('starts at', tIn));
+  return deRow('starts at', tIn);
+}
+
+function evActionsRow(ev, noun) {
+  const actions = document.createElement('div');
+  actions.className = 'de-actions';
+  const jump = document.createElement('button');
+  jump.textContent = 'Jump to it';
+  jump.title = 'Move the preview window (the tinted span on the film) to land '
+    + `just before this ${noun}`;
+  jump.onclick = () => seekPreview(Math.max(ev.t - 0.4, 0));
+  const del = document.createElement('button');
+  del.id = 'de-del';
+  del.textContent = 'Remove';
+  del.onclick = () => removeEvent(ev);
+  actions.appendChild(jump);
+  actions.appendChild(del);
+  return actions;
+}
+
+function buildDamageForm() {
+  const form = $('de-form');
+  const empty = $('de-empty');
+  const ev = damageEvents().find((e) => e.detail && e.detail.id === G.damage.selected);
+  form.classList.toggle('hidden', !ev);
+  empty.classList.toggle('hidden', !!ev);
+  if (G.damage.kind === 'caption') {
+    empty.textContent = 'Select a caption on the timeline, double-click empty film to add one, '
+      + 'or use Paste script above.';
+  } else {
+    empty.textContent = 'Select an instance on the timeline.';
+  }
+  form.innerHTML = '';
+  if (!ev) return;
+  if ((DAMAGE_KINDS[ev.kind] || {}).caption) { buildCaptionForm(form, ev); return; }
+  const meta = DAMAGE_KINDS[ev.kind] || {};
+
+  form.appendChild(evStartRow(ev));
 
   if (meta.hasDur) {
     const dIn = document.createElement('input');
@@ -3515,20 +3598,391 @@ function buildDamageForm() {
     form.appendChild(deRow('polarity', pol));
   }
 
-  const actions = document.createElement('div');
-  actions.className = 'de-actions';
-  const jump = document.createElement('button');
-  jump.textContent = 'Jump to it';
-  jump.title = 'Move the preview window (the tinted span on the film) to land '
-    + 'just before this instance';
-  jump.onclick = () => seekPreview(Math.max(ev.t - 0.4, 0));
-  const del = document.createElement('button');
-  del.id = 'de-del';
-  del.textContent = 'Remove';
-  del.onclick = () => removeEvent(ev);
-  actions.appendChild(jump);
-  actions.appendChild(del);
-  form.appendChild(actions);
+  form.appendChild(evActionsRow(ev, 'instance'));
+}
+
+/* ── captions ────────────────────────────────────────────────────────
+   Cues ride the same event-op rails as damage, but the editor speaks a
+   different language: words, holds, and places instead of intensities and
+   bands. The engine's plan reports each cue's on-screen bbox, so the drag
+   handle on the picture is exact, not a guess. */
+
+function captionOpsCount(l = activeLayer(state)) {
+  return ((l && l.events) || []).filter((e) => e.op === 'add' && e.kind === 'caption').length;
+}
+
+/* One source for the launch card's words, used at build and refresh alike. */
+function captionLaunchLabels(n) {
+  return {
+    info: n ? `${n} caption${n === 1 ? '' : 's'} on the timeline` : 'No captions on the timeline yet',
+    button: n ? 'Edit captions' : 'Add captions',
+  };
+}
+
+/* The captions effect's resolved knobs for the active layer: preset chain
+   values, variant overrides, then manual sets. The script splitter reads wrap
+   width and row count from here so it packs what the style will show. */
+function captionParams() {
+  const out = {};
+  const eff = G.schema.effects.captions;
+  if (!eff) return out;
+  for (const prm of eff.params) out[prm.name] = prm.default;
+  const p = G.schema.presets[state.presetId];
+  const entry = p && (p.video || []).find(([eid]) => eid === 'captions');
+  if (entry) Object.assign(out, entry[1] || {});
+  for (const [k, v] of Object.entries({ ...variantOverrides(), ...state.sets })) {
+    const m = /^captions\.(.+)$/.exec(String(k).replace(/#\d+\./, '.'));
+    if (m) out[m[1]] = v;
+  }
+  return out;
+}
+
+function captionLaunchCard() {
+  const card = document.createElement('div');
+  card.id = 'cap-launch';
+  const labels = captionLaunchLabels(captionOpsCount());
+  const info = document.createElement('div');
+  info.className = 'cap-launch-info';
+  info.textContent = labels.info;
+  const open = document.createElement('button');
+  open.className = 'accent';
+  open.textContent = labels.button;
+  open.onclick = () => openDamageEditor('caption');
+  const paste = document.createElement('button');
+  paste.textContent = 'Paste script…';
+  paste.title = 'Drop in a whole script or .srt text and spread it across the clip';
+  paste.onclick = () => { openDamageEditor('caption'); openScriptModal(); };
+  card.appendChild(info);
+  card.appendChild(open);
+  card.appendChild(paste);
+  return card;
+}
+
+function buildCaptionForm(form, ev) {
+  const ta = document.createElement('textarea');
+  ta.id = 'de-cap-text';
+  ta.rows = 3;
+  ta.spellcheck = false;
+  ta.placeholder = 'What this caption says…';
+  ta.value = ev.detail.text || '';
+  ta.onchange = () => { if (ta.value !== (ev.detail.text || '')) tuneEvent(ev, { text: ta.value }); };
+  ta.addEventListener('keydown', (e) => {
+    // Typing is the whole point: keys stay here. Escape backs out of the edit
+    // without tearing the editor down, and Cmd/Ctrl+Enter commits.
+    e.stopPropagation();
+    if (e.code === 'Escape') { ta.value = ev.detail.text || ''; ta.blur(); }
+    if ((e.metaKey || e.ctrlKey) && e.code === 'Enter') ta.blur();
+  });
+  form.appendChild(ta);
+  if (G.damage.focusText) {
+    G.damage.focusText = false;
+    setTimeout(() => { ta.focus(); ta.select(); }, 0);
+  }
+
+  form.appendChild(evStartRow(ev));
+
+  const dIn = document.createElement('input');
+  dIn.type = 'number';
+  dIn.min = 0.3; dIn.step = 0.1; dIn.value = ev.dur.toFixed(2);
+  dIn.onchange = () => {
+    const v = parseFloat(dIn.value);
+    if (Number.isFinite(v) && v >= 0.3) tuneEvent(ev, { dur_s: v });
+  };
+  form.appendChild(deRow('holds for', dIn));
+
+  /* Placement: auto means the preset's own spot (the pos knobs in the pane);
+     a pinned value belongs to this cue alone. Dragging the box on the picture
+     writes the same numbers. */
+  const pxRow = deRow('across', ...evAutoKnob(ev.detail.pos_x,
+    { min: 0, max: 1, step: 0.01, auto: 'the preset places it' },
+    (v) => tuneEvent(ev, { pos_x: v })));
+  pxRow.title = 'Horizontal center: 0 is the left edge, 1 the right.';
+  form.appendChild(pxRow);
+  const pyRow = deRow('down', ...evAutoKnob(ev.detail.pos_y,
+    { min: 0, max: 1, step: 0.01, auto: 'the preset places it' },
+    (v) => tuneEvent(ev, { pos_y: v })));
+  pyRow.title = 'Vertical center: 0 is the top of the frame, 1 the bottom.';
+  form.appendChild(pyRow);
+
+  const szRow = deRow('size', ...evAutoKnob(ev.detail.size,
+    { min: 0.02, max: 0.13, step: 0.005, auto: 'the preset sizes it' },
+    (v) => tuneEvent(ev, { size: v })));
+  szRow.title = 'Line height as a share of frame height, for this cue only.';
+  form.appendChild(szRow);
+
+  const alignSel = document.createElement('select');
+  for (const c of ['preset', 'left', 'center', 'right']) {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    if ((ev.detail.align || 'preset') === c) o.selected = true;
+    alignSel.appendChild(o);
+  }
+  alignSel.onchange = () => tuneEvent(ev, { align: alignSel.value === 'preset' ? null : alignSel.value });
+  form.appendChild(deRow('align', alignSel));
+
+  const colIn = document.createElement('input');
+  colIn.type = 'text';
+  colIn.spellcheck = false;
+  colIn.placeholder = 'preset';
+  colIn.value = ev.detail.color || '';
+  colIn.title = 'Hex color for this cue only, like FFD24A. Empty hands it back to the preset.';
+  colIn.onchange = () => {
+    const v = colIn.value.trim();
+    tuneEvent(ev, { color: v === '' ? null : v });
+  };
+  form.appendChild(deRow('color', colIn));
+
+  const it = document.createElement('input');
+  it.type = 'checkbox';
+  it.checked = !!ev.detail.italic;
+  it.onchange = () => tuneEvent(ev, { italic: it.checked });
+  const itRow = deRow('italic', it);
+  itRow.title = 'Slant this cue - the classic voice-off-screen convention.';
+  form.appendChild(itRow);
+
+  /* Walking the cue list is how you proof a whole script without touching the
+     lane: previous, next, each selection seeking the preview to its cue. */
+  const nav = document.createElement('div');
+  nav.className = 'de-actions';
+  const caps = damageEvents();
+  const at = caps.findIndex((x) => x.detail && x.detail.id === ev.detail.id);
+  const prev = document.createElement('button');
+  prev.textContent = '◀ Prev';
+  prev.disabled = at <= 0;
+  prev.onclick = () => selectDamage(caps[at - 1].detail.id);
+  const next = document.createElement('button');
+  next.textContent = 'Next ▶';
+  next.disabled = at < 0 || at >= caps.length - 1;
+  next.onclick = () => selectDamage(caps[at + 1].detail.id);
+  nav.appendChild(prev);
+  nav.appendChild(next);
+  form.appendChild(nav);
+
+  form.appendChild(evActionsRow(ev, 'caption'));
+}
+
+/* ── script import ───────────────────────────────────────────────────
+   Paste anything: an .srt keeps its own timing, prose splits into cues that
+   share the clip in proportion to how much there is to read. Both are plain
+   adds, so every cue is editable the moment it lands. */
+
+function parseSrt(text) {
+  const t = String(text || '').replace(/\r/g, '');
+  if (!/^\s*\d+\s*\n\s*\d{2}:\d{2}:\d{2}[,.]\d{1,3}\s*-->/m.test(t)) return null;
+  const cues = [];
+  const re = /(\d{2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\s*\n|\n*$)/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const st = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4].padEnd(3, '0')) / 1000;
+    const en = Number(m[5]) * 3600 + Number(m[6]) * 60 + Number(m[7]) + Number(m[8].padEnd(3, '0')) / 1000;
+    const body = m[9].split('\n')
+      .map((s) => s.replace(/<[^>]+>/g, '').trim())
+      .filter((s) => s && !/^\d+$/.test(s))
+      .join('\n').trim();
+    if (body && en > st) {
+      cues.push({ t: Math.round(st * 20) / 20, dur_s: Math.max(Math.round((en - st) * 20) / 20, 0.3), text: body });
+    }
+  }
+  return cues.length ? cues : null;
+}
+
+function splitScriptToCues(text, duration, { lineChars = 32, maxLines = 2 } = {}) {
+  const clean = String(text || '').replace(/\r/g, '');
+  const chunkMax = Math.max(Number(lineChars) * Number(maxLines) || 64, 24);
+  const chunks = [];
+  for (const para of clean.split(/\n\s*\n+/)) {
+    const flat = para.replace(/\s*\n\s*/g, ' ').trim();
+    if (!flat) continue;
+    const sentences = flat.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [flat];
+    let cur = '';
+    for (const s of sentences) {
+      const st = s.trim();
+      if (!st) continue;
+      if (!cur) cur = st;
+      else if (cur.length + 1 + st.length <= chunkMax) cur += ' ' + st;
+      else { chunks.push(cur); cur = st; }
+      while (cur.length > chunkMax) {
+        // a sentence longer than a caption breaks on a word, never mid-word
+        let cut = cur.lastIndexOf(' ', chunkMax);
+        if (cut < chunkMax * 0.4) cut = chunkMax;
+        // and never strands a two-word tail as its own caption: retreat the
+        // cut until what remains reads as a phrase
+        if (cur.length - cut < 12) {
+          const back = cur.lastIndexOf(' ', cur.length - 12);
+          if (back > chunkMax * 0.4) cut = back;
+        }
+        chunks.push(cur.slice(0, cut).trim());
+        cur = cur.slice(cut).trim();
+      }
+    }
+    if (cur) chunks.push(cur);
+  }
+  if (!chunks.length) return [];
+  const weights = chunks.map((c) => Math.max(c.length, 8));
+  const wsum = weights.reduce((a, b) => a + b, 0);
+  const usable = Math.max(Number(duration) - 0.2, 1);
+  const cues = [];
+  let t = 0.1;
+  for (let i = 0; i < chunks.length; i++) {
+    const slot = usable * (weights[i] / wsum);
+    const gap = Math.min(0.35, slot * 0.12);
+    const read = Math.max(1.0, chunks[i].length / 14);   // reading pace, about 14 chars a second
+    const dur = Math.max(Math.min(slot - gap, read * 1.6), Math.min(0.8, slot * 0.8));
+    cues.push({
+      t: Math.round(t * 20) / 20,
+      dur_s: Math.max(Math.round(dur * 20) / 20, 0.3),
+      text: chunks[i],
+    });
+    t += slot;
+  }
+  return cues;
+}
+
+function openScriptModal() {
+  $('script-text').value = '';
+  $('script-modal').classList.remove('hidden');
+  setTimeout(() => $('script-text').focus(), 0);
+}
+
+function closeScriptModal() {
+  $('script-modal').classList.add('hidden');
+}
+
+async function applyScriptModal() {
+  const raw = $('script-text').value;
+  closeScriptModal();
+  if (!raw.trim() || !state.file || !state.file.duration) return;
+  const cp = captionParams();
+  let cues = parseSrt(raw);
+  const fromSrt = !!cues;
+  if (cues) cues = cues.filter((c) => c.t < state.file.duration);
+  else {
+    cues = splitScriptToCues(raw, state.file.duration, {
+      lineChars: Number(cp.line_chars) || 32,
+      maxLines: Number(cp.max_lines) || 2,
+    });
+  }
+  if (!cues.length) { flash('Nothing to caption in that text'); return; }
+  let mode = 'append';
+  if (captionOpsCount()) {
+    mode = await askChoice({
+      title: 'Captions already on this layer',
+      sub: 'Replace them with the new script, or keep them and add these after?',
+      choices: [
+        { key: 'replace', label: 'Replace', className: 'accent' },
+        { key: 'append', label: 'Keep and add' },
+        { key: null, label: 'Cancel' },
+      ],
+    });
+    if (!mode) return;
+  }
+  const l = activeLayer(state);
+  l.events = l.events || [];
+  if (mode === 'replace') l.events = l.events.filter((e) => e.kind !== 'caption');
+  for (const c of cues) {
+    l.events.push({
+      op: 'add', id: `edit:add:${Date.now()}:${++evAddSeq}`, effect: 'captions',
+      kind: 'caption', t: c.t, detail: { text: c.text, dur_s: c.dur_s },
+    });
+  }
+  G.damage.selected = null;
+  afterEventEdit();
+  flash(`${cues.length} caption${cues.length === 1 ? '' : 's'} ${fromSrt ? 'kept their subtitle timing' : 'spread across the clip'}`);
+}
+
+/* ── placing captions on the picture ─────────────────────────────────
+   The handle is the engine's own bbox for the selected cue, mapped onto the
+   player. Dragging it writes pos_x/pos_y back: onto the cue, or with Alt held,
+   onto the preset knobs so the whole track moves together. */
+
+function playerContentRect() {
+  const wrap = $('player-wrap').getBoundingClientRect();
+  // Whichever surface is actually showing owns the letterbox math: the still
+  // frame races the clip and often paints first.
+  const still = $('still-frame');
+  const stillUp = !still.classList.contains('hidden') && still.naturalWidth;
+  const vw = stillUp ? still.naturalWidth : videoA.videoWidth;
+  const vh = stillUp ? still.naturalHeight : videoA.videoHeight;
+  let content = { left: wrap.left, top: wrap.top, width: wrap.width, height: wrap.height };
+  if (vw && vh && wrap.width && wrap.height) {
+    const scale = Math.min(wrap.width / vw, wrap.height / vh);
+    const w = vw * scale, h = vh * scale;
+    content = {
+      left: wrap.left + (wrap.width - w) / 2,
+      top: wrap.top + (wrap.height - h) / 2,
+      width: w, height: h,
+    };
+  }
+  return { wrap, content };
+}
+
+function syncCapDrag() {
+  const el = $('cap-drag');
+  const ev = damageEditorOpen() && G.damage.kind === 'caption' && G.damage.selected
+    ? damageEvents().find((x) => x.detail && x.detail.id === G.damage.selected)
+    : null;
+  const bbox = ev && ev.detail && ev.detail.bbox;
+  if (!bbox) { el.classList.add('hidden'); return; }
+  const { wrap, content } = playerContentRect();
+  el.style.left = `${content.left - wrap.left + bbox[0] * content.width}px`;
+  el.style.top = `${content.top - wrap.top + bbox[1] * content.height}px`;
+  el.style.width = `${Math.max((bbox[2] - bbox[0]) * content.width, 24)}px`;
+  el.style.height = `${Math.max((bbox[3] - bbox[1]) * content.height, 14)}px`;
+  $('cap-drag-label').textContent = String(ev.detail.text || '').replace(/\n/g, ' ');
+  el.classList.remove('hidden');
+}
+
+function wireCapDrag() {
+  const el = $('cap-drag');
+  // The handle is placed in pixels against the player, so a resized window
+  // has to re-derive it from the bbox - and so does the picture itself
+  // arriving, since its aspect decides the letterbox.
+  window.addEventListener('resize', syncCapDrag);
+  videoA.addEventListener('loadedmetadata', syncCapDrag);
+  $('still-frame').addEventListener('load', syncCapDrag);
+  // The wrap's own click toggles playback; the handle is not the picture.
+  el.addEventListener('click', (e) => e.stopPropagation());
+  el.addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const ev = damageEvents().find((x) => x.detail && x.detail.id === G.damage.selected);
+    if (!ev || !ev.detail.bbox) return;
+    const moveAll = e.altKey;
+    const start = {
+      x: e.clientX, y: e.clientY,
+      left: parseFloat(el.style.left), top: parseFloat(el.style.top),
+    };
+    el.classList.add('dragging');
+    const onMove = (m) => {
+      el.style.left = `${start.left + (m.clientX - start.x)}px`;
+      el.style.top = `${start.top + (m.clientY - start.y)}px`;
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      el.classList.remove('dragging');
+      // Rect read at drop, not at grab: a window resized mid-drag would
+      // otherwise convert the handle's position through stale geometry.
+      const { wrap, content } = playerContentRect();
+      const w = parseFloat(el.style.width), h = parseFloat(el.style.height);
+      const cx = (parseFloat(el.style.left) + w / 2 - (content.left - wrap.left)) / content.width;
+      const cy = (parseFloat(el.style.top) + h / 2 - (content.top - wrap.top)) / content.height;
+      const px = Math.round(Math.min(Math.max(cx, 0), 1) * 1000) / 1000;
+      const py = Math.round(Math.min(Math.max(cy, 0), 1) * 1000) / 1000;
+      if (moveAll) {
+        // The whole track moves: these are the preset knobs, so every cue
+        // without its own pin follows.
+        state.sets['captions.pos_x'] = px;
+        state.sets['captions.pos_y'] = py;
+        buildParamPane();
+        schedulePreview();
+        refreshTimeline();
+      } else {
+        tuneEvent(ev, { pos_x: px, pos_y: py });
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
 }
 
 /* ── full-length preview: seeks without re-renders ───────────────────
@@ -3653,6 +4107,11 @@ function wireShortcuts() {
        else - ⌘C above all - belongs to the selection in it. */
     if (!$('error-modal').classList.contains('hidden')) {
       if (e.code === 'Escape') { e.preventDefault(); closeErrorDetail(); }
+      return;
+    }
+    /* The paste-script sheet: Escape puts it away, typing belongs to it. */
+    if (!$('script-modal').classList.contains('hidden')) {
+      if (e.code === 'Escape') { e.preventDefault(); closeScriptModal(); }
       return;
     }
     /* The damage editor is typing-heavy; the keyboard is its own until Escape. */
@@ -3926,6 +4385,14 @@ function wireControls() {
     const meta = DAMAGE_KINDS[G.damage.kind];
     addEventAt(meta.effect, G.damage.kind, Math.round(t * 20) / 20, {});
   });
+
+  $('de-script').addEventListener('click', openScriptModal);
+  $('script-cancel').addEventListener('click', closeScriptModal);
+  $('script-apply').addEventListener('click', applyScriptModal);
+  $('script-modal').addEventListener('mousedown', (e) => {
+    if (e.target === $('script-modal')) closeScriptModal();
+  });
+  wireCapDrag();
 
   $('btn-error-detail').addEventListener('click', () => showErrorDetail(G.lastFailure));
   $('error-close').addEventListener('click', closeErrorDetail);
