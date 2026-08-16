@@ -801,14 +801,18 @@ def test_audio_effects_hand_back_the_block_they_were_given():
     ctx = Context(width=64, height=48, fps=30.0, n_frames=60, seed=3, sr=sr)
     audio = ((np.random.default_rng(1).random((n, 2)).astype(np.float32) - 0.5) * 0.2)
 
-    checked, broke = 0, []
+    checked, skipped, broke = 0, [], []
     for eid, cls in sorted(all_effects().items()):
         if cls.kind != "audio":
             continue
-        checked += 1
         eff = get_effect(eid)()
         eff.resolve(ctx)
-        eff.prepare(ctx)
+        try:
+            eff.prepare(ctx)
+        except RuntimeError as exc:
+            skipped.append(f"{eid}: {exc}")  # vetted below
+            continue
+        checked += 1
         try:
             out = eff.process_audio(audio.copy(), ctx)
         except Exception as exc:
@@ -817,6 +821,11 @@ def test_audio_effects_hand_back_the_block_they_were_given():
         if out.shape != audio.shape or out.dtype != np.float32:
             broke.append(f"{eid}: gave back {out.shape} {out.dtype}, was handed "
                          f"{audio.shape} float32")
+    # An ambience bed with nothing baked to play is a missing asset, which is a
+    # different problem with a different answer - assets/ is gitignored, so a
+    # runner has none of it. Anything else out of prepare is a real failure.
+    for note in skipped:
+        assert "bake_audio_beds" in note, f"prepare failed for a real reason: {note}"
     assert checked > 30, f"only {checked} audio effects swept - the filter is wrong"
     assert broke == [], f"{len(broke)} audio effects change the block: {broke[:4]}"
 
