@@ -779,6 +779,68 @@ def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
         digicodec._available_encoders = real
 
 
+def test_audio_effects_hand_back_the_block_they_were_given():
+    """An audio effect must return exactly the samples it was passed.
+
+    The telephone's mu-law trip down to 8 kHz and back rounds its length up on
+    both legs, so a block that isn't a whole number of 8 kHz frames comes home
+    a sample or two long - 1441600 samples in, 1441602 out. Everything built
+    against the length we came in with (the line hum, the FM hiss, the exchange
+    bed) then refuses to broadcast onto it, and the export dies mid-render with
+    a numpy shape error. Five of the six telephone eras, on five of every six
+    durations. The contract belongs to the whole chain, not to one effect: the
+    next effect downstream is handed this buffer and does its own arithmetic
+    against its length, so sweep every audio effect at an awkward length.
+    """
+    import numpy as np
+
+    from aesthetician.engine.graph import Context, all_effects, get_effect
+
+    sr = 48000
+    n = 96001  # ~2 s, and deliberately not a multiple of the 6:1 48k/8k ratio
+    ctx = Context(width=64, height=48, fps=30.0, n_frames=60, seed=3, sr=sr)
+    audio = ((np.random.default_rng(1).random((n, 2)).astype(np.float32) - 0.5) * 0.2)
+
+    checked, skipped, broke = 0, [], []
+    for eid, cls in sorted(all_effects().items()):
+        if cls.kind != "audio":
+            continue
+        eff = get_effect(eid)()
+        eff.resolve(ctx)
+        try:
+            eff.prepare(ctx)
+        except RuntimeError as exc:
+            skipped.append(f"{eid}: {exc}")  # vetted below
+            continue
+        checked += 1
+        try:
+            out = eff.process_audio(audio.copy(), ctx)
+        except Exception as exc:
+            broke.append(f"{eid}: {type(exc).__name__}: {exc}")
+            continue
+        if out.shape != audio.shape or out.dtype != np.float32:
+            broke.append(f"{eid}: gave back {out.shape} {out.dtype}, was handed "
+                         f"{audio.shape} float32")
+    # An ambience bed with nothing baked to play is a missing asset, which is a
+    # different problem with a different answer - assets/ is gitignored, so a
+    # runner has none of it. Anything else out of prepare is a real failure.
+    for note in skipped:
+        assert "bake_audio_beds" in note, f"prepare failed for a real reason: {note}"
+    assert checked > 30, f"only {checked} audio effects swept - the filter is wrong"
+    assert broke == [], f"{len(broke)} audio effects change the block: {broke[:4]}"
+
+    # Every telephone era, with the extras that index against n switched on,
+    # at a second awkward length: 3 s at 48k plus five stray samples.
+    block = np.resize(audio, (144005, 2)).astype(np.float32)
+    for era in get_effect("a_telephone")._ERAS:
+        eff = get_effect("a_telephone")(era=era, exchange_noise=0.6, sidetone_click=True)
+        eff.resolve(ctx)
+        out = eff.process_audio(block.copy(), ctx)
+        assert out.shape == block.shape, f"{era}: {out.shape} from {block.shape}"
+        assert np.isfinite(out).all() and float(np.abs(out).max()) > 1e-4, \
+            f"{era}: silence or NaN, so the shape check proves nothing"
+
+
 def test_interlaced_codec_era_survives_an_ffmpeg_without_top():
     """codec_era's interlaced mode must not lean on the removed -top option.
 

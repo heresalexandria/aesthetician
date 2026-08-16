@@ -30,11 +30,17 @@ class ATelephone(Effect):
     )
 
     def _mulaw_8k(self, x: np.ndarray, sr: int) -> np.ndarray:
-        """Downsample to 8 kHz, 8-bit mu-law companding round-trip, back up."""
+        """Downsample to 8 kHz, 8-bit mu-law companding round-trip, back up.
+
+        Both resamples round their length up, so the trip home overshoots by a
+        sample or two unless the block divides evenly by the rate ratio; the
+        line noise and clicks below are cut to the length we came in with.
+        """
         y = sps.resample_poly(x, 8000, sr, axis=0).astype(np.float32)
         peak = float(np.max(np.abs(y))) + 1e-9
         y = U.mulaw_roundtrip(y / peak) * peak
-        return sps.resample_poly(y, sr, 8000, axis=0).astype(np.float32)
+        y = sps.resample_poly(y, sr, 8000, axis=0).astype(np.float32)
+        return U.fit_len(y, x.shape[0])
 
     def process_audio(self, audio: np.ndarray, ctx: Context) -> np.ndarray:
         n, ch = audio.shape
