@@ -35,6 +35,23 @@ def peak_guard(x: np.ndarray, ceiling: float = 0.98) -> np.ndarray:
     return x.astype(np.float32)
 
 
+def fit_len(x: np.ndarray, n: int) -> np.ndarray:
+    """Trim or zero-pad a buffer to exactly n samples.
+
+    Resampling rounds up on both legs, so a rate round-trip hands back a
+    sample or two more than it was given whenever the length isn't a whole
+    multiple of the ratio. Anything built against the original n - a noise
+    bed, a hum, an envelope - stops broadcasting against it. Run the result
+    of a round-trip through here before it meets the rest of the block.
+    """
+    m = x.shape[0]
+    if m == n:
+        return x
+    if m > n:
+        return x[:n]
+    return np.vstack([x, np.zeros((n - m,) + x.shape[1:], x.dtype)])
+
+
 # ── filters ─────────────────────────────────────────────────────────────
 
 def butter_sos(order: int, hz, btype: str, sr: int) -> np.ndarray:
