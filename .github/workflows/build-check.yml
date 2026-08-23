@@ -60,18 +60,18 @@ jobs:
        || matrix.target == 'mac-x64' && 'macos-15-intel'
        || 'macos-15' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       - name: Cache the bundled runtime and ffmpeg
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/package
           key: pkg-${{ matrix.target }}-${{ hashFiles('scripts/package/targets.py', 'pyproject.toml') }}
@@ -101,7 +101,7 @@ jobs:
 
       - name: Install the app's dev dependencies
         working-directory: app
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Package
         shell: bash
@@ -125,15 +125,18 @@ jobs:
       # A packaged app that cannot find its own engine is not a build worth
       # keeping, and that only shows up when you run it.
       - name: Does the packaged app actually run
-        if: matrix.target == 'win-x64'
         shell: bash
         run: |
-          exe=$(find app/dist -name 'Aesthetician.exe' -path '*win-unpacked*' | head -1)
-          if [ -z "$exe" ]; then echo "::error::no unpacked Aesthetician.exe to test"; exit 1; fi
+          if [ "${{ matrix.target }}" = "win-x64" ]; then
+            exe=$(find app/dist -name 'Aesthetician.exe' -path '*win-unpacked*' | head -1)
+          else
+            exe=$(find app/dist -path '*/Aesthetician.app/Contents/MacOS/Aesthetician' -type f | head -1)
+          fi
+          if [ -z "$exe" ]; then echo "::error::no packaged Aesthetician executable to test"; exit 1; fi
           echo "smoke testing $exe"
           "$exe" --smoke
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-check-${{ matrix.target }}
           path: out-dist/*

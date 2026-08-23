@@ -5,6 +5,10 @@
 <h1 align="center">Aesthetician</h1>
 
 <p align="center">
+  <a href="https://heresalexandria.github.io/aesthetician/">Download for macOS or Windows</a>
+</p>
+
+<p align="center">
   <img src="preview.jpg" alt="Aesthetician screenshot"/>
 </p>
 
@@ -96,6 +100,10 @@ Any parameter shown by `info` can be overridden with `--set effect.param=value`
 `--intensity` scales damage and warping, `--texture` scales grain and noise.
 
 ## Desktop app (packaged)
+
+Install the latest ready-made build from the
+[Aesthetician download page](https://heresalexandria.github.io/aesthetician/).
+It includes the app, engine, Python runtime, FFmpeg, and preset assets.
 
 To build an installable app that needs no Python, ffmpeg or checkout:
 

@@ -13,6 +13,19 @@ PR labelled `minor`  ──merge──▶  version 0.5.0 → 0.6.0 in all four f
 
 Every running copy of the app notices within a day and offers to install it.
 
+The public download page at
+[heresalexandria.github.io/aesthetician](https://heresalexandria.github.io/aesthetician/)
+links straight to stable release asset names. Each release publishes those
+rolling aliases alongside the versioned files:
+
+- `Aesthetician-mac-arm64.dmg`
+- `Aesthetician-mac-x64.dmg`
+- `Aesthetician-win-x64-setup.exe`
+
+That keeps every download button current without rebuilding the page when the
+version changes. `.github/workflows/pages.yml` publishes the static page from
+`site/` after changes land on `main`.
+
 ## The label is the whole interface
 
 One of these has to be on the pull request, and only one:
@@ -106,12 +119,8 @@ release tagged `assets-v2`, and set the repository variable
 | `win-x64` | `windows-2022` | yes |
 
 All three have built and run, so a failure in any of them is a regression worth
-stopping the release for rather than a known gap to route around.
-
-The mechanism for letting a target drop out is still there for the next
-unproven one: set `optional: true` on its matrix entry in
-`.github/workflows/release.yml`. The release then publishes without it, and the
-download table lists only what actually built.
+stopping the release for rather than a known gap to route around. This also
+keeps the direct download page honest: it never points at a partial release.
 
 ## Debugging a build without cutting a release
 

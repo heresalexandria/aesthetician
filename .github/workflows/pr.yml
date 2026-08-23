@@ -20,7 +20,7 @@ jobs:
     name: release label
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Exactly one of major / minor / patch
         env:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
@@ -30,14 +30,14 @@ jobs:
     name: engine and updater tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -77,14 +77,14 @@ jobs:
     name: electron smoke test
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -95,7 +95,7 @@ jobs:
 
       - name: Install the app's dev dependencies
         working-directory: app
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Smoke test
         working-directory: app
