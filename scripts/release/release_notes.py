@@ -103,8 +103,8 @@ def human_size(n: int) -> str:
 def download_table(version: str, files: list[Path]) -> str:
     """Only list what actually built.
 
-    A target can drop out of a release - the Windows build is explicitly allowed
-    to - and a table promising a file that is not attached is worse than a table
+    Publication requires every target, but this helper is also useful for local
+    dry runs. A table promising a file that is not present is worse than a table
     that is one row short.
     """
     rows = []

@@ -45,7 +45,7 @@ jobs:
       previous: ${{ steps.previous.outputs.tag }}
       skip: ${{ steps.kind.outputs.skip }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -95,41 +95,36 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.skip != 'true'
     runs-on: ${{ matrix.runner }}
-    # All three targets have built and run, so a failure is now a regression
-    # worth stopping for rather than a known gap to route around. The mechanism
-    # stays: flip `optional` to true to let a target drop out, and the release
-    # notes list only what actually built.
-    continue-on-error: ${{ matrix.optional }}
+    # All three targets have built and run, so a failure is a regression and
+    # stops publication. A release never advertises only part of the platform
+    # set promised by the download page.
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: mac-arm64
             runner: macos-15
-            optional: false
           - target: mac-x64
             runner: macos-15-intel
-            optional: false
           - target: win-x64
             runner: windows-2022
-            optional: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
       # Building the relocatable interpreter and fetching ffmpeg is the slow
       # half of a build, and neither changes between releases.
       - name: Cache the bundled runtime and ffmpeg
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/package
           key: pkg-${{ matrix.target }}-${{ hashFiles('scripts/package/targets.py', 'pyproject.toml') }}
@@ -157,7 +152,7 @@ jobs:
 
       - name: Install the app's dev dependencies
         working-directory: app
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Package
         shell: bash
@@ -167,6 +162,17 @@ jobs:
           # drawing; scripts/package/common.py handles it, this is the braces.
           PYTHONUTF8: '1'
         run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
+
+      - name: Smoke test the packaged app
+        shell: bash
+        run: |
+          if [ "${{ matrix.target }}" = "win-x64" ]; then
+            exe=$(find app/dist -name 'Aesthetician.exe' -path '*win-unpacked*' | head -1)
+          else
+            exe=$(find app/dist -path '*/Aesthetician.app/Contents/MacOS/Aesthetician' -type f | head -1)
+          fi
+          if [ -z "$exe" ]; then echo "::error::no packaged Aesthetician executable to test"; exit 1; fi
+          "$exe" --smoke
 
       - name: Collect the artifacts
         shell: bash
@@ -179,7 +185,7 @@ jobs:
             -exec cp {} out-dist/ \;
           ls -lh out-dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.target }}
           path: out-dist/*
@@ -189,17 +195,17 @@ jobs:
   publish:
     name: publish release
     needs: [prepare, build]
-    # always(), because a target allowed to fail must not take the release with
-    # it. The gather step is what insists something actually built.
-    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.skip != 'true'
+    # A release is published only when the version bump and every native build
+    # succeeded. `always()` lets this condition be evaluated after a failure.
+    if: always() && needs.prepare.result == 'success' && needs.build.result == 'success' && needs.prepare.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: incoming
           pattern: build-*
@@ -214,6 +220,18 @@ jobs:
             echo "::error::every build target failed - nothing to release"
             exit 1
           fi
+          # Stable names make /releases/latest/download/... permanent direct
+          # links for the splash page while the versioned originals remain for
+          # release history and the in-app updater.
+          mac_arm="release/Aesthetician-${{ needs.prepare.outputs.version }}-mac-arm64.dmg"
+          mac_intel="release/Aesthetician-${{ needs.prepare.outputs.version }}-mac-x64.dmg"
+          windows="release/Aesthetician-${{ needs.prepare.outputs.version }}-win-x64-setup.exe"
+          test -f "$mac_arm"
+          test -f "$mac_intel"
+          test -f "$windows"
+          cp "$mac_arm" release/Aesthetician-mac-arm64.dmg
+          cp "$mac_intel" release/Aesthetician-mac-x64.dmg
+          cp "$windows" release/Aesthetician-win-x64-setup.exe
           cd release
           # The in-app updater verifies its download against this file.
           sha256sum * > SHA256SUMS.txt
