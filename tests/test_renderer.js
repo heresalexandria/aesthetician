@@ -58,7 +58,8 @@ sandbox.window.localStorage = sandbox.localStorage;
 const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8');
 const R = vm.runInNewContext(
   `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
-       G, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds })`,
+       G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
+       automaticUpdateCheck })`,
   sandbox,
 );
 
@@ -312,6 +313,44 @@ function test_a_legacy_caption_diff_replays_into_cues() {
   assert.strictEqual(R.migrateCues(clean).cues.length, 0);
 }
 
+async function test_automatic_update_checks_only_when_due() {
+  let networkChecks = 0;
+  const saved = {
+    ok: true,
+    current: '1.3.0',
+    latest: '1.4.0',
+    available: true,
+    installable: true,
+  };
+  sandbox.window.aesth.updateInfo = async () => ({
+    version: '1.3.0',
+    packaged: true,
+    stale: false,
+    last: saved,
+    staged: { version: '1.4.0', tag: 'v1.4.0', verified: true },
+  });
+  sandbox.window.aesth.updateCheck = async () => {
+    networkChecks++;
+    return { ...saved, latest: '1.5.0' };
+  };
+  await R.automaticUpdateCheck();
+  assert.strictEqual(networkChecks, 0, 'an hourly poll must reuse a fresh disk answer');
+  assert.strictEqual(R.U.latest.latest, '1.4.0');
+  assert.strictEqual(R.U.staged.version, '1.4.0');
+
+  sandbox.window.aesth.updateInfo = async () => ({
+    version: '1.3.0',
+    packaged: true,
+    stale: true,
+    last: saved,
+    staged: null,
+  });
+  await R.automaticUpdateCheck();
+  assert.strictEqual(networkChecks, 1, 'a due poll must refresh GitHub');
+  assert.strictEqual(R.U.latest.latest, '1.5.0');
+  assert.strictEqual(R.U.staged, null, 'a missing staged file must stop looking installable');
+}
+
 const tests = [
   test_the_grid_holds_every_authored_value,
   test_a_live_value_never_prints_as_the_minimum,
@@ -324,20 +363,26 @@ const tests = [
   test_every_cue_field_is_one_the_engine_reads,
   test_cues_become_the_engines_own_add_ops,
   test_a_legacy_caption_diff_replays_into_cues,
+  test_automatic_update_checks_only_when_due,
 ];
 
-let failed = 0;
-for (const t of tests) {
-  try {
-    t();
-    console.log(`  ok ${t.name}`);
-  } catch (err) {
-    failed++;
-    console.error(`  FAIL ${t.name}: ${err.message}`);
+(async () => {
+  let failed = 0;
+  for (const t of tests) {
+    try {
+      await t();
+      console.log(`  ok ${t.name}`);
+    } catch (err) {
+      failed++;
+      console.error(`  FAIL ${t.name}: ${err.message}`);
+    }
   }
-}
-if (failed) {
-  console.error(`${failed} renderer test${failed === 1 ? '' : 's'} failed`);
+  if (failed) {
+    console.error(`${failed} renderer test${failed === 1 ? '' : 's'} failed`);
+    process.exit(1);
+  }
+  console.log(`${tests.length} renderer tests passed`);
+})().catch((err) => {
+  console.error(err);
   process.exit(1);
-}
-console.log(`${tests.length} renderer tests passed`);
+});

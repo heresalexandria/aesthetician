@@ -49,6 +49,9 @@ const U = {
   releasesBusy: false,
   pickTag: '',       // which release the picker has selected
 };
+const UPDATE_POLL_MS = 60 * 60 * 1000;
+let automaticUpdateBusy = false;
+let updatePollTimer = null;
 
 /* ── small persistence layer (localStorage) ─────────────────────────
    Favorites, collapsed families and the preview knobs survive restarts.
@@ -1063,21 +1066,43 @@ function syncUpdateButton() {
 async function loadVersion() {
   try {
     U.info = await window.aesth.updateInfo();
+    if (U.info.last) U.latest = U.info.last;
+    U.staged = U.info.staged || null;
   } catch (_) { /* leave the chip reading v- */ }
   setVersionChip();
+  syncUpdateButton();
+}
+
+/* Re-read the persisted answer each time so a staged download survives an app
+   restart. The hourly and focus checks are cheap unless the 24-hour network
+   interval has elapsed, in which case the main process refreshes GitHub. */
+async function automaticUpdateCheck() {
+  if (automaticUpdateBusy || U.busy) return;
+  automaticUpdateBusy = true;
+  try {
+    U.info = await window.aesth.updateInfo();
+    if (U.info.last) U.latest = U.info.last;
+    U.staged = U.info.staged || null;
+    setVersionChip();
+    if (U.info.stale) U.latest = await window.aesth.updateCheck({});
+    syncUpdateButton();
+  } catch (_) {
+    // Background checks stay quiet. Opening About still shows a manual error.
+  } finally {
+    automaticUpdateBusy = false;
+  }
 }
 
 async function initUpdates() {
   if (!U.info) await loadVersion();
   window.aesth.onUpdateProgress(onUpdateProgress);
-  if (!U.info || !U.info.stale) {
-    if (U.info && U.info.last) { U.latest = U.info.last; syncUpdateButton(); }
-    return;
-  }
-  try {
-    U.latest = await window.aesth.updateCheck({});
-    syncUpdateButton();
-  } catch (_) { /* offline: try again tomorrow */ }
+  await automaticUpdateCheck();
+  if (updatePollTimer) return;
+  updatePollTimer = setInterval(automaticUpdateCheck, UPDATE_POLL_MS);
+  window.addEventListener('focus', automaticUpdateCheck);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') automaticUpdateCheck();
+  });
 }
 
 function onUpdateProgress(msg) {
@@ -1191,13 +1216,16 @@ function renderNotes(text, host) {
   flush();
 }
 
-function openAbout() {
+function openAbout(refresh = true) {
   $('about-modal').classList.remove('hidden');
   $('about-version').textContent = U.info
     ? `version ${U.info.version}${U.info.packaged ? '' : ' · dev checkout'}`
     : 'version unknown';
   $('about-bar').classList.add('hidden');
   paintAbout();
+  // Like Clawnsole and Pawvis, opening About is an explicit request for a fresh
+  // answer. Do not replace a verified download that is already waiting.
+  if (refresh && !U.staged && !U.busy) checkForUpdates({ force: true });
 }
 
 function closeAbout() {
@@ -1444,7 +1472,6 @@ async function checkForUpdates({ force = true } = {}) {
     U.latest = { ok: false, error: errText(err) };
   }
   U.busy = '';
-  U.staged = null;
   syncUpdateButton();
   paintAbout();
 }
@@ -1516,12 +1543,14 @@ async function installUpdate() {
 /* The titlebar button is a shortcut through whatever step comes next. */
 async function updateButtonClicked() {
   if (U.staged) { await installUpdate(); return; }
-  openAbout();
+  // The download path refreshes GitHub before choosing its asset, so starting
+  // another About check here would race it and paint two competing answers.
+  openAbout(false);
   if (U.latest && U.latest.available && U.latest.installable) await downloadUpdate();
 }
 
 function wireUpdates() {
-  $('btn-version').addEventListener('click', openAbout);
+  $('btn-version').addEventListener('click', () => openAbout());
   $('btn-update').addEventListener('click', updateButtonClicked);
   $('about-close').addEventListener('click', closeAbout);
   $('about-repo').addEventListener('click', () => {
