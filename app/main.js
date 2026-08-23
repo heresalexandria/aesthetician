@@ -769,7 +769,8 @@ ipcMain.handle('aesth:thumbs', () => {
 
 /* ── updates ─────────────────────────────────────────────────────────────
    See app/updater.js for why this is hand-rolled rather than electron-updater.
-   The renderer drives all of it: nothing is fetched or installed on a timer. */
+   The renderer asks hourly and on focus, while the updater enforces the 24-hour
+   network interval. Downloads and installs still require an explicit click. */
 ipcMain.handle('aesth:update-info', () => updater.info());
 ipcMain.handle('aesth:update-check', (_e, opts) => updater.check(opts || {}));
 ipcMain.handle('aesth:update-releases', (_e, opts) => updater.releases(opts || {}));

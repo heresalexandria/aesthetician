@@ -36,16 +36,23 @@ this can go.
 
 | when | what |
 |---|---|
-| every launch | read the version, paint the chip |
+| every launch | restore the last answer and any verified download, then paint the chip |
 | launch, if the last check was over 24 h ago | check GitHub in the background |
-| clicking the version chip | open the dialog; check on demand |
+| every hour, and when the app regains focus | re-read local state and check GitHub only if the 24 h interval has elapsed |
+| clicking the version chip | open the dialog and request a fresh answer |
 | unfolding **Other versions** | read the release list, cached for 10 min |
 | `--smoke` / `--shot` | no check at all |
 
-The last check time lives in `update-state.json` under the app's user-data
-directory, so a restart does not mean a fresh check. A failed check is quiet -
-the button just does not appear - because a background check that shouts about
-being offline is a worse app.
+The last answer, check time, and verified staged download live in
+`update-state.json` under the app's user-data directory. A restart does not
+erase an update offer or force a fresh check, and a completed download remains
+ready to install as long as its file is still present. The state file and
+download are created with owner-only permissions where the operating system
+supports them. A failed background check is quiet because an app that shouts
+about being offline is worse than a button that stays out of the way.
+
+No automatic check downloads or installs anything. The update remains an
+explicit choice in the title bar or About dialog.
 
 ## Installing
 
@@ -54,9 +61,10 @@ mount, and `ditto` restores the symlinks and the signature that a plain unzip
 would flatten. The swap cannot run from inside the app being swapped, so it is
 handed to a detached shell script that waits for the process to exit, moves the
 old bundle aside, copies the new one in, and reopens it. If the copy fails the
-old bundle goes back. Writability of the install directory is checked *before*
-the app quits, so a copy in a folder you do not own fails with a message rather
-than an app that exits and never returns.
+old bundle goes back and is reopened. Before the app quits, the replacement
+must contain `Aesthetician.app`, pass macOS code-signature verification, and the
+install directory must be writable. A copy in a folder you do not own therefore
+fails with a message rather than an app that exits and never returns.
 
 Windows re-runs the NSIS installer, visibly rather than silently, and quits so
 the installer can replace files it would otherwise find locked. The installer is
@@ -152,6 +160,7 @@ most four redirects, requires an `image/*` content type and caps the response at
 Release JSON is data off the network, so it is treated that way. Only `https` to
 `api.github.com`, `github.com` and GitHub's asset hosts is fetched, whatever URL
 the payload contains. Release notes are rendered with `textContent`, never as
-markup. `Open releases` is restricted to this repository's own URLs. The
-download is verified against `SHA256SUMS.txt` when the release publishes one -
-every release cut by `.github/workflows/release.yml` does.
+markup. `Open releases` is restricted to this repository's own URLs. Every
+download must have an entry in the release's `SHA256SUMS.txt`; a missing digest
+is a hard failure. The file is checked while downloading and checked again just
+before installation so a staged file that changed on disk cannot run.

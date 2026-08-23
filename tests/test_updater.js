@@ -248,6 +248,70 @@ function test_allowed_urls() {
   }
 }
 
+function test_cached_result_survives_restart() {
+  const state = {
+    lastCheckAt: 1770000000000,
+    latestSeen: '1.4.0',
+    latestTag: 'v1.4.0',
+    latestHasAsset: true,
+    latestAssetName: 'Aesthetician-1.4.0-mac-arm64.zip',
+    latestAssetSize: 123456,
+    latestNotes: 'A useful release.',
+    latestName: 'Aesthetician 1.4.0',
+    latestPublishedAt: '2026-08-20T12:00:00Z',
+    latestUrl: 'https://github.com/heresalexandria/aesthetician/releases/tag/v1.4.0',
+  };
+  const got = u.cachedResult('1.3.0', state, {
+    isPackaged: true,
+    platform: 'darwin',
+    arch: 'arm64',
+  });
+  assert.ok(got.ok);
+  assert.ok(got.skipped, 'a disk answer must not pretend it made a network request');
+  assert.ok(got.available);
+  assert.ok(got.installable);
+  assert.strictEqual(got.latest, '1.4.0');
+  assert.strictEqual(got.tag, 'v1.4.0');
+  assert.deepStrictEqual(got.asset, {
+    name: 'Aesthetician-1.4.0-mac-arm64.zip',
+    size: 123456,
+  });
+  assert.ok(!('url' in got.asset), 'download URLs are never trusted across a restart');
+
+  const dev = u.cachedResult('1.3.0', state, {
+    isPackaged: false,
+    platform: 'darwin',
+    arch: 'arm64',
+  });
+  assert.ok(dev.available);
+  assert.ok(!dev.installable);
+  assert.ok(dev.note.includes('dev checkout'));
+}
+
+function test_cached_error_survives_restart() {
+  const got = u.cachedResult('1.3.0', {
+    lastCheckAt: 1770000000000,
+    lastError: 'offline',
+  }, { isPackaged: true, platform: 'win32', arch: 'x64' });
+  assert.strictEqual(got.ok, false);
+  assert.strictEqual(got.error, 'offline');
+  assert.strictEqual(got.checkedAt, 1770000000000);
+  assert.ok(got.skipped);
+}
+
+function test_checksum_contract() {
+  const digest = 'AB'.repeat(32);
+  const text = [
+    `${'1'.repeat(64)}  Aesthetician-1.4.0-mac-x64.zip`,
+    `${digest} *dist/Aesthetician-1.4.0-mac-arm64.zip`,
+    'not a checksum',
+  ].join('\n');
+  assert.strictEqual(
+    u.checksumFor(text, 'Aesthetician-1.4.0-mac-arm64.zip'), digest.toLowerCase());
+  assert.strictEqual(u.checksumFor(text, 'Aesthetician-1.4.0-win-x64-setup.exe'), null);
+  assert.strictEqual(u.checksumFor('', 'Aesthetician-1.4.0-mac-arm64.zip'), null);
+}
+
 const tests = Object.entries({
   test_parse_version,
   test_is_newer,
@@ -259,6 +323,9 @@ const tests = Object.entries({
   test_release_list_limit,
   test_allowed_urls,
   test_note_image_hosts,
+  test_cached_result_survives_restart,
+  test_cached_error_survives_restart,
+  test_checksum_contract,
 });
 
 for (const [name, fn] of tests) {

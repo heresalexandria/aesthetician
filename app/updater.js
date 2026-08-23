@@ -80,7 +80,8 @@ function writeState(patch) {
   const next = { ...readState(), ...patch };
   try {
     fs.mkdirSync(path.dirname(statePath()), { recursive: true });
-    fs.writeFileSync(statePath(), JSON.stringify(next, null, 2));
+    fs.writeFileSync(statePath(), `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
+    fs.chmodSync(statePath(), 0o600);
   } catch (_) { /* a lost timestamp only costs an extra check */ }
   return next;
 }
@@ -179,19 +180,71 @@ function assetFor(assets, platform = process.platform, arch = process.arch) {
   return null;
 }
 
-function platformNote() {
-  if (process.platform === 'darwin' || process.platform === 'win32') return '';
-  return `There is no packaged build for ${process.platform} yet - update from source instead.`;
+function platformNote(platform = process.platform) {
+  if (platform === 'darwin' || platform === 'win32') return '';
+  return `There is no packaged build for ${platform} yet - update from source instead.`;
 }
 
 /* ── check ───────────────────────────────────────────────────────────────  */
 let lastResult = null;
 
+/* Rebuild the last answer from disk after a restart. The download URL is not
+   persisted: starting a download always performs a fresh release check and
+   selects the platform asset again. */
+function cachedResult(current, state, {
+  isPackaged = Boolean(app && app.isPackaged),
+  platform = process.platform,
+  arch = process.arch,
+} = {}) {
+  if (state.lastError) {
+    return {
+      ok: false,
+      current,
+      available: false,
+      error: String(state.lastError),
+      checkedAt: state.lastCheckAt || null,
+      releasesUrl: RELEASES_PAGE,
+      htmlUrl: RELEASES_PAGE,
+      skipped: true,
+    };
+  }
+
+  const latest = typeof state.latestSeen === 'string' ? state.latestSeen : null;
+  const available = latest ? isNewer(latest, current) : false;
+  const hasAsset = state.latestHasAsset === true;
+  const asset = hasAsset && typeof state.latestAssetName === 'string'
+    ? { name: state.latestAssetName, size: Number(state.latestAssetSize) || 0 }
+    : null;
+  const note = !isPackaged
+    ? 'Running from a dev checkout - `git pull` instead of updating in place.'
+    : (hasAsset ? '' : (platformNote(platform) || `That release has no ${platform}/${arch} build attached.`));
+
+  return {
+    ok: true,
+    current,
+    latest,
+    tag: typeof state.latestTag === 'string'
+      ? state.latestTag
+      : (latest ? `v${latest}` : ''),
+    available,
+    installable: Boolean(available && isPackaged && hasAsset),
+    asset,
+    notes: typeof state.latestNotes === 'string' ? state.latestNotes : '',
+    name: typeof state.latestName === 'string' ? state.latestName : '',
+    publishedAt: state.latestPublishedAt || null,
+    htmlUrl: allowedUrl(state.latestUrl) ? state.latestUrl : RELEASES_PAGE,
+    releasesUrl: RELEASES_PAGE,
+    note,
+    checkedAt: state.lastCheckAt || null,
+    skipped: true,
+  };
+}
+
 async function check({ force = false } = {}) {
   const state = readState();
   const current = app.getVersion();
   const stale = !state.lastCheckAt || (Date.now() - state.lastCheckAt) >= CHECK_INTERVAL_MS;
-  if (!force && !stale && lastResult) return lastResult;
+  if (!force && !stale) return lastResult || cachedResult(current, state);
 
   let release;
   try {
@@ -199,6 +252,10 @@ async function check({ force = false } = {}) {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     }));
+    if (!release || typeof release !== 'object' || release.draft || release.prerelease
+        || !parseVersion(release.tag_name)) {
+      throw new Error('GitHub did not return a stable Aesthetician release');
+    }
   } catch (err) {
     // A failed check is not an error state worth shouting about; the button
     // simply does not appear.
@@ -243,9 +300,31 @@ async function check({ force = false } = {}) {
       : (asset ? '' : (platformNote() || `That release has no ${process.platform}/${process.arch} build attached.`)),
     checkedAt: Date.now(),
   };
-  writeState({ lastCheckAt: result.checkedAt, latestSeen: latest, lastError: null });
+  writeState({
+    lastCheckAt: result.checkedAt,
+    latestSeen: latest,
+    latestTag: result.tag,
+    latestHasAsset: Boolean(asset),
+    latestAssetName: asset ? asset.name : null,
+    latestAssetSize: asset ? Number(asset.size) || 0 : 0,
+    latestNotes: result.notes,
+    latestName: result.name,
+    latestPublishedAt: result.publishedAt,
+    latestUrl: result.htmlUrl,
+    lastError: null,
+  });
   lastResult = result;
   return result;
+}
+
+function stagedSummary(state = readState()) {
+  const staged = state && state.staged;
+  if (!staged || staged.verified !== true || !staged.file || !fs.existsSync(staged.file)) return null;
+  return {
+    version: String(staged.version || ''),
+    tag: String(staged.tag || ''),
+    verified: true,
+  };
 }
 
 function info() {
@@ -253,9 +332,10 @@ function info() {
   // The smoke test and the screenshot harness boot the whole renderer; neither
   // should be reaching out to GitHub to do it.
   const headless = process.argv.includes('--smoke') || process.argv.includes('--shot');
+  const current = app.getVersion();
   const stale = !state.lastCheckAt || (Date.now() - state.lastCheckAt) >= CHECK_INTERVAL_MS;
   return {
-    version: app.getVersion(),
+    version: current,
     packaged: app.isPackaged,
     platform: process.platform,
     arch: process.arch,
@@ -264,7 +344,8 @@ function info() {
     lastCheckAt: state.lastCheckAt || null,
     checkIntervalMs: CHECK_INTERVAL_MS,
     stale: stale && !headless,
-    last: lastResult,
+    last: lastResult || (state.lastCheckAt ? cachedResult(current, state) : null),
+    staged: stagedSummary(state),
   };
 }
 
@@ -380,10 +461,18 @@ let inFlight = null;    // the live response stream, so a cancel has something t
 let downloading = false; // set before the first await: two clicks must not both run
 
 async function fetchChecksum(release, assetName) {
-  const sums = (release.assets || []).find((a) => a.name === 'SHA256SUMS.txt');
-  if (!sums) return null;
-  const text = await getText(sums.browser_download_url);
-  for (const line of text.split('\n')) {
+  const assets = Array.isArray(release && release.assets) ? release.assets : [];
+  const sums = assets.find((a) => a && a.name === 'SHA256SUMS.txt');
+  if (!sums || !allowedUrl(sums.browser_download_url)) {
+    throw new Error('this release has no trusted SHA256SUMS.txt asset');
+  }
+  const expected = checksumFor(await getText(sums.browser_download_url), assetName);
+  if (!expected) throw new Error(`SHA256SUMS.txt does not cover ${assetName}`);
+  return expected;
+}
+
+function checksumFor(text, assetName) {
+  for (const line of String(text || '').split('\n')) {
     const m = /^([0-9a-f]{64})\s+\*?(.+?)\s*$/i.exec(line.trim());
     if (m && path.basename(m[2]) === assetName) return m[1].toLowerCase();
   }
@@ -407,7 +496,10 @@ async function download(sender, opts = {}) {
 async function resolveTarget(tag) {
   if (!app.isPackaged) throw new Error('running from a dev checkout - use git pull');
   if (!tag) {
-    const result = lastResult && lastResult.ok ? lastResult : await check({ force: true });
+    // A cached result deliberately carries no download URL. Refresh here even
+    // when the UI already knows an update exists, then trust this response for
+    // the asset URL used below.
+    const result = await check({ force: true });
     if (!result.ok) throw new Error(result.error || 'could not reach GitHub');
     if (!result.available) throw new Error('already up to date');
     if (!result.asset) throw new Error(result.note || 'no build for this platform');
@@ -438,16 +530,14 @@ async function runDownload(sender, { tag = '' } = {}) {
   // The checksum list hangs off the release. A picked release is already in
   // hand; the latest has to be fetched again, because the cached check result
   // does not carry it and it is small.
-  let expected = null;
-  try {
-    const release = target.release
-      || JSON.parse(await getText(RELEASES_URL, { Accept: 'application/vnd.github+json' }));
-    expected = await fetchChecksum(release, target.asset.name);
-  } catch (_) { /* fall through: verified below only if we got a digest */ }
+  const release = target.release
+    || JSON.parse(await getText(RELEASES_URL, { Accept: 'application/vnd.github+json' }));
+  const expected = await fetchChecksum(release, target.asset.name);
 
   const dir = downloadDir();
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
+  writeState({ staged: null });
   const dest = path.join(dir, target.asset.name);
 
   const emit = (msg) => {
@@ -464,7 +554,7 @@ async function runDownload(sender, { tag = '' } = {}) {
 
   try {
     await new Promise((resolve, reject) => {
-      const out = fs.createWriteStream(dest);
+      const out = fs.createWriteStream(dest, { mode: 0o600 });
       res.on('data', (chunk) => {
         received += chunk.length;
         hash.update(chunk);
@@ -484,11 +574,11 @@ async function runDownload(sender, { tag = '' } = {}) {
   }
 
   const digest = hash.digest('hex');
-  if (expected && digest !== expected) {
+  if (digest !== expected) {
     fs.rmSync(dir, { recursive: true, force: true });
     throw new Error('checksum mismatch - the download was corrupt or tampered with');
   }
-  emit({ stage: 'download', received, total, frac: 1, verified: Boolean(expected) });
+  emit({ stage: 'download', received, total, frac: 1, verified: true });
 
   writeState({
     staged: {
@@ -496,12 +586,12 @@ async function runDownload(sender, { tag = '' } = {}) {
       tag: target.tag,
       file: dest,
       sha256: digest,
-      verified: Boolean(expected),
+      verified: true,
     },
   });
   // The renderer gets what it needs to say which version is waiting, and not
   // the path it is waiting at.
-  return { version: target.version, tag: target.tag, verified: Boolean(expected) };
+  return { version: target.version, tag: target.tag, verified: true };
 }
 
 function cancelDownload() {
@@ -528,6 +618,16 @@ function run(cmd, args) {
   });
 }
 
+function fileSha256(file) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(file);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
 async function installMac(staged) {
   const bundle = installedBundle();
   if (!bundle.endsWith('.app')) {
@@ -549,11 +649,13 @@ async function installMac(staged) {
   // and unzip flattens both.
   await run('/usr/bin/ditto', ['-x', '-k', staged.file, stage]);
 
-  const fresh = fs.readdirSync(stage).find((f) => f.endsWith('.app'));
-  if (!fresh) throw new Error('the downloaded archive contained no .app');
-  const freshPath = path.join(stage, fresh);
+  const freshPath = path.join(stage, 'Aesthetician.app');
+  if (!fs.existsSync(freshPath) || !fs.statSync(freshPath).isDirectory()) {
+    throw new Error('the downloaded archive contained no Aesthetician.app');
+  }
   const plist = path.join(freshPath, 'Contents', 'Info.plist');
   if (!fs.existsSync(plist)) throw new Error('the downloaded app looks incomplete');
+  await run('/usr/bin/codesign', ['--verify', '--deep', '--strict', freshPath]);
 
   /* The swap cannot happen from inside the app being swapped, so it is handed
      to a detached script that waits for this process to exit first. It moves
@@ -567,17 +669,22 @@ for _ in $(seq 1 150); do
   kill -0 "$pid" 2>/dev/null || break
   sleep 0.2
 done
+kill -0 "$pid" 2>/dev/null && exit 1
 rm -rf "$dest.old"
-mv "$dest" "$dest.old" || exit 1
+if ! mv "$dest" "$dest.old"; then
+  open "$dest" 2>/dev/null
+  exit 1
+fi
 if ! /usr/bin/ditto "$fresh" "$dest"; then
   rm -rf "$dest"
   mv "$dest.old" "$dest"
+  open "$dest" 2>/dev/null
   exit 1
 fi
 rm -rf "$dest.old"
 xattr -dr com.apple.quarantine "$dest" 2>/dev/null
 open "$dest"
-`, { mode: 0o755 });
+`, { mode: 0o700 });
 
   const child = spawn('/bin/sh', [script, String(process.pid), freshPath, bundle], {
     detached: true,
@@ -601,7 +708,16 @@ async function install() {
   if (!staged || !staged.file || !fs.existsSync(staged.file)) {
     throw new Error('nothing downloaded to install');
   }
+  if (staged.verified !== true || !/^[0-9a-f]{64}$/i.test(String(staged.sha256 || ''))) {
+    throw new Error('the staged update has not been checksum verified');
+  }
   if (!app.isPackaged) throw new Error('running from a dev checkout - use git pull');
+
+  const actual = await fileSha256(staged.file);
+  if (actual !== String(staged.sha256).toLowerCase()) {
+    writeState({ staged: null });
+    throw new Error('checksum mismatch - the staged update changed after download');
+  }
 
   const res = process.platform === 'darwin'
     ? await installMac(staged)
@@ -685,7 +801,8 @@ async function noteImage(url) {
 /* Where the download landed, for the "install it yourself" escape hatch. */
 function stagedFile() {
   const staged = readState().staged;
-  return staged && staged.file && fs.existsSync(staged.file) ? staged.file : null;
+  return staged && staged.verified === true && staged.file && fs.existsSync(staged.file)
+    ? staged.file : null;
 }
 
 module.exports = {
@@ -705,5 +822,7 @@ module.exports = {
   assetFor,
   allowedUrl,
   summarizeReleases,
+  cachedResult,
+  checksumFor,
   CHECK_INTERVAL_MS,
 };
