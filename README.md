@@ -20,8 +20,8 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 
 | | |
 |---|---|
-| **210 presets** | 14 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), captions (14), decay (8), exhibition (6), print (6), stylized (6), transmission (5), adjust (4) |
-| **285 variants** | alternate states of each look: worn prints, fifth-generation dubs, storm reception, terminal decay |
+| **236 presets** | 17 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), captions (14), arthouse (10), modern (9), decay (8), western (7), exhibition (6), print (6), stylized (6), transmission (5), adjust (4) |
+| **339 variants** | alternate states of each look: worn prints, fifth-generation dubs, storm reception, terminal decay |
 | **105 effects, 530 parameters** | every one exposed and documented, in the app and from the CLI |
 | **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
 
@@ -160,7 +160,7 @@ the one-time repository setup.
 
 - [docs/app-guide.md](docs/app-guide.md) - using the desktop app
 - [docs/usage.md](docs/usage.md) - setup and CLI workflows
-- [docs/catalog.md](docs/catalog.md) - all 210 presets and every knob
+- [docs/catalog.md](docs/catalog.md) - all 236 presets and every knob
 - [docs/packaging.md](docs/packaging.md) - building installable macOS/Windows apps
 - [docs/releases.md](docs/releases.md) - how a release is cut, and the CI setup it needs
 - [docs/updates.md](docs/updates.md) - how the app updates itself

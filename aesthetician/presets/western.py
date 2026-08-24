@@ -1,0 +1,275 @@
+"""Western-family presets: the frontier as each era's cameras actually saw it.
+
+One genre, seven decades of physics: orthochromatic skies that print white,
+three-strip Technicolor mesas, 2-perf Techniscope grain blown up to scope,
+Eastman fading toward autumn, and the modern digital grade that keeps only
+the dust.
+"""
+
+from ..engine.presets import Preset, Variant, register_preset
+
+
+def _optical(hi=7000.0, cell=-50.0, rolloff="feature_1940s", ratio=3.5):
+    return [
+        ("a_bandlimit", {"low_hz": 90.0, "high_hz": hi}),
+        ("a_mono", {"amount": 1.0}),
+        ("a_optical_track", {"cell_noise": cell, "academy_rolloff": rolloff}),
+        ("a_compressor", {"ratio": ratio}),
+    ]
+
+
+register_preset(Preset(
+    id="nickelodeon-western-1913",
+    name="Nickelodeon Western",
+    family="western",
+    era="1913",
+    desc="A one-reel oater cranked by hand: orthochromatic skies burned to paper white, riders undercranked into a gallop, and a print that has toured every tent show west of Chicago.",
+    tagline="Ortho white skies, undercrank, torn print",
+    tags=("western", "silent", "1910s", "bw"),
+    proc_height=560,
+    upscale="soft",
+    video=[
+        ("mono", {"response": "orthochromatic", "tint": "nitrate_warm", "tint_amt": 0.2}),
+        ("tone", {"contrast": 1.26, "lift": 0.06, "knee": 0.74}),
+        ("cadence", {"pattern": "silent_irregular"}),
+        ("grain", {"amount": 0.55, "size": 2.1, "chroma_grain": 0.0, "stock": "print_dupe"}),
+        ("flicker", {"amount": 0.45, "character": "hand_cranked", "spatial": 0.35}),
+        ("gate_weave", {"amount": 2.6, "splice_bump": 2.2}),
+        ("dust", {"density": 1.0, "size": 1.4, "hairs": 0.6}),
+        ("scratches", {"count": 5, "transient_rate": 2.0}),
+        ("frame_damage", {"splice_skip_rate": 3.0, "blotch_rate": 6.0}),
+        ("vignette", {"amount": 0.5, "softness": 0.55}),
+        ("framing", {"aspect": "4:3"}),
+    ],
+    audio=[
+        ("a_gain", {"db": -60.0}),
+        ("a_projector", {"machine": "proj_16mm", "level_db": -27.0}),
+        ("a_hum", {"hz": 60, "level_db": -54.0}),
+    ],
+    variants=[
+        Variant("keep-sound", "Keep Sound", "Retain the (treated) original audio.",
+                audio={"a_gain.db": -6.0}),
+        Variant("desert-tint", "Desert Tint", "The amber-bath day scenes, straight off the tinting bench.",
+                video={"mono.tint": "sepia", "mono.tint_amt": 0.45}),
+        Variant("night-bath", "Night Bath", "Dye-tinted blue for moonlight, the way the lab faked night.",
+                video={"mono.tint": "cyanotype", "mono.tint_amt": 0.45, "tone.exposure": -0.25}),
+    ],
+))
+
+register_preset(Preset(
+    id="technicolor-sagebrush-1939",
+    name="Technicolor Sagebrush",
+    family="western",
+    era="1939",
+    desc="Three-strip glory on the open range: skies a blue no sky ever was, red rock and red kerchiefs ringing like bells, and halation lining every silhouette against the sun.",
+    tagline="3-strip skies, ringing reds, rim halation",
+    tags=("western", "technicolor", "30s", "color"),
+    upscale="sharp",
+    video=[
+        ("stock", {"profile": "technicolor3", "strength": 0.9}),
+        ("tone", {"contrast": 1.18, "lift": 0.02, "knee": 0.8}),
+        ("saturation", {"amount": 1.15, "vibrance": 0.15}),
+        ("grain", {"amount": 0.4, "size": 1.9, "chroma_grain": 0.15, "stock": "fine_35"}),
+        ("halation", {"strength": 0.4, "tint": "red_orange", "threshold": 0.72}),
+        ("gate_weave", {"amount": 1.1}),
+        ("flicker", {"amount": 0.1}),
+        ("dust", {"density": 0.4}),
+        ("scratches", {"count": 1, "transient_rate": 0.6}),
+        ("vignette", {"amount": 0.35, "softness": 0.6}),
+        ("framing", {"aspect": "1.37"}),
+    ],
+    audio=_optical(hi=7200.0, cell=-52.0, ratio=3.5),
+    variants=[
+        Variant("roadshow", "Roadshow Print", "First-run gloss: cleaner gate, deeper dye.",
+                video={"dust.density": 0.2, "gate_weave.amount": 0.8,
+                       "saturation.amount": 1.22, "stock.strength": 1.0}),
+        Variant("rerelease", "1953 Re-release", "A decade of matinees on the same reels.",
+                video={"dust.density": 0.7, "scratches.count": 4, "gate_weave.amount": 1.5,
+                       "tone.lift": 0.05},
+                audio={"a_optical_track.cell_noise": -46.0}),
+    ],
+))
+
+register_preset(Preset(
+    id="matinee-b-western-1947",
+    name="Matinee B-Western",
+    family="western",
+    era="1947",
+    desc="The bottom half of a double bill: contrasty B&W dupe stock shot in a week, the same rock formation from four angles, splices where the projectionist rescued Saturday afternoon.",
+    tagline="Contrasty dupe, worn splices, poverty row",
+    tags=("western", "bw", "40s", "matinee"),
+    proc_height=640,
+    upscale="soft",
+    video=[
+        ("mono", {"response": "panchromatic"}),
+        ("tone", {"contrast": 1.28, "lift": 0.04, "knee": 0.78}),
+        ("grain", {"amount": 0.5, "size": 2.2, "chroma_grain": 0.0, "stock": "print_dupe"}),
+        ("halation", {"strength": 0.28, "tint": "neutral"}),
+        ("gate_weave", {"amount": 1.6, "splice_bump": 2.0}),
+        ("flicker", {"amount": 0.16}),
+        ("dust", {"density": 0.7, "hairs": 0.4}),
+        ("scratches", {"count": 4, "transient_rate": 1.5}),
+        ("frame_damage", {"splice_skip_rate": 2.0}),
+        ("vignette", {"amount": 0.4, "softness": 0.6}),
+        ("framing", {"aspect": "1.37"}),
+    ],
+    audio=_optical(hi=6200.0, cell=-46.0, rolloff="classroom_16mm", ratio=4.5),
+    variants=[
+        Variant("tv-syndication", "TV Syndication", "The same print run through a 1950s telecine for after-school slots.",
+                video={"tone.contrast": 1.18, "tone.lift": 0.07, "grain.amount": 0.55,
+                       "vignette.amount": 0.3},
+                audio={"a_bandlimit.high_hz": 5000.0}),
+        Variant("fresh-print", "Fresh Print", "Opening Saturday, before the reels earned their scars.",
+                video={"dust.density": 0.35, "scratches.count": 2,
+                       "frame_damage.splice_skip_rate": 0.5, "gate_weave.amount": 1.0}),
+    ],
+))
+
+register_preset(Preset(
+    id="sunset-scope-1956",
+    name="Sunset Scope Western",
+    family="western",
+    era="1956",
+    desc="The A-picture answer to television: 2.35 Eastman vistas, cream light pouring across monument country, dust hanging gold in every beam - a landscape wide enough to get lost in.",
+    tagline="2.35 golden vistas, cream light, dust",
+    tags=("western", "widescreen", "50s", "epic"),
+    upscale="sharp",
+    video=[
+        ("stock", {"profile": "ektachrome", "strength": 0.75}),
+        ("tone", {"contrast": 1.14, "lift": 0.02, "knee": 0.8}),
+        ("balance", {"warmth": 0.14, "high_tint": "cream", "high_amt": 0.3}),
+        ("saturation", {"amount": 1.12, "vibrance": 0.1}),
+        ("optics", {"chromatic_aberration": 1.2, "distortion": -0.1}),
+        ("grain", {"amount": 0.38, "size": 2.0, "chroma_grain": 0.16}),
+        ("halation", {"strength": 0.35, "tint": "orange"}),
+        ("gate_weave", {"amount": 0.9}),
+        ("dust", {"density": 0.35}),
+        ("vignette", {"amount": 0.35, "roundness": 0.6}),
+        ("framing", {"aspect": "2.35", "mode": "box"}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9500.0}),
+        ("a_optical_track", {"cell_noise": -54.0, "academy_rolloff": "feature_1940s"}),
+        ("a_compressor", {"ratio": 3.0}),
+        ("a_room", {"size": 1.1, "decay_s": 0.8, "mix": 0.14}),
+    ],
+    variants=[
+        Variant("high-noon", "High Noon", "Hard overhead light, the warmth burned back to bone.",
+                video={"balance.warmth": 0.04, "balance.high_amt": 0.1, "tone.contrast": 1.22,
+                       "saturation.amount": 1.02}),
+        Variant("faded-roadshow", "Faded Roadshow", "The surviving print, pink where the cyan gave up.",
+                video={"stock.strength": 0.6, "tone.lift": 0.05,
+                       "dust.density": 0.55, "gate_weave.amount": 1.3}),
+    ],
+))
+
+register_preset(Preset(
+    id="spaghetti-scope-1966",
+    name="Spaghetti Scope",
+    family="western",
+    era="1966",
+    desc="Two-perf Techniscope blown up to scope: coarse grain over sun-bleached badlands, faces baked terracotta in extreme close-up, and dialogue dubbed a room away from every mouth.",
+    tagline="2-perf grain, baked faces, dubbed room",
+    tags=("western", "italy", "60s", "widescreen"),
+    upscale="sharp",
+    video=[
+        ("stock", {"profile": "eastman_70s", "strength": 0.8}),
+        ("tone", {"contrast": 1.24, "lift": 0.03, "knee": 0.76, "pivot": 0.42}),
+        ("balance", {"warmth": 0.18, "high_tint": "yellow", "high_amt": 0.25}),
+        ("saturation", {"amount": 1.08, "vibrance": 0.1}),
+        ("grain", {"amount": 0.55, "size": 2.6, "chroma_grain": 0.2, "stock": "push_process"}),
+        ("halation", {"strength": 0.4, "tint": "red_orange", "threshold": 0.7}),
+        ("gate_weave", {"amount": 1.2, "splice_bump": 1.2}),
+        ("flicker", {"amount": 0.1}),
+        ("dust", {"density": 0.5, "hairs": 0.3}),
+        ("scratches", {"count": 2, "transient_rate": 0.8}),
+        ("vignette", {"amount": 0.35, "softness": 0.55}),
+        ("framing", {"aspect": "2.35", "mode": "box"}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 80.0, "high_hz": 8000.0}),
+        ("a_mono", {"amount": 1.0}),
+        ("a_room", {"size": 0.9, "decay_s": 0.5, "mix": 0.3, "mode": "plate1960"}),
+        ("a_optical_track", {"cell_noise": -48.0, "academy_rolloff": "feature_1940s"}),
+        ("a_compressor", {"ratio": 4.0}),
+    ],
+    variants=[
+        Variant("standoff", "The Standoff", "Tighter, hotter, grainier: the last three minutes.",
+                video={"tone.contrast": 1.32, "grain.amount": 0.65, "halation.strength": 0.5,
+                       "vignette.amount": 0.45}),
+        Variant("drive-in-dub", "Drive-In Dub", "The American cut, printed one generation further down.",
+                video={"grain.amount": 0.62, "dust.density": 0.7, "scratches.count": 3,
+                       "stock.strength": 0.65},
+                audio={"a_optical_track.cell_noise": -44.0, "a_bandlimit.high_hz": 6500.0}),
+    ],
+))
+
+register_preset(Preset(
+    id="revisionist-autumn-1973",
+    name="Revisionist Autumn",
+    family="western",
+    era="1973",
+    desc="The genre in its melancholy years: flat autumn light through a zoom lens, Eastman color already going to rust, mud instead of monuments and nobody wearing white.",
+    tagline="Rust Eastman, zoom softness, flat light",
+    tags=("western", "70s", "newhollywood"),
+    upscale="soft",
+    video=[
+        ("stock", {"profile": "eastman_70s", "strength": 0.9}),
+        ("tone", {"contrast": 1.02, "lift": 0.07, "knee": 0.85}),
+        ("balance", {"warmth": 0.1, "shadow_tint": "brown", "shadow_amt": 0.25}),
+        ("saturation", {"amount": 0.88}),
+        ("optics", {"soft_focus": 0.18, "diffusion": 0.2, "veiling_flare": 0.15}),
+        ("fade", {"amount": 0.28, "profile": "eastman_pink", "bloom_whites": 0.2}),
+        ("grain", {"amount": 0.45, "size": 2.2, "chroma_grain": 0.18}),
+        ("halation", {"strength": 0.25, "tint": "warm_white"}),
+        ("gate_weave", {"amount": 0.9}),
+        ("dust", {"density": 0.35}),
+        ("vignette", {"amount": 0.3, "softness": 0.7}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 70.0, "high_hz": 9000.0}),
+        ("a_optical_track", {"cell_noise": -52.0, "academy_rolloff": "feature_1940s"}),
+        ("a_compressor", {"ratio": 3.0}),
+    ],
+    variants=[
+        Variant("winter-mud", "Winter Mud", "Colder, darker, the warmth drained into the ground.",
+                video={"balance.warmth": -0.05, "tone.exposure": -0.15, "saturation.amount": 0.8,
+                       "optics.diffusion": 0.28}),
+        Variant("summer-elegy", "Summer Elegy", "Golden and overexposed, remembering better days.",
+                video={"tone.exposure": 0.2, "balance.warmth": 0.2, "optics.veiling_flare": 0.3,
+                       "fade.bloom_whites": 0.35}),
+    ],
+))
+
+register_preset(Preset(
+    id="neo-western-2017",
+    name="Neo-Western",
+    family="western",
+    era="2017",
+    desc="The frontier shot digital: teal held in the shadows, amber dust in the highlights, a horizon graded to feel like grief - clean enough to count the power lines they kept out of frame.",
+    tagline="Teal shadows, amber dust, digital clean",
+    tags=("western", "modern", "grade", "widescreen"),
+    upscale="sharp",
+    video=[
+        ("tone", {"contrast": 1.16, "lift": 0.02, "knee": 0.86, "pivot": 0.45}),
+        ("balance", {"warmth": 0.12, "shadow_tint": "teal", "shadow_amt": 0.35,
+                     "high_tint": "cream", "high_amt": 0.2}),
+        ("saturation", {"amount": 0.95, "vibrance": 0.2}),
+        ("sharpen", {"amount": 0.25, "radius": 1.0}),
+        ("grain", {"amount": 0.18, "size": 1.2, "chroma_grain": 0.08, "stock": "fine_35"}),
+        ("halation", {"strength": 0.12, "tint": "warm_white"}),
+        ("vignette", {"amount": 0.25, "softness": 0.7}),
+        ("framing", {"aspect": "2.35", "mode": "box"}),
+    ],
+    # A modern grade leaves the mix alone: stack an audio preset if the sound
+    # should age too.
+    audio=[],
+    variants=[
+        Variant("border-noir", "Border Noir", "Night-leaning: deeper teal, headlights for highlights.",
+                video={"tone.exposure": -0.2, "balance.shadow_amt": 0.5,
+                       "saturation.amount": 0.85, "vignette.amount": 0.35}),
+        Variant("open-range", "Open Range", "Daylight and dust, the teal eased almost out.",
+                video={"balance.shadow_amt": 0.15, "balance.warmth": 0.18,
+                       "saturation.amount": 1.05}),
+    ],
+))

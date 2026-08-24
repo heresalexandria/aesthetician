@@ -13,6 +13,10 @@
       <span id="file-chip-text"></span>
       <svg class="fc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17z"/></svg>
     </button>
+    <button id="btn-history" title="Every export you have run - source, destination and settings">
+      <svg class="hc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+      <span>History</span><span id="history-count" class="hidden"></span>
+    </button>
     <div class="grow"></div>
     <button id="btn-version" title="About Aesthetician"></button>
     <button id="btn-update" class="hidden" title="A newer version is available">Update available</button>
@@ -32,6 +36,19 @@
       <button id="btn-exports-clear" class="link-btn">Clear finished</button>
     </div>
     <div id="exports-list"></div>
+  </div>
+
+  <!-- Previous runs: one entry per export that actually landed, kept across
+       restarts. The queue above is "now"; this is "ever". -->
+  <div id="history-panel" class="hidden">
+    <div class="ep-head">
+      <span class="ep-title">Export history</span>
+      <div class="hp-actions">
+        <button id="btn-history-oldest" class="link-btn" title="Remove a number of the oldest entries">Clear oldest…</button>
+        <button id="btn-history-clear" class="link-btn" title="Forget every previous export. The exported files themselves are untouched.">Clear all</button>
+      </div>
+    </div>
+    <div id="history-list"></div>
   </div>
 
   <div id="tab-bar" class="hidden"></div>
@@ -176,8 +193,8 @@
       <div class="master-row">
         <label title="Overall strength of damage, warping, glow and color treatment">Intensity <span id="intensity-val">1.00</span></label>
         <input id="intensity" class="range-fill" type="range" min="0" max="2" step="0.05" value="1"/>
-        <label title="Grain, tape noise, snow, dust and speckle only. 0 renders the look perfectly clean.">Texture <span id="texture-val">1.00</span></label>
-        <input id="texture" class="range-fill" type="range" min="0" max="2" step="0.05" value="1"/>
+        <label title="Grain, tape noise, snow, dust and speckle only. 0 renders the look perfectly clean.">Texture <span id="texture-val">0.25</span></label>
+        <input id="texture" class="range-fill" type="range" min="0" max="2" step="0.05" value="0.25"/>
         <div class="seed-row">
           <label>Seed</label>
           <input id="seed" type="number" min="1" max="999999" value="1"/>
