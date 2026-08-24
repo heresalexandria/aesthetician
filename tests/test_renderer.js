@@ -59,7 +59,7 @@ const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8'
 const R = vm.runInNewContext(
   `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
-       automaticUpdateCheck })`,
+       automaticUpdateCheck, liveLayers, layerSpec })`,
   sandbox,
 );
 
@@ -364,7 +364,44 @@ const tests = [
   test_cues_become_the_engines_own_add_ops,
   test_a_legacy_caption_diff_replays_into_cues,
   test_automatic_update_checks_only_when_due,
+  test_section_switches_ride_the_layer_spec,
 ];
+
+/* The PICTURE / SOUND master switches live on the layer and go to the engine
+   through layerSpec. Three promises hold them together: absence means on (so
+   old sessions, saved stacks and every existing preview-cache key are
+   untouched), off goes over the wire as an explicit false, and a layer with
+   both sections muted is not rendered at all - the same contract the layer
+   `enabled` checkbox has always had. */
+function test_section_switches_ride_the_layer_spec() {
+  const sess = { layers: [R.newLayer({ presetId: 'grindhouse-1973' })], activeLayer: 0 };
+  const fresh = R.layerSpec(sess)[0];
+  assert.ok(!('picture' in fresh) && !('sound' in fresh),
+    'both sections on must serialize exactly as before the switches existed');
+
+  sess.layers[0].picture = false;
+  assert.deepStrictEqual(
+    R.layerSpec(sess).map((l) => [l.picture, l.sound]), [[false, undefined]]);
+  sess.layers[0].picture = true;
+  sess.layers[0].sound = false;
+  assert.strictEqual(R.layerSpec(sess)[0].sound, false);
+  assert.ok(!('picture' in R.layerSpec(sess)[0]));
+
+  // Layers from before the switches existed lack the keys entirely: on.
+  const legacy = R.newLayer({ presetId: 'vhs-1985-sp' });
+  delete legacy.picture;
+  delete legacy.sound;
+  sess.layers = [legacy];
+  assert.strictEqual(R.liveLayers(sess).length, 1);
+  assert.ok(!('picture' in R.layerSpec(sess)[0]) && !('sound' in R.layerSpec(sess)[0]));
+
+  // Both muted = nothing to render, exactly like enabled: false.
+  const muted = R.newLayer({ presetId: 'grindhouse-1973', picture: false, sound: false });
+  sess.layers = [muted, R.newLayer({ presetId: 'vhs-1985-sp' })];
+  assert.strictEqual(R.liveLayers(sess).length, 1);
+  assert.strictEqual(R.layerSpec(sess).length, 1);
+  assert.strictEqual(R.layerSpec(sess)[0].preset, 'vhs-1985-sp');
+}
 
 (async () => {
   let failed = 0;

@@ -70,7 +70,11 @@ def _parse_layers(raw: str) -> list[Any]:
             raise click.BadParameter(f"--layers[{i}] needs a 'preset' id")
         # A disabled layer is simply absent from the render, which is what makes
         # the checkbox in the GUI free rather than a re-render of everything.
-        if item.get("enabled") is False:
+        # Both section switches off means the same thing: the layer would only
+        # cost an encode to change nothing.
+        picture = item.get("picture") is not False
+        sound = item.get("sound") is not False
+        if item.get("enabled") is False or not (picture or sound):
             continue
         video_over, audio_over = _split_mapping(item.get("sets") or {})
         edits = item.get("events") or []
@@ -85,6 +89,8 @@ def _parse_layers(raw: str) -> list[Any]:
             intensity=float(item.get("intensity", 1.0)),
             texture=float(item.get("texture", 1.0)),
             event_edits=[e for e in edits if isinstance(e, dict)],
+            picture=picture,
+            sound=sound,
         ))
     if not layers:
         raise click.BadParameter("every layer in --layers is disabled")
@@ -298,6 +304,8 @@ _render_options = [
     click.option("--preset", "-p", "preset_id", default=None, help="Preset id (see `list`)."),
     click.option("--layers", "layers_json", default=None,
                  help="JSON array of stacked layers (or @file); each renders into the next. "
+                      "Per layer: preset, variant, sets, events, seed, intensity, texture, "
+                      "enabled, picture, sound (picture/sound false mutes that whole chain). "
                       "Takes precedence over --preset."),
     click.option("--variant", default=None, help="Preset variant id."),
     click.option("--set", "sets", multiple=True, help="Override: effect.param=value (repeatable)."),

@@ -359,6 +359,17 @@ preset's value. While any overrides exist, a strip above the effect stack
 counts them and offers **Reset all**; effects carrying a tweak show a dot on
 their header.
 
+Every effect card carries a checkbox in its header that switches that one
+effect off in place, and the **PICTURE** and **SOUND** section headers carry a
+master checkbox of their own that mutes the whole chain for the selected
+layer. The section switch is not a spray of per-effect toggles: your
+individual switches and tweaks stay exactly where they were, dimmed but
+editable, and come back intact when the section does. A layer with both
+sections off renders nothing at all - same as unchecking it in the Layers
+panel - and the switches ride saved stacks. On the CLI the same controls are
+`--set <effect>.enabled=false` per effect, or `"picture": false` /
+`"sound": false` on a layer in `--layers`.
+
 ### On-screen text and dates
 
 Presets that burn text into the picture - camcorder date stamps, security

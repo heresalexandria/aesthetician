@@ -103,7 +103,10 @@ class Changeover(Effect):
                 if k == 0:
                     H, W = frame.shape[:2]
                     g = ctx.frame_rng(f"{self.key}:jump")
-                    M = np.float32([[1, 0, g.uniform(-0.012, 0.012) * W],
+                    # The sideways jerk rides the dial too (ramped so every
+                    # authored value - 0.7, 0.8, 1.0 - stays exact); it used
+                    # to arrive at full size however low the dial sat.
+                    M = np.float32([[1, 0, g.uniform(-0.012, 0.012) * W * min(sb / 0.7, 1.0)],
                                     [0, 1, (0.030 + 0.030 * g.random()) * H * sb *
                                      (1.0 if g.random() < 0.5 else -1.0)]])
                     frame = cv2.warpAffine(frame, M, (W, H), flags=cv2.INTER_LINEAR,
@@ -186,7 +189,10 @@ class ScreenSurface(Effect):
         ny = np.linspace(-1, 1, H, dtype=np.float32)[:, None]
         d = np.sqrt(nx * nx + ny * ny)
         hs = self.v["hotspot"]
-        gain = (1.0 - fall * (0.5 + 0.5 * hs) * color.smoothstep(0.35, 1.35, d)) * \
+        # The ramp lets the dial actually reach flat: the falloff half of the
+        # term had a 0.5 baseline, so hotspot 0 still dimmed the corners ~9%.
+        # Every authored value (>= 0.25) sits past the knee and is unchanged.
+        gain = (1.0 - fall * (0.5 + 0.5 * hs) * min(hs / 0.2, 1.0) * color.smoothstep(0.35, 1.35, d)) * \
                (1.0 + hs * hot_k * 0.26 * np.exp(-(d / hot_sig) ** 2))
         g = ctx.rng(f"{self.key}:tex")
         surf = self.v["surface"]

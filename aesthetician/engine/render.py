@@ -221,6 +221,11 @@ class Layer:
     intensity: float = 1.0
     texture: float = 1.0
     event_edits: list[dict] = field(default_factory=list)
+    # Section master switches: False mutes this layer's whole picture / sound
+    # chain while leaving every per-effect `enabled` override exactly where the
+    # user set it - flip the section back on and the arrangement is still there.
+    picture: bool = True
+    sound: bool = True
 
 
 # Intermediate passes are encoded near-losslessly. The generation loss a stack
@@ -269,8 +274,11 @@ def render_layers(
                 audio_overrides=layer.audio_overrides,
                 event_edits=layer.event_edits,
                 clip_duration=opts.clip_duration if opts.clip_duration is not None else src_info.duration,
-                video_only=opts.video_only,
-                audio_only=opts.audio_only,
+                # video_only means "leave the sound untreated" and audio_only
+                # "leave the picture untreated" - exactly what a layer's section
+                # switches ask for, so they ride the same flags.
+                video_only=opts.video_only or not layer.sound,
+                audio_only=opts.audio_only or not layer.picture,
                 t0=opts.t0 if i == 0 else 0.0,
                 source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,
@@ -670,7 +678,7 @@ def render_still(
         ctx.event_edits = list(opts.event_edits)
 
         chain: list[Effect] = []
-        if preset.video:
+        if preset.video and not opts.audio_only:
             v_over = _merged_overrides(variant, opts.video_overrides, "video")
             chain = _live_chain(build_chain(preset.video), ctx, v_over)
 
@@ -748,6 +756,9 @@ def render_still_layers(
                 video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides,
                 event_edits=layer.event_edits,
+                # A still has no sound to mute, so only the picture switch
+                # matters here: off means this layer passes the frame through.
+                audio_only=not layer.picture,
                 # Trimming and preview scaling belong to the first pass only,
                 # exactly as render_layers does it.
                 t0=opts.t0 if i == 0 else 0.0,
@@ -786,6 +797,10 @@ def _plan_one(input_w: int, input_h: int, info: "media.MediaInfo", preset: Prese
         clip_frames=_clip_frames(info, opts, fps),
     )
     ctx.event_edits = list(opts.event_edits)
+    # A muted picture chain renders nothing, so it plans nothing - a timeline
+    # pin for damage that will not appear is worse than no pin at all.
+    if opts.audio_only:
+        return [], out_w, out_h
     over = _merged_overrides(preset.variant(opts.variant), opts.video_overrides, "video")
     rows: list[dict] = []
     for eff in _live_chain(build_chain(preset.video), ctx, over):
@@ -815,6 +830,7 @@ def plan_events(input_path: str, layers: list[Layer], opts: RenderOptions) -> di
                 seed=layer.seed, intensity=layer.intensity, texture=layer.texture,
                 variant=layer.variant, video_overrides=layer.video_overrides,
                 audio_overrides=layer.audio_overrides, event_edits=layer.event_edits,
+                audio_only=not layer.picture,
                 clip_duration=opts.clip_duration if opts.clip_duration is not None else info.duration,
                 t0=opts.t0 if i == 0 else 0.0, source_t0=opts.clip_t0,
                 duration=opts.duration if i == 0 else None,

@@ -130,12 +130,19 @@ function newLayer(overrides = {}) {
     intensity: 1.0,
     texture: 1.0,
     enabled: true,
+    /* Section master switches: false mutes this layer's whole picture / sound
+       chain in one click, leaving every per-effect power switch where it was -
+       so flipping a section back on restores the arrangement, not a blank
+       slate. Layers saved before these existed simply lack the keys, and
+       everything below reads absence as on. */
+    picture: true,
+    sound: true,
     ...overrides,
   };
 }
 
 const LAYER_FIELDS = ['presetId', 'customId', 'variant', 'sets', 'events', 'cues', 'seed',
-  'intensity', 'texture'];
+  'intensity', 'texture', 'picture', 'sound'];
 
 function newSession(info) {
   const sess = {
@@ -176,9 +183,11 @@ function newSession(info) {
   return sess;
 }
 
-/* Layers actually worth rendering, bottom first. */
+/* Layers actually worth rendering, bottom first. A layer with both sections
+   muted would only cost an encode to change nothing, so it does not count. */
 function liveLayers(sess) {
-  return (sess.layers || []).filter((l) => l.enabled && l.presetId);
+  return (sess.layers || []).filter((l) => l.enabled && l.presetId
+    && (l.picture !== false || l.sound !== false));
 }
 
 function activeLayer(sess = state) {
@@ -801,6 +810,10 @@ function captureStackLayers(sess = state) {
     intensity: l.intensity,
     texture: l.texture,
     enabled: l.enabled !== false,
+    // Only when off, so stacks saved before these switches existed compare
+    // equal to a recapture and do not wrongly show "· edited".
+    ...(l.picture === false ? { picture: false } : {}),
+    ...(l.sound === false ? { sound: false } : {}),
   }));
 }
 
@@ -859,6 +872,8 @@ function layerFromSaved(sl) {
     intensity: typeof sl.intensity === 'number' ? sl.intensity : 1,
     texture: typeof sl.texture === 'number' ? sl.texture : 1,
     enabled: sl.enabled !== false,
+    picture: sl.picture !== false,
+    sound: sl.sound !== false,
   }));
 }
 
@@ -2168,6 +2183,8 @@ function layerSub(l) {
   if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
   if (l.intensity !== 1) bits.push(`int ${l.intensity.toFixed(2)}`);
   if (l.texture !== 1) bits.push(`tex ${l.texture.toFixed(2)}`);
+  if (l.picture === false) bits.push('picture off');
+  if (l.sound === false) bits.push('sound off');
   return bits.join(' · ');
 }
 
@@ -2658,28 +2675,72 @@ function buildParamPane() {
     }
   }
   const sections = state.audioSource
-    ? [['SOUND', p.audio]]                 // the video chain cannot apply here
-    : [['PICTURE', p.video], ['SOUND', p.audio]];
+    ? [['SOUND', p.audio, 'sound']]        // the video chain cannot apply here
+    : [['PICTURE', p.video, 'picture'], ['SOUND', p.audio, 'sound']];
   if (state.audioSource && p.video.length) {
     const note = document.createElement('div');
     note.className = 'audio-note';
     note.textContent = `Audio source - this preset's ${p.video.length} picture effects are not applied.`;
     holder.appendChild(note);
   }
-  for (const [label, chain] of sections) {
+  for (const [label, chain, field] of sections) {
     if (!chain.length) continue;
-    const cl = document.createElement('div');
-    cl.className = 'chain-label';
-    cl.textContent = label;
-    holder.appendChild(cl);
-    for (const entry of chainWithKeys(chain)) {
-      holder.appendChild(effectCard(entry, vo));
-    }
+    holder.appendChild(chainSection(label, chain, field, vo));
   }
   // The editor's style strip repeats what this pane says about the caption
   // track - which style, which variant, how many tweaks - so it is rebuilt from
   // the same place, and a pill or a knob touched here cannot leave it stale.
   if (captionEditorOpen()) buildCaptionStyles();
+}
+
+/* One knob-pane section - the PICTURE or SOUND chain - under a header that
+   carries the section's master switch. The switch is a layer field, not a
+   spray of per-effect `enabled` overrides: muting the section leaves every
+   individual power switch and tweak exactly where the user set it, so turning
+   the section back on restores the arrangement rather than a blank slate. */
+function chainSection(label, chain, field, vo) {
+  const sec = document.createElement('div');
+  sec.className = 'chain-sec';
+  const l = activeLayer(state);
+  const on = l[field] !== false;
+  sec.classList.toggle('sec-off', !on);
+
+  const head = document.createElement('div');
+  head.className = 'chain-label';
+  const power = document.createElement('input');
+  power.type = 'checkbox';
+  power.className = 'sec-power';
+  power.checked = on;
+  const noun = field === 'picture' ? 'picture' : 'sound';
+  const title = (isOn) => (isOn
+    ? `Switch off all ${noun} processing for this layer`
+    : `Switch ${noun} processing back on for this layer`);
+  power.title = title(on);
+  power.onchange = () => {
+    l[field] = power.checked;
+    sec.classList.toggle('sec-off', !power.checked);
+    power.title = title(power.checked);
+    offNote.classList.toggle('hidden', power.checked);
+    buildLayersPanel();      // the layer row's subtitle names muted sections
+    refreshTimeline();       // a muted picture chain plans no damage pins
+    schedulePreview();
+  };
+  head.appendChild(power);
+  const name = document.createElement('span');
+  name.className = 'chain-name';
+  name.textContent = label;
+  head.appendChild(name);
+  const offNote = document.createElement('span');
+  offNote.className = 'sec-off-note';
+  offNote.textContent = 'off - untouched';
+  offNote.classList.toggle('hidden', on);
+  head.appendChild(offNote);
+  sec.appendChild(head);
+
+  for (const entry of chainWithKeys(chain)) {
+    sec.appendChild(effectCard(entry, vo));
+  }
+  return sec;
 }
 
 /* The "N tweaks · Reset all" strip under the master dials: visible only while
@@ -2932,7 +2993,25 @@ let previewTimer = null;
    twiddle. `delayMs` overrides the wait: keyboard navigation passes a longer one
    so running down the list does not start a render per row. */
 function schedulePreview(immediate = false, delayMs = null) {
-  if (!state.file || !liveLayers(state).length) return;
+  if (!state.file) return;
+  if (!liveLayers(state).length) {
+    /* Nothing left to render. If an aesthetic is picked but every layer or
+       section is switched off, the preview on screen belongs to switches that
+       are no longer in force - leaving it up would be the checkbox lying. */
+    if ((state.layers || []).some((l) => l.presetId)) {
+      clearTimeout(previewTimer);
+      state.previewJob = null;   // a render already in flight is stale on arrival
+      state.treatedSrc = null;
+      hideStill();
+      videoA.removeAttribute('src'); videoA.load();
+      videoB.removeAttribute('src'); videoB.load();
+      $('player-empty').classList.remove('hidden');
+      $('player-empty').textContent =
+        'Everything is switched off - the clip would pass through untouched.';
+      refreshTimeline();
+    }
+    return;
+  }
   if (!G.autoPreview && !immediate) return;
   clearTimeout(previewTimer);
   previewTimer = setTimeout(runPreview, delayMs != null ? delayMs : (immediate ? 40 : 550));
@@ -2954,6 +3033,10 @@ function layerSpec(sess = state) {
     seed: l.seed,
     intensity: l.intensity,
     texture: l.texture,
+    // Only when off: absent means on, so specs (and the preview-cache keys
+    // built from them) are unchanged for every layer that never touched these.
+    ...(l.picture === false ? { picture: false } : {}),
+    ...(l.sound === false ? { sound: false } : {}),
   }));
 }
 

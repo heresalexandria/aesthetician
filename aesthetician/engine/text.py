@@ -390,13 +390,19 @@ def render_block(
         mask, line_boxes, char_cols = _ttf_masks(lines, face, italic, line_h, align, spacing,
                                                  face.weight)
     es = float(np.clip(edge_strength, 0.0, 1.0))
+    # The size and alpha formulas below carry deliberate baselines so mid
+    # strengths read well - but a baseline means strength 0 still drew a rim.
+    # This ramp takes the whole treatment to genuinely nothing at 0 while
+    # leaving every authored strength (all >= 0.3) exactly as it was.
+    er = min(es / 0.25, 1.0)
     # Kept as a float: the outline is drawn from a distance field, so a rim
     # narrower than a pixel is a legitimate thing to ask for and rounding it up
     # to 1 was what made small captions look like they were set in a slab.
-    out_px = line_h * (0.045 + 0.075 * es) if edge in ("outline", "outline_shadow") else 0.0
-    sh_px = max(1, int(round(line_h * (0.04 + 0.08 * es)))) if edge in ("shadow", "outline_shadow") else 0
+    out_px = line_h * (0.045 + 0.075 * es) * er if edge in ("outline", "outline_shadow") else 0.0
+    sh_raw = line_h * (0.04 + 0.08 * es) * er if edge in ("shadow", "outline_shadow") else 0.0
+    sh_px = max(1, int(round(sh_raw))) if sh_raw > 0 else 0
     sh_blur = line_h * (0.012 + 0.05 * es) if sh_px else 0.0
-    glow_sigma = line_h * (0.06 + 0.22 * es) if edge == "glow" else 0.0
+    glow_sigma = line_h * (0.06 + 0.22 * es) * er if edge == "glow" else 0.0
     pad = int(np.ceil(max(out_px + 2.0, sh_px + sh_blur * 3.0, glow_sigma * 2.5, line_h * 0.28))) + 1
     mask = np.pad(mask, pad)
     line_boxes = [(x0 + pad, y0 + pad, x1 + pad, y1 + pad) for x0, y0, x1, y1 in line_boxes]
@@ -437,7 +443,7 @@ def render_block(
         sh[sh_px:, sh_px:] = mask[:-sh_px, :-sh_px]
         if sh_blur > 0.35:
             sh = cv2.GaussianBlur(sh, (0, 0), sh_blur)
-        rgb, alpha = _over(rgb, alpha, edge_color, np.clip(sh * (0.55 + 0.35 * es), 0.0, 1.0))
+        rgb, alpha = _over(rgb, alpha, edge_color, np.clip(sh * (0.55 + 0.35 * es) * er, 0.0, 1.0))
     if out_px >= 0.35:
         # The rim follows the letterform: distance out from the glyph, softened
         # over the last pixel, rather than a square max-filter that put right
@@ -446,10 +452,10 @@ def render_block(
         # into the rim instead of being punched out of it.
         d = cv2.distanceTransform((mask < 0.5).astype(np.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
         ring = np.maximum(np.clip(out_px + 0.5 - d, 0.0, 1.0), mask)
-        rgb, alpha = _over(rgb, alpha, edge_color, ring * (0.75 + 0.25 * es))
+        rgb, alpha = _over(rgb, alpha, edge_color, ring * (0.75 + 0.25 * es) * er)
     if glow_sigma > 0.0:
         glow = cv2.GaussianBlur(mask, (0, 0), glow_sigma)
-        rgb, alpha = _over(rgb, alpha, color, np.clip(glow * (0.5 + 0.5 * es), 0.0, 0.85))
+        rgb, alpha = _over(rgb, alpha, color, np.clip(glow * (0.5 + 0.5 * es) * er, 0.0, 0.85))
     rgb, alpha = _over(rgb, alpha, color, mask)
 
     n_chars = sum(len(cols) for cols in char_cols)
