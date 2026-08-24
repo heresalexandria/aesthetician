@@ -833,10 +833,23 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .hint { color: var(--dim); padding: 20px; text-align: center; }
 .chain-label {
   margin: 16px 4px 4px; font-size: 10px; letter-spacing: 2px; font-weight: 700;
+  display: flex; align-items: center; gap: 7px;
+}
+.chain-label .chain-name {
   background: var(--grad);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+/* The section's master switch, and what the pane looks like with it off: the
+   cards stay readable and fully workable - you can line up tweaks on a muted
+   section - they just say, visually, that none of it is being applied. */
+.chain-label .sec-power { margin: 0; flex: 0 0 auto; cursor: pointer; accent-color: var(--accent); }
+.chain-label .sec-off-note {
+  color: var(--dim); font-weight: 400; letter-spacing: .4px; text-transform: none;
+}
+.chain-label .sec-off-note.hidden { display: none; }
+.chain-sec.sec-off .effect-card { opacity: .45; }
+.chain-sec.sec-off .effect-card:hover { opacity: .8; }
 .effect-card { border: 1px solid var(--line); border-radius: var(--radius); margin: 6px 0; background: var(--bg); transition: border-color .12s ease; }
 .effect-card:hover { border-color: var(--line2); }
 .effect-card.open { border-color: var(--line2); }

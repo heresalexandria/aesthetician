@@ -420,7 +420,11 @@ class CelDirt(Effect):
         ts = float(self.v["tape_splice"])
         g = ctx.frame_rng(f"{self.key}:tape", fi=ctx.fi_src)
         tape = None
-        if g.random() < 0.035 + 0.09 * ts:                # rare, per drawing
+        # The dial used to floor at ~3.5% the moment it left zero, so 0.01 read
+        # as "almost off" and looked like 0.4. The ramp keeps authored values
+        # (>= 0.1) exactly where they were and lets the bottom of the travel
+        # actually approach nothing.
+        if g.random() < min(ts * 10.0, 1.0) * (0.035 + 0.09 * ts):  # rare, per drawing
             y0 = int(g.uniform(0.12, 0.85) * H)
             bh = max(int(H * g.uniform(0.010, 0.028)), 3)
             tape = (y0, min(y0 + bh, H - 1),

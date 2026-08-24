@@ -76,8 +76,11 @@ class ASpeaker(Effect):
             else:
                 rows.append(U.shelf(sr, f, gdb, high=(kind == "hs")))
         knock = self.v["cabinet_knock"]
-        if knock > 0:
-            rows.append(U.peaking(sr, 180.0, 6.0 * knock * s if s > 0 else 6.0 * knock, q=4.0))
+        if knock > 0 and s > 0:
+            # Scaled by strength like every other stage: "strength 0 is truly
+            # flat" has to include the knock, which used to fire at full gain
+            # exactly at 0 and then vanish a hair above it.
+            rows.append(U.peaking(sr, 180.0, 6.0 * knock * s, q=4.0))
         if rows:
             x = U.apply_sos(x, U.sos_cascade(*rows))
         x = U.match_rms(x, audio, max_db=9.0)

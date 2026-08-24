@@ -314,6 +314,12 @@ class CodecGlitch(Effect):
                         [media.FFMPEG, "-v", "error", "-nostdin", "-y",
                          "-err_detect", "ignore_err", "-fflags", "+genpts",
                          "-ec", "guess_mvs+deblock+favor_inter",
+                         # Concealment over a damaged stream is racy under
+                         # frame threading: the same corrupted bytes decoded
+                         # twice gave two different pictures, which broke the
+                         # per-seed determinism the note above promises. One
+                         # thread makes the guesswork reproducible.
+                         "-threads", "1",
                          "-i", corrupted,
                          "-fps_mode", "cfr", "-r", f"{info.fps:.6f}",
                          *_INTERMEDIATE, out_path]

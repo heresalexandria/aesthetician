@@ -1461,6 +1461,323 @@ def test_caption_cues_still_show_through_a_stacked_look():
     assert diff.mean() > 20, "the cue must still read through a stacked look"
 
 
+def test_dials_at_zero_reach_zero():
+    """The dial-at-zero traps a full audit surfaced, pinned one by one.
+
+    The promise across the whole library is the same: an amount/rate dial at
+    its bottom stop contributes nothing. Each block here reproduced a real leak
+    before its fix - a plate flashing through gate 0, dust hairs dying with an
+    unrelated dial, an echo that 0 could not switch off.
+    """
+    import numpy as np
+
+    from aesthetician.engine.graph import Context, get_effect
+
+    ctx = Context(width=160, height=120, fps=24, n_frames=300, seed=11)
+
+    def run(eff, frame, fi):
+        ctx.fi_out = fi
+        ctx.fi_src = fi
+        return eff.process(frame.copy(), ctx)
+
+    base = np.random.default_rng(5).random((120, 160, 3)).astype(np.float32)
+
+    # dust: hairs are their own dial - density 0 must kill specks, not hairs.
+    both_off = get_effect("dust")()
+    both_off.key = "dust"
+    both_off.resolve(ctx, {"density": 0, "hairs": 0})
+    both_off.prepare(ctx)
+    hairs_only = get_effect("dust")()
+    hairs_only.key = "dust"
+    hairs_only.resolve(ctx, {"density": 0, "hairs": 1.0})
+    hairs_only.prepare(ctx)
+    hair_frames = 0
+    for fi in range(300):
+        assert np.array_equal(run(both_off, base, fi), base), "dust at all-zero must pass through"
+        if not np.array_equal(run(hairs_only, base, fi), base):
+            hair_frames += 1
+    assert hair_frames > 0, "hairs at 1.0 with density 0 must still draw hairs"
+
+    # plate: gate 0 means never, and jitter must actually move a frame-sized
+    # plate. Plates ship outside git, so stand in for the store.
+    from aesthetician.assets import store as plate_store
+
+    real_n, real_plate = plate_store.n_plates, plate_store.plate
+
+    def fake_plate(_pack, _idx, pw, ph):
+        yy = np.linspace(0.0, 1.0, ph, dtype=np.float32)[:, None]
+        xx = np.linspace(0.0, 1.0, pw, dtype=np.float32)[None, :]
+        return np.repeat(((xx + yy) / 2.0)[..., None], 3, axis=-1)
+
+    plate_store.n_plates = lambda _pack: 4
+    plate_store.plate = fake_plate
+    try:
+        gated = get_effect("plate")()
+        gated.key = "plate"
+        gated.resolve(ctx, {"gate": 0.0, "opacity": 1.0})
+        gated.prepare(ctx)
+        for fi in range(300):
+            assert np.array_equal(run(gated, base, fi), base), f"plate showed through gate 0 at frame {fi}"
+
+        def jitter_run(j):
+            eff = get_effect("plate")()
+            eff.key = "plate"
+            eff.resolve(ctx, {"jitter": j, "opacity": 1.0, "cycle": "per_second"})
+            eff.prepare(ctx)
+            return [run(eff, base, fi) for fi in (0, 30, 60, 90)]
+
+        still_, moved = jitter_run(0.0), jitter_run(30.0)
+        assert any(not np.array_equal(a, b) for a, b in zip(still_, moved)), \
+            "jitter at default scale must move the plate (it used to clamp to 0)"
+    finally:
+        plate_store.n_plates, plate_store.plate = real_n, real_plate
+
+    # cel_dirt tape: the trigger had a ~3.5% floor the moment the dial left 0.
+    def tape_events(ts):
+        eff = get_effect("cel_dirt")()
+        eff.key = "cel_dirt"
+        eff.resolve(ctx, {"tape_splice": ts})
+        eff.prepare(ctx)
+        n = 0
+        for fi in range(1200):
+            ctx.fi_src = fi
+            eff._tape_cache = None
+            if eff._tape_for_drawing(ctx, 120) is not None:
+                n += 1
+        return n
+
+    lo_n, hi_n = tape_events(0.01), tape_events(0.4)
+    assert hi_n > 0, "the authored range must still fire"
+    assert lo_n <= hi_n * 0.25, f"tape at 0.01 fired {lo_n}x vs {hi_n}x at 0.4 - the floor is back"
+
+    # riso: misregister 0 locks the drums - no static offset, no wobble.
+    riso = get_effect("riso_print")()
+    riso.key = "riso_print"
+    riso.resolve(ctx, {"misregister": 0.0})
+    riso.prepare(ctx)
+    assert riso._off == (0.0, 0.0)
+    assert float(np.abs(riso._wob_x).max()) == 0.0 and float(np.abs(riso._wob_y).max()) == 0.0
+
+    # screen: hotspot 0 means a flat screen, not half the falloff.
+    flat = np.full((120, 160, 3), 0.5, np.float32)
+    scr = get_effect("screen")()
+    scr.key = "screen"
+    scr.resolve(ctx, {"hotspot": 0.0})
+    scr.prepare(ctx)
+    got = run(scr, flat, 0)
+    # Patch means, so the surface's own texture mottle averages out and only
+    # the radial falloff (the bug: ~8% at the corners) can trip this.
+    corner, center = float(got[:12, :12].mean()), float(got[54:66, 74:86].mean())
+    assert abs(corner - center) < 3e-3, f"hotspot 0 left a vignette: corner {corner} vs center {center}"
+
+    # framing: the overscan zoom dial now works in crop mode too.
+    fr_a = get_effect("framing")()
+    fr_a.key = "framing"
+    fr_a.resolve(ctx, {"mode": "crop", "aspect": "4:3", "zoom": 0.0})
+    fr_a.prepare(ctx)
+    fr_b = get_effect("framing")()
+    fr_b.key = "framing"
+    fr_b.resolve(ctx, {"mode": "crop", "aspect": "4:3", "zoom": 0.2})
+    fr_b.prepare(ctx)
+    assert not np.array_equal(run(fr_a, base, 0), run(fr_b, base, 0)), \
+        "zoom must change a crop-mode frame (it was a dead knob there)"
+
+    # captions: edge strength 0 is the same picture as no edge at all.
+    from aesthetician.engine import text as textmod
+
+    for edge in ("outline", "shadow", "glow", "outline_shadow"):
+        zero = textmod.render_block("EDGE CASE", edge=edge, edge_strength=0.0)
+        none = textmod.render_block("EDGE CASE", edge="none")
+        assert np.allclose(zero.alpha, none.alpha, atol=1e-6), f"edge {edge} at 0 still drew"
+        assert np.allclose(zero.rgb, none.rgb, atol=1e-6), f"edge {edge} at 0 tinted the block"
+
+    # a_speaker: "strength 0 is truly flat" has to include the cabinet knock,
+    # which used to fire at full gain exactly at 0.
+    actx = Context(width=0, height=0, fps=24, n_frames=48, sr=48000, channels=2, seed=7)
+    tone = (0.1 * np.sin(2 * np.pi * 180.0 * np.arange(48000) / 48000.0)).astype(np.float32)
+    tone = np.stack([tone, tone], axis=1)
+    spk = get_effect("a_speaker")()
+    spk.key = "a_speaker"
+    spk.resolve(actx, {"strength": 0.0, "cabinet_knock": 0.8})
+    spk.prepare(actx)
+    assert np.allclose(spk.process_audio(tone.copy(), actx), tone, atol=1e-5), \
+        "speaker strength 0 with knock must be flat"
+
+    # a_pa_bullhorn: 0 repeats means no echo; -1 still means the device's own.
+    def horn(**over):
+        eff = get_effect("a_pa_bullhorn")()
+        eff.key = "a_pa_bullhorn"
+        eff.resolve(actx, {"device": "pa_hall", **over})
+        eff.prepare(actx)
+        return eff.process_audio(tone.copy(), actx)
+
+    no_slap = horn(slap_ms=0.0)
+    assert np.allclose(horn(slap_repeats=0), no_slap, atol=1e-6), \
+        "slap_repeats 0 must mean none, not the device default"
+    assert not np.allclose(horn(slap_repeats=-1), no_slap, atol=1e-4), \
+        "the -1 sentinel must still bring the device's own slap"
+    assert not np.allclose(horn(slap_gain_db=-3.0), horn(slap_gain_db=-25.0), atol=1e-5), \
+        "slap level must be live even with slap_ms at its default"
+
+
+def test_master_intensity_zero_means_no_damage_events():
+    """--intensity 0 has to silence the damage schedules, not just fade them.
+
+    frame_damage's rates, gate_weave's splice bumps and dust's hairs sat
+    outside the intensity scaling, so a render at intensity 0 still spliced,
+    bumped and grew blotches - which reads exactly like "I turned everything
+    off and it is still damaged".
+    """
+    import numpy as np
+
+    from aesthetician.engine.graph import Context, get_effect
+
+    ctx = Context(width=160, height=120, fps=24, n_frames=480, seed=3, intensity=0.0)
+
+    fd = get_effect("frame_damage")()
+    fd.key = "frame_damage"
+    fd.resolve(ctx, {"splice_skip_rate": 6.0, "slip_rate": 6.0, "blotch_rate": 12.0,
+                     "static_flash": 6.0})
+    fd.prepare(ctx)
+    assert not fd._splice and not fd._slip and not fd._blotches and not fd._flash
+    assert fd.remap(ctx) is None
+
+    gw = get_effect("gate_weave")()
+    gw.key = "gate_weave"
+    gw.resolve(ctx, {"amount": 3.0, "splice_bump": 12.0})
+    gw.prepare(ctx)
+    assert float(np.abs(gw._bump).max()) == 0.0, "intensity 0 must silence splice bumps"
+    assert gw.v["amount"] == 0.0
+
+    dust = get_effect("dust")()
+    dust.key = "dust"
+    dust.resolve(ctx, {"density": 1.0, "hairs": 1.0})
+    assert dust.v["density"] == 0.0 and dust.v["hairs"] == 0.0
+
+
+def test_codec_glitch_repeats_per_seed():
+    """Corruption is curated, so it has to repeat: same seed, same glitches.
+
+    The whole library promises determinism per seed, and codec_glitch was the
+    one effect breaking it - not in the corruption (the bitstream damage is a
+    fixed state machine) but in the *decode*: error concealment over a damaged
+    stream is racy under frame threading, and the same corrupted bytes came
+    back as different pictures run to run. A preview could show a smear the
+    export then didn't have. Single-threaded concealment pins it.
+    """
+    import hashlib
+    import subprocess
+
+    from aesthetician.engine.graph import Context, get_effect
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_glitch_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc2=size=320x240:rate=30:duration=2", "-c:v", "libx264",
+         "-crf", "12", "-pix_fmt", "yuv420p", src], check=True)
+
+    def frames_sha(path):
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "rawvideo",
+                              "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+        return hashlib.sha1(raw).hexdigest()
+
+    hashes = set()
+    for run in (1, 2):
+        ctx = Context(width=320, height=240, fps=30, n_frames=60, seed=44,
+                      scratch_dir=os.path.join(root, "out"))
+        eff = get_effect("codec_glitch")()
+        eff.key = "codec_glitch"
+        eff.resolve(ctx, {"amount": 0.5, "drop_p": 0.3})
+        eff.prepare(ctx)
+        out = os.path.join(root, "out", f"_t_glitch_{run}.mp4")
+        eff.file_pass(src, out, ctx)
+        hashes.add(frames_sha(out))
+    assert len(hashes) == 1, "the same seed must decode to the same glitches"
+
+
+def test_layer_picture_and_sound_switches():
+    """A layer's PICTURE / SOUND master switches mute a whole chain in place.
+
+    Off is the real thing: the muted chain is simply not built, so the picture
+    (or sound) passes through exactly as a preset with no such chain would
+    hand it on - while the other chain keeps rendering, and per-effect enabled
+    overrides are left untouched for when the section comes back.
+    """
+    import json
+    import subprocess
+
+    import numpy as np
+
+    from aesthetician.cli import _parse_layers
+    from aesthetician.engine import Preset, RenderOptions
+    from aesthetician.engine.media import read_audio, read_frames
+    from aesthetician.engine.render import Layer, plan_events, render_layers
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    src = os.path.join(root, "out", "_t_sections_in.mp4")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=2",
+         "-f", "lavfi", "-i", "sine=f=440:d=2",
+         "-c:v", "libx264", "-crf", "0", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-shortest", src], check=True)
+
+    loud = Preset(id="t_sec", name="t", family="t", era="", desc="",
+                  video=[("mono", {})],                  # unmissable: grayscale
+                  audio=[("a_gain", {"db": -26.0})])     # unmissable: -26 dB
+    opts = RenderOptions(seed=5, duration=1.5, crf=12)
+
+    def gray_spread(path):
+        # channel spread ~0 everywhere means the mono effect really ran
+        f = next(read_frames(path, 320, 240, 30))
+        return float(np.abs(f.max(axis=-1) - f.min(axis=-1)).mean())
+
+    def rms(path):
+        a = read_audio(path, 48000, 2)
+        return float(np.sqrt(np.mean(a ** 2)))
+
+    both = os.path.join(root, "out", "_t_sec_both.mp4")
+    no_pic = os.path.join(root, "out", "_t_sec_nopic.mp4")
+    no_snd = os.path.join(root, "out", "_t_sec_nosnd.mp4")
+    render_layers(src, both, [Layer(preset=loud, seed=5)], opts)
+    render_layers(src, no_pic, [Layer(preset=loud, seed=5, picture=False)], opts)
+    render_layers(src, no_snd, [Layer(preset=loud, seed=5, sound=False)], opts)
+
+    assert gray_spread(both) < 0.02, "control: the mono chain must actually run"
+    assert gray_spread(no_snd) < 0.02, "sound off must leave the picture chain running"
+    assert gray_spread(no_pic) > 0.05, "picture off must leave the source's colors alone"
+    assert rms(no_pic) < rms(no_snd) * 0.2, \
+        "picture off keeps the treated (-26 dB) sound; sound off keeps the original level"
+    assert rms(both) < rms(no_snd) * 0.2
+
+    # A muted picture chain plans no damage pins either.
+    vhs = Preset(id="t_sec_vhs", name="t", family="t", era="", desc="",
+                 video=[("vhs", {"dropouts": 8.0})])
+    on_plan = plan_events(src, [Layer(preset=vhs, seed=9)], opts)
+    off_plan = plan_events(src, [Layer(preset=vhs, seed=9, picture=False)], opts)
+    assert on_plan["events"], "control: the dropout schedule must plan events"
+    assert off_plan["events"] == [], "picture off must plan nothing"
+
+    # The GUI's layer spec round-trips the switches, and a fully muted layer
+    # is dropped exactly like a disabled one.
+    spec = json.dumps([
+        {"preset": "grindhouse-1973", "picture": False},
+        {"preset": "grindhouse-1973", "sound": False},
+        {"preset": "grindhouse-1973", "picture": False, "sound": False},
+    ])
+    layers = _parse_layers(spec)
+    assert [(la.picture, la.sound) for la in layers] == [(False, True), (True, False)]
+    try:
+        _parse_layers(json.dumps([{"preset": "grindhouse-1973",
+                                   "picture": False, "sound": False}]))
+        raise AssertionError("an all-muted stack must be rejected like an all-disabled one")
+    except Exception as err:
+        assert "disabled" in str(err)
+
+
 if __name__ == "__main__":
     # Several tests synthesise their fixtures with ffmpeg and probe them with
     # ffprobe. Say so up front: without this it surfaces as a FileNotFoundError

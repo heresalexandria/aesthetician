@@ -55,15 +55,22 @@ class Framing(Effect):
             return frame
 
         if self.v["mode"] == "crop" and self.v["aspect"] != "none":
-            # center-crop source to target aspect, scaled to fill canvas
+            # center-crop source to target aspect, scaled to fill canvas.
+            # Overscan zoom pre-shrinks the window first - the dial was simply
+            # never read on this branch, which made it a dead knob in crop mode.
+            src = frame
+            if zoom > 1.0:
+                zw, zh = int(W / zoom), int(H / zoom)
+                src = frame[(H - zh) // 2 : (H - zh) // 2 + zh, (W - zw) // 2 : (W - zw) // 2 + zw]
+            sh, sw = src.shape[:2]
             a = self._ASPECTS[self.v["aspect"]]
-            src_a = W / H
+            src_a = sw / sh
             if a > src_a:
-                ch = int(round(W / a))
-                crop = frame[(H - ch) // 2 : (H - ch) // 2 + ch]
+                ch = int(round(sw / a))
+                crop = src[(sh - ch) // 2 : (sh - ch) // 2 + ch]
             else:
-                cw = int(round(H * a))
-                crop = frame[:, (W - cw) // 2 : (W - cw) // 2 + cw]
+                cw = int(round(sh * a))
+                crop = src[:, (sw - cw) // 2 : (sw - cw) // 2 + cw]
             content = cv2.resize(crop, (W, H), interpolation=cv2.INTER_AREA)
             x0, y0, w, h = 0, 0, W, H
         else:

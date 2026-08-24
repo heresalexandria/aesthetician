@@ -65,12 +65,23 @@ class PlateOverlay(Effect):
         if self._n == 0 or self.v["opacity"] <= 0:
             return frame  # pack not generated - procedural effects still cover the look
         if self.v["gate"] < 1.0:
+            # Gate 0 means never: the smooth track is only *roughly* [-1, 1]
+            # (95th-percentile normalized), so its deepest excursions used to
+            # slip under any threshold and flash the plate a few frames a
+            # second with the dial hard at zero.
+            if self.v["gate"] <= 0:
+                return frame
             g = (self._gate_noise[ctx.fi_out] + 1.0) / 2.0
             if g > self.v["gate"]:
                 return frame
         H, W = frame.shape[:2]
         s = self.v["scale"]
-        pw, ph = int(W * s), int(H * s)
+        # Headroom for the motion dials: at scale 1.0 the plate is exactly
+        # frame-sized and the offset clamp pinned jitter and drift to zero -
+        # grindhouse's `jitter: 60` never moved a plate. Margin only when the
+        # dials ask for it, so motionless plates stay bit-identical.
+        margin = int(round(self.v["jitter"])) + int(round(min(self.v["drift"] * 4.0, 120.0)))
+        pw, ph = int(W * s) + 2 * margin, int(H * s) + 2 * margin
         idx = self._plate_index(ctx)
         p = store.plate(self.v["pack"], idx, pw, ph)
         if p is None:

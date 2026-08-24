@@ -173,8 +173,8 @@ class APaBullhorn(Effect):
               desc="Echo delay; -1 uses the device default.", group="Damage"),
         Param("slap_gain_db", "Slap Level", "float", -10.0, -30.0, 0.0, unit="dB",
               desc="Level of the first echo repeat.", group="Damage"),
-        Param("slap_repeats", "Slap Repeats", "int", 0, 0, 3,
-              desc="Echo repeats; 0 uses the device default.", group="Damage"),
+        Param("slap_repeats", "Slap Repeats", "int", -1, -1, 3,
+              desc="Echo repeats; -1 uses the device default, 0 means none.", group="Damage"),
         Param("feedback_squeal", "Squeal Rate", "float", 0.0, 0.0, 6.0, unit="/min",
               desc="Brief 1.5–3 kHz feedback swells per minute.", group="Damage", iscale=True),
     )
@@ -199,9 +199,16 @@ class APaBullhorn(Effect):
         x = U.match_rms((y * peak).astype(np.float32), x, max_db=9.0)
 
         slap_ms = self.v["slap_ms"] if self.v["slap_ms"] >= 0 else d_slap
-        reps = self.v["slap_repeats"] or d_reps
+        # `or d_reps` here made 0 mean "device default" - the one value of the
+        # knob that has to mean "none". -1 is the ask-the-device sentinel now,
+        # exactly as slap_ms already does it.
+        reps = self.v["slap_repeats"] if self.v["slap_repeats"] >= 0 else d_reps
         if slap_ms > 5 and reps > 0:
-            gain = U.db_to_lin(self.v["slap_gain_db"] if self.v["slap_ms"] >= 0 else d_gain)
+            # The level knob is always live. It used to be silently swapped for
+            # the device's when slap_ms sat at its default, which read as a
+            # dead knob in the GUI. (d_gain stays in the device table for the
+            # presets' reference but no longer overrides anyone's setting.)
+            gain = U.db_to_lin(self.v["slap_gain_db"])
             D = int(slap_ms * sr / 1000.0)
             out = x.copy()
             tap = x

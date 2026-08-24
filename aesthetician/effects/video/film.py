@@ -575,7 +575,7 @@ class GateWeave(Effect):
               desc="How fast the frame wanders in the gate."),
         Param("rotation", "Rotation", "float", 0.05, 0.0, 0.3, unit="°", group="Movement",
               desc="Micro-rotation component of the weave."),
-        Param("splice_bump", "Splice Bumps", "float", 1.0, 0.0, 12.0, unit="/min", group="Movement",
+        Param("splice_bump", "Splice Bumps", "float", 1.0, 0.0, 12.0, unit="/min", group="Movement", iscale=True,
               desc="Rate of sudden vertical jumps as bad splices pass the gate."),
     )
 
@@ -698,7 +698,7 @@ class Dust(Effect):
         Param("polarity", "Polarity", "enum", "print",
               choices=("print", "negative", "both"), group="Damage",
               desc="print = mostly dark dirt, negative = mostly white (dirt printed from the negative), both = mixed."),
-        Param("hairs", "Hairs", "float", 0.25, 0.0, 1.0, group="Damage",
+        Param("hairs", "Hairs", "float", 0.25, 0.0, 1.0, group="Damage", iscale=True,
               desc="Probability of thin curved hairs, occasionally lingering a few frames."),
     )
 
@@ -710,7 +710,9 @@ class Dust(Effect):
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
         den = self.v["density"]
-        if den <= 0 and not self._lingering:
+        # Hairs are their own dial: density 0 kills specks and smudges, not the
+        # whole effect. (It used to - the early-out swallowed the hairs block.)
+        if den <= 0 and self.v["hairs"] <= 0 and not self._lingering:
             return frame
         H, W = frame.shape[:2]
         g = ctx.frame_rng(f"{self.key}:d")
@@ -1007,17 +1009,20 @@ class FrameDamage(Effect):
     kind = "frame"
     desc = "Physical transport events: splice skips with a visible splice bar, vertical slips, evolving chemical blotches and an optional film burn."
     PARAMS = (
-        Param("splice_skip_rate", "Splice Skips", "float", 2.0, 0.0, 20.0, unit="/min", group="Damage",
+        # The rates ride --intensity like every other damage dial (vhs.dropouts,
+        # plate.opacity...): intensity 0 has to mean no damage events, and these
+        # were the ones that kept firing through it.
+        Param("splice_skip_rate", "Splice Skips", "float", 2.0, 0.0, 20.0, unit="/min", group="Damage", iscale=True,
               desc="Bad splices: a few source frames skip and a splice bar crosses the frame."),
-        Param("slip_rate", "Frame Slips", "float", 1.5, 0.0, 20.0, unit="/min", group="Damage",
+        Param("slip_rate", "Frame Slips", "float", 1.5, 0.0, 20.0, unit="/min", group="Damage", iscale=True,
               desc="One-frame vertical rolls exposing the frameline."),
-        Param("blotch_rate", "Blotches", "float", 4.0, 0.0, 40.0, unit="/min", group="Damage",
+        Param("blotch_rate", "Blotches", "float", 4.0, 0.0, 40.0, unit="/min", group="Damage", iscale=True,
               desc="Chemical blotches that grow over a few frames then vanish."),
         Param("burn", "Film Burn", "bool", False, group="Damage",
               desc="Dramatic burn-through: a growing orange→brown→white hole."),
         Param("burn_at_s", "Burn Time", "float", 2.0, 0.0, 600.0, unit="s", group="Damage",
               desc="When the burn starts."),
-        Param("static_flash", "Static Flashes", "float", 0.0, 0.0, 20.0, unit="/min", group="Damage",
+        Param("static_flash", "Static Flashes", "float", 0.0, 0.0, 20.0, unit="/min", group="Damage", iscale=True,
               desc="Static discharge marks: one-frame branching bright streaks jumping in from a frame edge "
                    "(dry rewind sparks exposing the stock), most visible on dark scenes."),
         Param("mold_edge", "Edge Mold", "float", 0.0, 0.0, 1.0, iscale=True, group="Damage",

@@ -521,8 +521,11 @@ class RisoPrint(Effect):
         th = float(g.uniform(0.0, 2.0 * np.pi))
         r = mis * (0.55 + 0.45 * float(g.random()))
         self._off = (r * float(np.cos(th)), r * float(np.sin(th)))
-        self._wob_x = ctx.noise.smooth(f"{self.key}:wx", 0.4) * 0.3
-        self._wob_y = ctx.noise.smooth(f"{self.key}:wy", 0.33) * 0.3
+        # The wobble is part of the misregistration and dies with it: at 0 the
+        # drums are locked, not still wandering a third of a pixel. Authored
+        # values (all >= 1.2) are untouched by the min().
+        self._wob_x = ctx.noise.smooth(f"{self.key}:wx", 0.4) * 0.3 * min(mis, 1.0)
+        self._wob_y = ctx.noise.smooth(f"{self.key}:wy", 0.33) * 0.3 * min(mis, 1.0)
 
         gt = ctx.rng(f"{self.key}:grain")
         t = gt.standard_normal((max(H // 2, 4), max(W // 2, 4))).astype(np.float32)
