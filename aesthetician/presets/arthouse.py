@@ -1,0 +1,356 @@
+"""Arthouse-family presets: a century of European (and adjacent) art cinema.
+
+Each one is a school, not a film: expressionist shadow-play, poetic-realist
+mist, neorealist streets, chamber-drama faces, candy-musical pastel, neon
+romanticism, step-printed longing, magic-hour reverie, slow-cinema patience
+and storybook symmetry. Physically grounded like everything else here - the
+look is the stock, the print and the projector, never a sticker.
+"""
+
+from ..engine.presets import Preset, Variant, register_preset
+
+
+def _optical(hi=7000.0, cell=-50.0, rolloff="feature_1940s", ratio=3.5):
+    return [
+        ("a_bandlimit", {"low_hz": 90.0, "high_hz": hi}),
+        ("a_mono", {"amount": 1.0}),
+        ("a_optical_track", {"cell_noise": cell, "academy_rolloff": rolloff}),
+        ("a_compressor", {"ratio": ratio}),
+    ]
+
+
+register_preset(Preset(
+    id="expressionist-shadows-1922",
+    name="Expressionist Shadows",
+    family="arthouse",
+    era="1922",
+    desc="Shadows painted onto the set and then photographed: orthochromatic contrast like woodcut ink, corners leaning in, a nitrate print tinted for whichever nightmare the reel holds.",
+    tagline="Woodcut blacks, leaning corners, tint",
+    tags=("arthouse", "silent", "20s", "german", "bw"),
+    proc_height=580,
+    upscale="soft",
+    video=[
+        ("mono", {"response": "orthochromatic", "tint": "nitrate_warm", "tint_amt": 0.25}),
+        ("tone", {"contrast": 1.4, "lift": 0.03, "knee": 0.74, "pivot": 0.38}),
+        ("cadence", {"pattern": "silent_irregular"}),
+        ("grain", {"amount": 0.5, "size": 2.0, "chroma_grain": 0.0, "stock": "print_dupe"}),
+        ("flicker", {"amount": 0.35, "character": "hand_cranked", "spatial": 0.3}),
+        ("gate_weave", {"amount": 2.2, "splice_bump": 1.8}),
+        ("dust", {"density": 0.8, "hairs": 0.5}),
+        ("scratches", {"count": 4, "transient_rate": 1.5}),
+        ("frame_damage", {"splice_skip_rate": 1.0}),
+        ("vignette", {"amount": 0.55, "radius": 0.7, "softness": 0.5}),
+        ("framing", {"aspect": "4:3"}),
+    ],
+    audio=[
+        ("a_gain", {"db": -60.0}),
+        ("a_projector", {"machine": "proj_35mm_booth", "level_db": -30.0}),
+        ("a_hum", {"hz": 50, "level_db": -54.0}),
+    ],
+    variants=[
+        Variant("keep-sound", "Keep Sound", "Retain the (treated) original audio.",
+                audio={"a_gain.db": -6.0}),
+        Variant("night-tint", "Night Tint", "The blue-bathed reels: sleepwalkers and rooftops.",
+                video={"mono.tint": "cyanotype", "mono.tint_amt": 0.45, "tone.exposure": -0.2}),
+        Variant("somnambulist", "Somnambulist", "Harder still: ink shadows, a print near collapse.",
+                video={"tone.contrast": 1.55, "vignette.amount": 0.65,
+                       "frame_damage.splice_skip_rate": 2.0, "dust.density": 1.0},),
+    ],
+))
+
+register_preset(Preset(
+    id="poetic-realism-1937",
+    name="Poetic Realism",
+    family="arthouse",
+    era="1937",
+    desc="Fog on the docks and fate in the timetable: silvery B&W diffused until the streetlamps wear halos, gentle contrast for faces that already know how it ends.",
+    tagline="Silver mist, haloed lamps, doomed calm",
+    tags=("arthouse", "france", "30s", "bw"),
+    upscale="soft",
+    video=[
+        ("mono", {"response": "panchromatic", "tint": "silver", "tint_amt": 0.2}),
+        ("tone", {"contrast": 1.12, "lift": 0.05, "knee": 0.8}),
+        ("optics", {"diffusion": 0.3, "soft_focus": 0.1, "bloom_mids": 0.15}),
+        ("grain", {"amount": 0.42, "size": 2.0, "chroma_grain": 0.0, "stock": "fine_35"}),
+        ("halation", {"strength": 0.4, "tint": "neutral", "threshold": 0.7}),
+        ("gate_weave", {"amount": 1.2}),
+        ("flicker", {"amount": 0.12}),
+        ("dust", {"density": 0.5}),
+        ("vignette", {"amount": 0.4, "softness": 0.65}),
+        ("framing", {"aspect": "1.37"}),
+    ],
+    audio=_optical(hi=6500.0, cell=-50.0, rolloff="feature_1940s", ratio=4.0),
+    variants=[
+        Variant("quai-fog", "Quai Fog", "Thicker air: the lamps win, the faces soften.",
+                video={"optics.diffusion": 0.42, "halation.strength": 0.5,
+                       "tone.lift": 0.08}),
+        Variant("morning-after", "Morning After", "The fog burned off; only the fatalism remains.",
+                video={"optics.diffusion": 0.15, "tone.contrast": 1.2,
+                       "halation.strength": 0.28}),
+    ],
+))
+
+register_preset(Preset(
+    id="neorealismo-1948",
+    name="Neorealismo",
+    family="arthouse",
+    era="1948",
+    desc="Streets instead of sets, faces instead of stars: war-surplus stock pushed through available light, a print that traveled in a bicycle basket and shows it.",
+    tagline="Surplus stock, street light, honest wear",
+    tags=("arthouse", "italy", "40s", "bw"),
+    proc_height=640,
+    upscale="soft",
+    video=[
+        ("mono", {"response": "panchromatic"}),
+        ("tone", {"contrast": 1.14, "lift": 0.05, "knee": 0.82}),
+        ("grain", {"amount": 0.55, "size": 2.3, "chroma_grain": 0.0, "stock": "doc_16"}),
+        ("halation", {"strength": 0.2, "tint": "neutral"}),
+        ("gate_weave", {"amount": 1.6, "splice_bump": 1.5}),
+        ("flicker", {"amount": 0.18}),
+        ("dust", {"density": 0.7, "hairs": 0.45}),
+        ("scratches", {"count": 3, "transient_rate": 1.2}),
+        ("frame_damage", {"splice_skip_rate": 1.5}),
+        ("vignette", {"amount": 0.3}),
+        ("framing", {"aspect": "1.37"}),
+    ],
+    audio=_optical(hi=6000.0, cell=-46.0, rolloff="classroom_16mm", ratio=4.5),
+    variants=[
+        Variant("archive-restoration", "Archive Restoration", "The festival scan: wear healed, grain kept.",
+                video={"dust.density": 0.25, "scratches.count": 1,
+                       "frame_damage.splice_skip_rate": 0.0, "gate_weave.amount": 0.9}),
+        Variant("bicycle-print", "Bicycle Print", "Screened nightly for a decade, repaired with tape.",
+                video={"dust.density": 1.0, "scratches.count": 5,
+                       "frame_damage.splice_skip_rate": 3.0, "tone.lift": 0.08}),
+    ],
+))
+
+register_preset(Preset(
+    id="chamber-face-1961",
+    name="Chamber Drama",
+    family="arthouse",
+    era="1961",
+    desc="Two faces and a wall: stark Scandinavian B&W with window-light whites held just short of burning, fine grain, and silence doing most of the talking.",
+    tagline="Stark faces, window whites, held breath",
+    tags=("arthouse", "sweden", "60s", "bw"),
+    upscale="sharp",
+    video=[
+        ("mono", {"response": "panchromatic"}),
+        ("tone", {"contrast": 1.26, "lift": 0.02, "knee": 0.78, "pivot": 0.4}),
+        ("grain", {"amount": 0.38, "size": 1.8, "chroma_grain": 0.0, "stock": "fine_35"}),
+        ("halation", {"strength": 0.22, "tint": "neutral", "threshold": 0.78}),
+        ("gate_weave", {"amount": 0.7}),
+        ("dust", {"density": 0.25}),
+        ("vignette", {"amount": 0.35, "softness": 0.7}),
+        ("framing", {"aspect": "1.37"}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 80.0, "high_hz": 8000.0}),
+        ("a_mono", {"amount": 1.0}),
+        ("a_optical_track", {"cell_noise": -54.0, "academy_rolloff": "feature_1940s"}),
+        ("a_compressor", {"ratio": 3.0}),
+        ("a_room", {"size": 0.6, "decay_s": 0.4, "mix": 0.12, "mode": "chamber"}),
+    ],
+    variants=[
+        Variant("island-light", "Island Light", "Overcast sea-light: flatter, paler, colder.",
+                video={"tone.contrast": 1.12, "tone.lift": 0.06, "tone.exposure": 0.1}),
+        Variant("confession", "Confession", "Closer and darker, the wall almost gone.",
+                video={"tone.contrast": 1.36, "vignette.amount": 0.5,
+                       "tone.exposure": -0.15}),
+    ],
+))
+
+register_preset(Preset(
+    id="pastel-musical-1964",
+    name="Umbrella Pastel",
+    family="arthouse",
+    era="1964",
+    desc="A town art-directed down to the wallpaper: candy pastels sung at full saturation, soft sugared light, Eastman color still young enough to believe it will last forever.",
+    tagline="Candy pastels, sugared light, full song",
+    tags=("arthouse", "france", "60s", "musical", "color"),
+    upscale="sharp",
+    video=[
+        ("stock", {"profile": "kodachrome", "strength": 0.8}),
+        ("tone", {"contrast": 1.08, "lift": 0.05, "knee": 0.84}),
+        ("balance", {"warmth": 0.05, "tint": 0.08, "high_tint": "pink", "high_amt": 0.25}),
+        ("saturation", {"amount": 1.35, "vibrance": 0.2}),
+        ("fade", {"amount": 0.05, "profile": "eastman_pink"}),
+        ("optics", {"diffusion": 0.15, "bloom_mids": 0.2}),
+        ("grain", {"amount": 0.35, "size": 1.8, "chroma_grain": 0.15, "stock": "fine_35"}),
+        ("halation", {"strength": 0.25, "tint": "warm_white"}),
+        ("gate_weave", {"amount": 0.9}),
+        ("dust", {"density": 0.3}),
+        ("vignette", {"amount": 0.25, "softness": 0.75}),
+    ],
+    audio=_optical(hi=9000.0, cell=-54.0, ratio=3.0),
+    variants=[
+        Variant("wallpaper", "Wallpaper Key", "Brighter and pinker: interiors that outdress the cast.",
+                video={"tone.exposure": 0.15, "saturation.amount": 1.45,
+                       "balance.high_amt": 0.35}),
+        Variant("fifty-years-on", "Fifty Years On", "The un-restored print: sugar gone to rose.",
+                video={"fade.amount": 0.35, "fade.profile": "eastman_pink",
+                       "saturation.amount": 1.15, "dust.density": 0.5},),
+    ],
+))
+
+register_preset(Preset(
+    id="golden-reverie-1978",
+    name="Golden Reverie",
+    family="arthouse",
+    era="1978",
+    desc="Magic hour stretched into a philosophy: everything backlit, halation like breath on the lens, voice-over weather - the light of remembering rather than the light of seeing.",
+    tagline="Backlit wheat, breathing halation",
+    tags=("arthouse", "70s", "magic-hour", "color"),
+    upscale="soft",
+    video=[
+        ("stock", {"profile": "eastman_70s", "strength": 0.85}),
+        ("tone", {"contrast": 1.06, "lift": 0.04, "knee": 0.82, "exposure": 0.1}),
+        ("balance", {"warmth": 0.22, "high_tint": "cream", "high_amt": 0.35}),
+        ("saturation", {"amount": 1.05, "vibrance": 0.1}),
+        ("optics", {"diffusion": 0.25, "veiling_flare": 0.25, "bloom_mids": 0.2}),
+        ("grain", {"amount": 0.4, "size": 2.0, "chroma_grain": 0.16}),
+        ("halation", {"strength": 0.5, "tint": "orange", "threshold": 0.68, "radius": 0.08}),
+        ("gate_weave", {"amount": 0.8}),
+        ("light_leak", {"amount": 0.2, "hue": "warm", "frequency": 1.0, "constant": 0.1}),
+        ("vignette", {"amount": 0.25, "softness": 0.8}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 70.0, "high_hz": 10000.0}),
+        ("a_optical_track", {"cell_noise": -54.0, "academy_rolloff": "feature_1940s"}),
+        ("a_compressor", {"ratio": 2.5}),
+    ],
+    variants=[
+        Variant("locust-dusk", "Locust Dusk", "The last minutes of light, embers in the grain.",
+                video={"tone.exposure": -0.1, "balance.warmth": 0.3,
+                       "halation.strength": 0.6, "vignette.amount": 0.35}),
+        Variant("morning-voiceover", "Morning Voice-Over", "Cooler, mistier, remembering out loud.",
+                video={"balance.warmth": 0.1, "optics.diffusion": 0.35,
+                       "tone.exposure": 0.2}),
+    ],
+))
+
+register_preset(Preset(
+    id="cinema-du-look-1986",
+    name="Cinéma du Look",
+    family="arthouse",
+    era="1986",
+    desc="Style as sincerity: métro blues and one red coat, glossy night surfaces, diffusion glow on every practical - young, doomed and impeccably lit.",
+    tagline="Métro blue, one red coat, glossy night",
+    tags=("arthouse", "france", "80s", "neon", "color"),
+    upscale="sharp",
+    video=[
+        ("stock", {"profile": "vision_90s", "strength": 0.6}),
+        ("tone", {"contrast": 1.18, "lift": 0.01, "knee": 0.82, "pivot": 0.4}),
+        ("balance", {"warmth": -0.08, "shadow_tint": "blue", "shadow_amt": 0.4}),
+        ("saturation", {"amount": 1.2, "vibrance": 0.25}),
+        ("optics", {"diffusion": 0.2, "bloom_mids": 0.15}),
+        ("grain", {"amount": 0.35, "size": 1.8, "chroma_grain": 0.15, "stock": "fine_35"}),
+        ("halation", {"strength": 0.3, "tint": "warm_white", "threshold": 0.72}),
+        ("gate_weave", {"amount": 0.7}),
+        ("vignette", {"amount": 0.3, "softness": 0.6}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 50.0, "high_hz": 14000.0}),
+        ("a_compressor", {"ratio": 2.5}),
+    ],
+    variants=[
+        Variant("metro-after-hours", "Métro After Hours", "Deeper blue, harder speculars, empty platforms.",
+                video={"balance.shadow_amt": 0.55, "tone.exposure": -0.15,
+                       "saturation.amount": 1.1}),
+        Variant("big-blue", "Open Water", "The palette goes oceanic: cyan light, weightless.",
+                video={"balance.shadow_tint": "teal", "balance.high_tint": "cyan",
+                       "balance.high_amt": 0.3, "saturation.amount": 1.25}),
+    ],
+))
+
+register_preset(Preset(
+    id="step-print-1994",
+    name="Step-Print Heartbeat",
+    family="arthouse",
+    era="1994",
+    desc="Longing at the wrong shutter speed: step-printed frames dragging their own ghosts, neon smeared into ribbons, a jukebox around every corner - time refusing to move on.",
+    tagline="Dragged frames, neon ribbons, longing",
+    tags=("arthouse", "hongkong", "90s", "neon", "color"),
+    upscale="soft",
+    video=[
+        ("stock", {"profile": "eastman_70s", "strength": 0.6}),
+        ("tone", {"contrast": 1.16, "lift": 0.03, "knee": 0.8}),
+        ("balance", {"warmth": 0.1, "shadow_tint": "green", "shadow_amt": 0.25,
+                     "high_tint": "yellow", "high_amt": 0.2}),
+        ("saturation", {"amount": 1.3, "vibrance": 0.2}),
+        ("cadence", {"pattern": "threes", "field_blend": 0.85}),
+        ("phosphor_decay", {"decay": 0.4, "mode": "p22"}),
+        ("grain", {"amount": 0.45, "size": 2.1, "chroma_grain": 0.2, "stock": "push_process"}),
+        ("halation", {"strength": 0.35, "tint": "red_orange"}),
+        ("gate_weave", {"amount": 0.8}),
+        ("vignette", {"amount": 0.35, "softness": 0.55}),
+    ],
+    audio=[
+        ("a_bandlimit", {"low_hz": 60.0, "high_hz": 11000.0}),
+        ("a_room", {"size": 0.8, "decay_s": 0.6, "mix": 0.18, "mode": "plate1960"}),
+        ("a_compressor", {"ratio": 3.0}),
+    ],
+    variants=[
+        Variant("expired-pineapple", "Expiry Date", "Warmer, sadder, counting tins by lamplight.",
+                video={"balance.warmth": 0.2, "cadence.pattern": "twos",
+                       "phosphor_decay.decay": 0.25}),
+        Variant("chungking-rush", "Midnight Rush", "The chase pace: heavier drag, hotter neon.",
+                video={"phosphor_decay.decay": 0.55, "saturation.amount": 1.4,
+                       "tone.contrast": 1.24}),
+    ],
+))
+
+register_preset(Preset(
+    id="slow-cinema-2009",
+    name="Slow Cinema",
+    family="arthouse",
+    era="2009",
+    desc="The nine-minute take: drained green-grey daylight, contrast kept flat as weather, grain barely breathing - a frame patient enough to let a field get dark on its own.",
+    tagline="Drained daylight, flat patience",
+    tags=("arthouse", "contemplative", "00s", "grade"),
+    upscale="soft",
+    video=[
+        ("tone", {"contrast": 0.96, "lift": 0.06, "knee": 0.9}),
+        ("balance", {"warmth": -0.06, "shadow_tint": "green", "shadow_amt": 0.15}),
+        ("saturation", {"amount": 0.78}),
+        ("optics", {"soft_focus": 0.05}),
+        ("grain", {"amount": 0.2, "size": 1.6, "chroma_grain": 0.1, "stock": "fine_35"}),
+        ("vignette", {"amount": 0.2, "softness": 0.85}),
+    ],
+    audio=[],
+    variants=[
+        Variant("late-autumn", "Late Autumn", "Browner and dimmer: the year giving up slowly.",
+                video={"balance.shadow_tint": "brown", "balance.shadow_amt": 0.25,
+                       "tone.exposure": -0.15}),
+        Variant("overcast-noon", "Overcast Noon", "Paler still, shadows barely bothering.",
+                video={"tone.lift": 0.09, "tone.contrast": 0.9, "saturation.amount": 0.7}),
+    ],
+))
+
+register_preset(Preset(
+    id="storybook-symmetry-2012",
+    name="Storybook Symmetry",
+    family="arthouse",
+    era="2012",
+    desc="A dollhouse with a permit: flat frontal light, upholstery pinks and library golds in deadpan agreement, fine grain pressed like a wildflower - whimsy at surveying accuracy.",
+    tagline="Dollhouse flat, deadpan pastel gold",
+    tags=("arthouse", "whimsy", "10s", "color"),
+    upscale="sharp",
+    video=[
+        ("tone", {"contrast": 1.04, "lift": 0.05, "knee": 0.88}),
+        ("balance", {"warmth": 0.12, "tint": 0.04, "high_tint": "cream", "high_amt": 0.3}),
+        ("saturation", {"amount": 1.15, "vibrance": 0.15}),
+        ("grain", {"amount": 0.28, "size": 1.6, "chroma_grain": 0.12, "stock": "fine_35"}),
+        ("halation", {"strength": 0.15, "tint": "warm_white"}),
+        ("gate_weave", {"amount": 0.0, "splice_bump": 0.0}),
+        ("vignette", {"amount": 0.15, "softness": 0.85}),
+    ],
+    audio=[],
+    variants=[
+        Variant("winter-chapter", "Winter Chapter", "The sad part: colder pastels, softer light.",
+                video={"balance.warmth": -0.04, "balance.high_tint": "cyan",
+                       "balance.high_amt": 0.2, "saturation.amount": 1.05}),
+        Variant("sixteen-mm-flashback", "16mm Flashback", "The childhood insert: grainier and warmer.",
+                video={"grain.amount": 0.45, "grain.stock": "doc_16", "balance.warmth": 0.2,
+                       "gate_weave.amount": 1.2}),
+    ],
+))

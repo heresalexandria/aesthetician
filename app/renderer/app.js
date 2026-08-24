@@ -29,6 +29,8 @@ const G = {
   customSeq: 0,
   stacks: [],          // saved layer stacks (persisted), newest last
   stackSeq: 0,
+  history: [],         // every finished export ever (persisted), oldest first
+  historySeq: 0,
   filterFamilies: new Set(),  // family chips currently selected (empty = all)
   filterEra: '',       // decade string like "1980s" (empty = any)
   favOnly: false,      // the ★ chip: show favorites only
@@ -100,6 +102,31 @@ function saveStore() {
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
 
+/* ── export history (localStorage, its own key) ─────────────────────
+   Every export that finishes writing a file is remembered: which clip, where
+   it lived, where the result went, and the exact layers and knobs that were
+   rendered. Its own key rather than a field on the main store because it can
+   grow large, and a corrupt or oversized history must never take the
+   favorites and customs down with it. */
+const HISTORY_KEY = 'aesthetician.history.v1';
+const HISTORY_MAX = 500;   // the oldest entries fall off past this
+
+function loadHistory() {
+  try {
+    const s = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
+    if (Array.isArray(s.runs)) {
+      G.history = s.runs.filter((r) => r && r.id && r.input && r.output && Array.isArray(r.layers));
+      G.historySeq = G.history.reduce((n, r) => Math.max(n, parseInt(r.id.slice(1), 10) || 0), 0);
+    }
+  } catch (_) { /* first run, or corrupted store: an empty history is fine */ }
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify({ runs: G.history }));
+  } catch (_) { /* storage full or unavailable: remembering is a courtesy */ }
+}
+
 /* ── layers ──────────────────────────────────────────────────────────
    A session is a stack of layers rendered bottom to top, each one treating what
    the one below actually produced. One layer is the overwhelmingly common case
@@ -110,6 +137,11 @@ function saveStore() {
    every existing call site (rendering knobs, saving a custom, naming an export)
    keeps working untouched, and only the code that genuinely cares about the
    stack has to know it exists. */
+/* Where the Texture dial rests when a layer starts or a preset is picked.
+   Most looks read best with the noise well below the authored ceiling; the
+   dial still runs its full 0-2 range for anyone who wants more. */
+const DEFAULT_TEXTURE = 0.25;
+
 function newLayer(overrides = {}) {
   return {
     lid: `L${++G.layerSeq}`,
@@ -128,7 +160,7 @@ function newLayer(overrides = {}) {
     cues: [],
     seed: 1 + Math.floor(Math.random() * 99999),
     intensity: 1.0,
-    texture: 1.0,
+    texture: DEFAULT_TEXTURE,
     enabled: true,
     ...overrides,
   };
@@ -196,6 +228,7 @@ const videoB = $('video-b'); // original
 // ── boot ────────────────────────────────────────────────────────────
 (async function boot() {
   loadStore();
+  loadHistory();
   // Synchronously, before the first await and before the first paint: the
   // preload picks the version off our own argv, so there is no round trip to
   // wait on and no placeholder to flash. Painting it last used to leave the chip
@@ -227,6 +260,7 @@ const videoB = $('video-b'); // original
   wireShortcuts();
   wireUpdates();
   renderTabs();
+  syncHistoryChip();
   refreshCacheInfo();
   if (G.schema) console.log('aesth:renderer-ready');
   // Off the critical path: the window is usable before GitHub answers.
@@ -1714,8 +1748,9 @@ const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAA
    wanted at all. Then the looks people reach for most; audio-only sits last
    because those rows leave the picture untouched (their thumbnails are all the
    same untreated frame, so alphabetical order opened the app on 29 of them). */
-const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'broadcast', 'cartoon', 'digital', 'world',
-  'decay', 'exhibition', 'print', 'transmission', 'stylized', 'captions', 'audio'];
+const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'western', 'arthouse', 'modern', 'broadcast',
+  'cartoon', 'digital', 'world', 'decay', 'exhibition', 'print', 'transmission', 'stylized',
+  'captions', 'audio'];
 
 function famRank(f) {
   // With an audio source, the audio-first presets are the relevant ones, so they
@@ -2167,7 +2202,7 @@ function layerSub(l) {
   const n = Object.keys(l.sets || {}).length;
   if (n) bits.push(`${n} tweak${n === 1 ? '' : 's'}`);
   if (l.intensity !== 1) bits.push(`int ${l.intensity.toFixed(2)}`);
-  if (l.texture !== 1) bits.push(`tex ${l.texture.toFixed(2)}`);
+  if (l.texture !== DEFAULT_TEXTURE) bits.push(`tex ${l.texture.toFixed(2)}`);
   return bits.join(' · ');
 }
 
@@ -2397,6 +2432,10 @@ function selectPreset(pid, opts = {}) {
   state.sets = {};
   state.events = [];
   if (!keepCues) state.cues = [];
+  // A fresh pick starts at the resting texture, like a fresh layer: the dial
+  // was describing the old look, and most looks read best dialled back.
+  state.texture = DEFAULT_TEXTURE;
+  syncMasterDials();
   syncSelection();       // the rows themselves have not changed, only which one is lit
   renderTabs();          // the tab shows which aesthetic the clip is wearing
   buildParamPane();
@@ -2428,7 +2467,7 @@ function layerHasWork(l) {
     || (l.events || []).length > 0
     || (l.cues || []).length > 0
     || l.intensity !== 1
-    || l.texture !== 1;
+    || l.texture !== DEFAULT_TEXTURE;
 }
 
 /* Applying a saved stack, or committing one aesthetic with Enter, replaces
@@ -2455,7 +2494,7 @@ function describeLayerWork(l) {
   if (ne) bits.push(`${ne} timeline edit${ne === 1 ? '' : 's'}`);
   if (l.variant) bits.push(`the ${l.variant} variant`);
   if (l.intensity !== 1) bits.push(`intensity ${l.intensity.toFixed(2)}`);
-  if (l.texture !== 1) bits.push(`texture ${l.texture.toFixed(2)}`);
+  if (l.texture !== DEFAULT_TEXTURE) bits.push(`texture ${l.texture.toFixed(2)}`);
   if (!bits.length) return '';
   if (bits.length === 1) return bits[0];
   return `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
@@ -4605,6 +4644,11 @@ function wireShortcuts() {
       toggleExportsPanel(false);
       return;
     }
+    if (e.code === 'Escape' && !$('history-panel').classList.contains('hidden')) {
+      e.preventDefault();
+      toggleHistoryPanel(false);
+      return;
+    }
     /* ↑/↓ run the preset list. They work from the search box too - type a few
        letters, then walk the hits without reaching for the mouse - but not from
        a slider or dropdown, where the arrows already mean something. */
@@ -4954,6 +4998,18 @@ function wireControls() {
     toggleExportsPanel(false);
   });
 
+  $('btn-history').addEventListener('click', () => toggleHistoryPanel());
+  $('btn-history-clear').addEventListener('click', clearAllHistory);
+  $('btn-history-oldest').addEventListener('click', clearOldestHistory);
+  document.addEventListener('mousedown', (e) => {
+    if ($('history-panel').classList.contains('hidden')) return;
+    // The "clear oldest…" prompt floats over the whole window; typing into it
+    // must not count as clicking away from the panel underneath.
+    if (!$('modal').classList.contains('hidden')) return;
+    if ($('history-panel').contains(e.target) || $('btn-history').contains(e.target)) return;
+    toggleHistoryPanel(false);
+  });
+
   $('btn-drop-cancel').addEventListener('click', () => {
     const last = G.sessions[G.sessions.length - 1];
     if (last) activateSession(last.id);
@@ -5175,6 +5231,7 @@ async function startExport(job) {
     const res = await window.aesth.exportRender(job.req);
     job.status = 'done';
     job.progress = 1;
+    recordHistory(job);
     setExportStatusLink('Exported ', res.output);
     flash('Export finished', { sub: basename(res.output), kind: 'done', ms: 6000 });
   } catch (err) {
@@ -5355,7 +5412,196 @@ function toggleExportsPanel(show) {
   const open = show === undefined ? panel.classList.contains('hidden') : show;
   panel.classList.toggle('hidden', !open);
   $('btn-exports').classList.toggle('open', open);
-  if (open) renderExports();
+  if (open) { toggleHistoryPanel(false); renderExports(); }
+}
+
+/* ── export history panel ────────────────────────────────────────────
+   The queue answers "what is rendering right now"; this answers "what have I
+   ever made, and with which knobs". One entry per finished export, persisted
+   across restarts, each one naming the source clip, where it lived, where the
+   file went, and every layer with its settings. */
+function recordHistory(job) {
+  G.history.push({
+    id: `h${++G.historySeq}`,
+    ts: Date.now(),
+    input: job.req.input,
+    output: job.req.output,
+    label: job.label,
+    videoOnly: Boolean(job.req.videoOnly),
+    audioOnly: Boolean(job.req.audioOnly),
+    // A deep copy: the session keeps mutating the objects this spec points at.
+    layers: JSON.parse(JSON.stringify(job.req.layers || [])),
+  });
+  if (G.history.length > HISTORY_MAX) G.history.splice(0, G.history.length - HISTORY_MAX);
+  saveHistory();
+  syncHistoryChip();
+  if (!$('history-panel').classList.contains('hidden')) renderHistory();
+}
+
+function syncHistoryChip() {
+  const n = G.history.length;
+  const badge = $('history-count');
+  badge.classList.toggle('hidden', !n);
+  badge.textContent = n ? String(n) : '';
+}
+
+function fmtHistoryTime(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function dirnameOf(p) {
+  const dir = (p || '').replace(/[\\/][^\\/]*$/, '');
+  return dir || p || '';
+}
+
+/* One line per layer, in plain words rather than the raw spec. */
+function describeHistoryLayer(l, i, total) {
+  const bits = [presetName(l.preset)];
+  if (l.variant) bits.push(l.variant);
+  bits.push(`seed ${l.seed}`);
+  if (typeof l.intensity === 'number' && l.intensity !== 1) bits.push(`intensity ${l.intensity.toFixed(2)}`);
+  if (typeof l.texture === 'number') bits.push(`texture ${l.texture.toFixed(2)}`);
+  const ne = (l.events || []).length;
+  if (ne) bits.push(`${ne} timeline edit${ne === 1 ? '' : 's'}`);
+  return (total > 1 ? `${i + 1}. ` : '') + bits.join(' · ');
+}
+
+function fmtSetValue(v) {
+  if (typeof v === 'number') return String(Math.round(v * 1000) / 1000);
+  return String(v);
+}
+
+function renderHistory() {
+  syncHistoryChip();
+  $('btn-history-clear').disabled = !G.history.length;
+  $('btn-history-oldest').disabled = G.history.length < 2;
+  const list = $('history-list');
+  list.innerHTML = '';
+  if (!G.history.length) {
+    const empty = document.createElement('div');
+    empty.className = 'ep-empty';
+    empty.textContent = 'Nothing exported yet. Every export you run is remembered here.';
+    list.appendChild(empty);
+    return;
+  }
+
+  // Newest first: the run you just finished is the one you came looking for.
+  for (const run of [...G.history].reverse()) {
+    const row = document.createElement('div');
+    row.className = 'hp-row';
+
+    const head = document.createElement('div');
+    head.className = 'hp-head';
+    const name = document.createElement('a');
+    name.className = 'hp-name';
+    name.textContent = basename(run.input);
+    name.title = `${run.input}\nClick to show the source clip in the Finder`;
+    name.onclick = () => revealFile(run.input);
+    head.appendChild(name);
+    const when = document.createElement('span');
+    when.className = 'hp-when';
+    when.textContent = fmtHistoryTime(run.ts);
+    head.appendChild(when);
+    const del = document.createElement('button');
+    del.className = 'ex-stop';
+    del.textContent = '×';
+    del.title = 'Forget this run';
+    del.onclick = () => deleteHistoryRun(run.id);
+    head.appendChild(del);
+    row.appendChild(head);
+
+    const from = document.createElement('div');
+    from.className = 'hp-path';
+    from.append('from ');
+    const dirA = document.createElement('a');
+    dirA.textContent = dirnameOf(run.input);
+    dirA.title = 'Show the source clip in the Finder';
+    dirA.onclick = () => revealFile(run.input);
+    from.appendChild(dirA);
+    row.appendChild(from);
+
+    const to = document.createElement('div');
+    to.className = 'hp-path';
+    to.append('→ ');
+    const outA = document.createElement('a');
+    outA.textContent = basename(run.output);
+    outA.title = `${run.output}\nShow the exported file in the Finder`;
+    outA.onclick = () => revealFile(run.output);
+    to.appendChild(outA);
+    if (run.videoOnly) to.append(' · video only');
+    else if (run.audioOnly) to.append(' · audio only');
+    row.appendChild(to);
+
+    if (run.label) {
+      const sub = document.createElement('div');
+      sub.className = 'hp-sub';
+      sub.textContent = run.label;
+      sub.title = run.label;
+      row.appendChild(sub);
+    }
+
+    const lys = document.createElement('div');
+    lys.className = 'hp-layers';
+    (run.layers || []).forEach((l, i) => {
+      const li = document.createElement('div');
+      li.className = 'hp-layer';
+      li.textContent = describeHistoryLayer(l, i, run.layers.length);
+      lys.appendChild(li);
+      const setKeys = Object.keys(l.sets || {});
+      if (setKeys.length) {
+        const tw = document.createElement('div');
+        tw.className = 'hp-sets';
+        tw.textContent = setKeys.map((k) => `${k} = ${fmtSetValue(l.sets[k])}`).join('   ');
+        lys.appendChild(tw);
+      }
+    });
+    row.appendChild(lys);
+
+    list.appendChild(row);
+  }
+}
+
+function toggleHistoryPanel(show) {
+  const panel = $('history-panel');
+  const open = show === undefined ? panel.classList.contains('hidden') : show;
+  panel.classList.toggle('hidden', !open);
+  $('btn-history').classList.toggle('open', open);
+  if (open) { toggleExportsPanel(false); renderHistory(); }
+}
+
+function deleteHistoryRun(id) {
+  G.history = G.history.filter((r) => r.id !== id);
+  saveHistory();
+  renderHistory();
+}
+
+function clearAllHistory() {
+  if (!G.history.length) return;
+  const n = G.history.length;
+  if (!confirm(`Forget all ${n} previous export${n === 1 ? '' : 's'}?\n\nThe exported files themselves are untouched.`)) return;
+  G.history = [];
+  saveHistory();
+  renderHistory();
+}
+
+async function clearOldestHistory() {
+  const n = G.history.length;
+  if (n < 2) return;
+  const ans = await askName({
+    title: 'Clear the oldest history',
+    sub: `${n} entries right now. How many of the oldest should go? The exported files themselves are untouched.`,
+    value: String(Math.min(10, n - 1)),
+    okLabel: 'Remove',
+  });
+  if (!ans) return;
+  const k = Math.min(n, Math.max(0, parseInt(ans, 10) || 0));
+  if (!k) return;
+  G.history.splice(0, k);   // the list is oldest-first
+  saveHistory();
+  renderHistory();
+  setExportStatus(`Removed the ${k === 1 ? 'oldest history entry' : `${k} oldest history entries`}.`);
 }
 
 /* ── toasts ─────────────────────────────────────────────────────────
