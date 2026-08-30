@@ -59,7 +59,7 @@ const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8'
 const R = vm.runInNewContext(
   `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
-       automaticUpdateCheck, liveLayers, layerSpec })`,
+       automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters })`,
   sandbox,
 );
 
@@ -163,6 +163,24 @@ function test_quantize_is_idempotent() {
       assert.strictEqual(R.quantize(once, prm), once, `quantize drifts on ${prm.name} at ${v}`);
     }
   }
+}
+
+function test_audio_filter_selects_sound_only_presets() {
+  const audio = { id: 'audio-test', family: 'audio', era: '1985', video: [], audio: [['a_mono', {}]] };
+  const soundOnly = { id: 'sound-only-test', family: 'custom', era: '1975', video: [], audio: [['a_mono', {}]] };
+  const audiovisual = { id: 'av-test', family: 'film', era: '1985', video: [['grain', {}]], audio: [['a_mono', {}]] };
+  assert.strictEqual(R.isAudioOnly(audio), true);
+  assert.strictEqual(R.isAudioOnly(soundOnly), true, 'empty video chains count even outside the audio family');
+  assert.strictEqual(R.isAudioOnly(audiovisual), false);
+
+  R.G.audioOnly = true;
+  R.G.favOnly = false;
+  R.G.filterEra = '';
+  R.G.filterFamilies.clear();
+  assert.strictEqual(R.passesFilters(audio), true);
+  assert.strictEqual(R.passesFilters(soundOnly), true);
+  assert.strictEqual(R.passesFilters(audiovisual), false);
+  R.G.audioOnly = false;
 }
 
 /* The tooltip claims which dials move a parameter. Keyed on the bare param name
@@ -356,6 +374,7 @@ const tests = [
   test_a_live_value_never_prints_as_the_minimum,
   test_committed_values_print_as_themselves,
   test_quantize_is_idempotent,
+  test_audio_filter_selects_sound_only_presets,
   test_texture_hint_mirrors_the_engine,
   test_texture_hint_names_real_params,
   test_srt_timing_survives_the_paste,

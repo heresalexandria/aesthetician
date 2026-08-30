@@ -841,6 +841,144 @@ def test_audio_effects_hand_back_the_block_they_were_given():
             f"{era}: silence or NaN, so the shape check proves nothing"
 
 
+def test_archive_audio_effects_are_repeatable_and_configurable():
+    """The archival controls do real, deterministic DSP without changing length."""
+    from aesthetician.engine.graph import Context, get_effect
+
+    sr = 24000
+    n = sr * 3 + 17
+    t = np.arange(n, dtype=np.float32) / sr
+    source = np.stack([
+        0.18 * np.sin(2 * np.pi * 93.0 * t) + 0.12 * np.sin(2 * np.pi * 2800.0 * t),
+        0.15 * np.sin(2 * np.pi * 131.0 * t) + 0.1 * np.sin(2 * np.pi * 6100.0 * t),
+    ], axis=1).astype(np.float32)
+    source[::4000] += 0.4
+    cases = {
+        "a_historical_mic": {"profile": "carbon_1925", "amount": 1.0,
+                             "overload": 0.5, "self_noise_db": -48.0, "handling": 0.8},
+        "a_disc_medium": {"medium": "wax_cylinder_1905", "wear": 0.7,
+                          "surface_db": -40.0, "impacts": 40.0, "wow_cents": 20.0},
+        "a_analog_dub": {"format": "cassette", "generations": 4,
+                         "alignment": 0.7, "compression": 0.6, "hiss_db": -48.0},
+        "a_print_through": {"delay_s": 0.25, "pre_echo_db": -30.0,
+                            "post_echo_db": -34.0, "layers": 2, "softness": 0.7},
+        "a_noise_reduction": {"system": "dolby_c", "decode_error": 0.8,
+                              "pumping": 0.7, "hiss_db": -48.0},
+        "a_video_tape_audio": {"format": "vhs_hifi", "tracking": 0.8,
+                               "dropout_rate": 40.0, "noise_db": -45.0,
+                               "head_switch_db": -48.0, "compander_error": -0.6},
+        "a_channel_aging": {"width": 0.3, "imbalance_db": -3.0,
+                            "crosstalk_db": -18.0, "skew_us": 700.0,
+                            "phase_wander": 0.8, "mono_bass_hz": 300.0},
+    }
+    for eid, params in cases.items():
+        ctx = Context(64, 48, 24.0, 72, sr=sr, channels=2, seed=37)
+        eff = get_effect(eid)(**params)
+        eff.resolve(ctx)
+        out = eff.process_audio(source.copy(), ctx)
+        assert out.shape == source.shape and out.dtype == np.float32, eid
+        assert np.isfinite(out).all(), eid
+        assert float(np.sqrt(np.mean((out - source) ** 2))) > 1e-4, f"{eid} did nothing"
+
+        again = get_effect(eid)(**params)
+        again.resolve(ctx)
+        assert np.array_equal(out, again.process_audio(source.copy(), ctx)), eid
+
+
+def test_new_archive_presets_are_audio_only_and_score_free():
+    """Archive presets treat the supplied program without authoring picture or music."""
+    from aesthetician.engine.graph import all_effects
+    from aesthetician.engine.presets import all_presets
+
+    wanted = {
+        "audio-wax-cylinder-1905", "audio-wax-dictation-1922",
+        "audio-aluminum-disc-1934", "audio-acetate-home-1947",
+        "audio-ribbon-studio-1938", "audio-carbon-newsreel-1941",
+        "audio-full-track-master-1953", "audio-magnetic-film-1957",
+        "audio-broadcast-reel-1961", "audio-portable-reel-1965",
+        "audio-16mm-mag-stripe-1969", "audio-nagra-location-1970",
+        "audio-dictation-belt-1964", "audio-broadcast-cart-1976",
+        "audio-cassette-field-1979", "audio-boombox-dub-1983",
+        "audio-cassette-fourtrack-1987", "audio-umatic-linear-1977",
+        "audio-betamax-linear-1981", "audio-vhs-linear-1985",
+        "audio-betamax-hifi-1985", "audio-vhs-hifi-1988",
+        "audio-video8-afm-1991", "audio-camcorder-onboard-1994",
+        "audio-hi8-stereo-1996",
+    }
+    presets = all_presets()
+    assert wanted <= presets.keys()
+    assert len(wanted) == 25
+    for pid in wanted:
+        preset = presets[pid]
+        assert preset.family == "audio" and preset.video == [], pid
+        assert preset.audio, pid
+        assert all(eid.startswith("a_") for eid, _ in preset.audio), pid
+    assert all("score" not in eid and "music" not in eid for eid in all_effects())
+
+
+def test_new_audiovisual_presets_treat_picture_and_supplied_sound():
+    """The new era looks process both sections without authoring program material."""
+    from aesthetician.engine.presets import all_presets
+
+    wanted = {
+        "vitaphone-palace-1929", "precode-studio-print-1932",
+        "cinecolor-travel-print-1948", "anscochrome-pageant-1954",
+        "vistavision-release-1956", "todd-ao-roadshow-1958",
+        "hammer-eastmancolor-1960", "techniscope-blowup-1966",
+        "supermarionation-print-1966", "psychedelic-optical-1968",
+        "panavision-disaster-print-1974", "slasher-answer-print-1980",
+        "quadruplex-variety-1958", "regional-weather-1973",
+        "disco-variety-master-1979", "cband-superstation-1982",
+        "fitness-vhs-1984", "home-shopping-cable-1987",
+        "music-countdown-master-1987", "corporate-umatic-1988",
+        "tabloid-reenactment-1992", "cdrom-mjpeg-1995",
+        "local-cable-infomercial-1997", "digicam-mjpeg-2002",
+    }
+    presets = all_presets()
+    assert len(wanted) == 24
+    assert wanted <= presets.keys()
+    for pid in wanted:
+        preset = presets[pid]
+        assert preset.family != "audio", pid
+        assert preset.video, f"{pid} has no picture chain"
+        assert preset.audio, f"{pid} has no sound chain"
+        assert all(eid.startswith("a_") for eid, _ in preset.audio), pid
+
+
+def test_optical_composite_and_color_switches_are_live():
+    """New optical and color dials have real zero stops and visible active states."""
+    from aesthetician.engine.graph import Context, get_effect
+
+    ctx = Context(160, 120, 24.0, 48, seed=9)
+    frame = np.random.default_rng(4).random((120, 160, 3)).astype(np.float32)
+
+    flat = get_effect("optical_composite")()
+    flat.resolve(ctx)
+    flat.prepare(ctx)
+    assert flat.process(frame.copy(), ctx) is not None
+    assert np.array_equal(flat.process(frame.copy(), ctx), frame)
+
+    active = get_effect("optical_composite")(softness=0.4, matte_line=0.6, registration=0.8,
+                                               layer_haze=0.2, density_breath=0.3)
+    active.resolve(ctx)
+    active.prepare(ctx)
+    treated = active.process(frame.copy(), ctx)
+    assert float(np.abs(treated - frame).mean()) > 0.005
+
+    mono_off = get_effect("mono")(amount=0.0)
+    mono_off.resolve(ctx)
+    assert np.array_equal(mono_off.process(frame.copy(), ctx), frame)
+    mono_on = get_effect("mono")(amount=1.0)
+    mono_on.resolve(ctx)
+    assert not np.array_equal(mono_on.process(frame.copy(), ctx), frame)
+
+    sixties = get_effect("stock")(profile="eastman_60s")
+    eighties = get_effect("stock")(profile="kodak_80s")
+    sixties.resolve(ctx)
+    eighties.resolve(ctx)
+    assert not np.allclose(sixties.process(frame.copy(), ctx), eighties.process(frame.copy(), ctx))
+
+
 def test_interlaced_codec_era_survives_an_ffmpeg_without_top():
     """codec_era's interlaced mode must not lean on the removed -top option.
 

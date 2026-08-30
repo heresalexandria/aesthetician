@@ -386,6 +386,7 @@ aside { background: var(--bg2); overflow-y: auto; }
 .chip.star-chip.sel { color: #ffd479; border-color: #8a6a2c; background: rgba(255,196,84,.10); }
 .chip.custom-chip.sel { color: #7ee0c0; border-color: #2f7a67; background: rgba(90,225,190,.10); }
 .chip.stack-chip.sel { color: #a8c6ff; border-color: #3a5a9a; background: rgba(90,140,255,.10); }
+.chip.audio-chip.sel { color: #7ee0c0; border-color: #2f7a67; background: rgba(90,225,190,.10); }
 
 #preset-list { flex: 1; overflow-y: auto; padding: 6px 8px 30px; }
 .family-label {

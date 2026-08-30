@@ -33,6 +33,7 @@ const G = {
   historySeq: 0,
   filterFamilies: new Set(),  // family chips currently selected (empty = all)
   filterEra: '',       // decade string like "1980s" (empty = any)
+  audioOnly: false,    // the always-visible Audio chip: presets that leave picture untouched
   favOnly: false,      // the ★ chip: show favorites only
   customOnly: false,   // the ✎ chip: show saved customs only
   stackOnly: false,    // the ▤ chip: show saved stacks only
@@ -1671,7 +1672,7 @@ function buildFilterBar() {
     cc.title = 'Show my custom aesthetics only';
     cc.onclick = () => {
       G.customOnly = !G.customOnly;
-      if (G.customOnly) { G.favOnly = false; G.stackOnly = false; }
+      if (G.customOnly) { G.favOnly = false; G.stackOnly = false; G.audioOnly = false; }
       buildFilterBar(); buildPresetList();
     };
     chips.appendChild(cc);
@@ -1683,23 +1684,43 @@ function buildFilterBar() {
     sc.title = 'Show my saved stacks only';
     sc.onclick = () => {
       G.stackOnly = !G.stackOnly;
-      if (G.stackOnly) { G.favOnly = false; G.customOnly = false; }
+      if (G.stackOnly) { G.favOnly = false; G.customOnly = false; G.audioOnly = false; }
       buildFilterBar(); buildPresetList();
     };
     chips.appendChild(sc);
   }
   const all = document.createElement('span');
-  all.className = 'chip' + (G.filterFamilies.size || G.favOnly || G.customOnly || G.stackOnly ? '' : ' sel');
+  all.className = 'chip' + (G.filterFamilies.size || G.audioOnly || G.favOnly || G.customOnly || G.stackOnly ? '' : ' sel');
   all.textContent = 'All';
   all.onclick = () => {
     G.filterFamilies.clear();
     G.favOnly = false;
     G.customOnly = false;
     G.stackOnly = false;
+    G.audioOnly = false;
     buildFilterBar(); buildPresetList();
   };
   chips.appendChild(all);
+
+  const audioCount = presets.filter(isAudioOnly).length;
+  const audio = document.createElement('span');
+  audio.className = 'chip audio-chip' + (G.audioOnly ? ' sel' : '');
+  audio.textContent = `♪ Audio ${audioCount}`;
+  audio.title = 'Show presets that treat audio and leave the picture untouched';
+  audio.onclick = () => {
+    G.audioOnly = !G.audioOnly;
+    if (G.audioOnly) {
+      G.filterFamilies.clear();
+      G.customOnly = false;
+      G.stackOnly = false;
+    }
+    buildFilterBar();
+    buildPresetList();
+  };
+  chips.appendChild(audio);
+
   const fams = [...new Set(presets.map((p) => p.family))]
+    .filter((f) => f !== 'audio')
     .sort((a, b) => famRank(a) - famRank(b));
   for (const f of fams) {
     const n = presets.filter((p) => p.family === f).length;
@@ -1710,6 +1731,7 @@ function buildFilterBar() {
     c.onclick = () => {
       if (G.filterFamilies.has(f)) G.filterFamilies.delete(f);
       else G.filterFamilies.add(f);
+      G.audioOnly = false;
       buildFilterBar();
       buildPresetList();
     };
@@ -1735,13 +1757,14 @@ function buildFilterBar() {
 
 function passesFilters(p) {
   if (G.favOnly && !G.favs.has(p.id)) return false;
+  if (G.audioOnly && !isAudioOnly(p)) return false;
   if (G.filterFamilies.size && !G.filterFamilies.has(p.family)) return false;
   if (G.filterEra && decadeOf(p) !== G.filterEra) return false;
   return true;
 }
 
 function anyFilterActive() {
-  return G.favOnly || G.customOnly || G.stackOnly || G.filterFamilies.size > 0
+  return G.favOnly || G.customOnly || G.stackOnly || G.audioOnly || G.filterFamilies.size > 0
     || !!G.filterEra || !!$('preset-search').value;
 }
 
@@ -1749,6 +1772,7 @@ function clearFilters() {
   G.favOnly = false;
   G.customOnly = false;
   G.stackOnly = false;
+  G.audioOnly = false;
   G.filterFamilies.clear();
   G.filterEra = '';
   $('preset-search').value = '';
@@ -2078,7 +2102,7 @@ function buildPresetList() {
      replaces every layer, which is not something a held-down arrow key should
      be able to do. */
   const stackRows = G.stacks.filter((k) => {
-    if (G.favOnly || G.customOnly) return false;
+    if (G.favOnly || G.customOnly || G.audioOnly) return false;
     if (!q) return true;
     return `${k.name} ${stackChain(k)}`.toLowerCase().includes(q);
   });
@@ -2110,6 +2134,7 @@ function buildPresetList() {
   const customRows = G.customs.filter((c) => {
     if (G.favOnly) return false;
     if (!G.schema.presets[c.base]) return false;   // base preset went away
+    if (G.audioOnly && !isAudioOnly(G.schema.presets[c.base])) return false;
     if (G.filterFamilies.size && !G.filterFamilies.has(G.schema.presets[c.base].family)) return false;
     if (G.filterEra && decadeOf(G.schema.presets[c.base]) !== G.filterEra) return false;
     if (!q) return true;
