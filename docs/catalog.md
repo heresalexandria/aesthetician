@@ -835,7 +835,7 @@ When color arrived and nobody's set agreed on hue: glowing NTSC rainbow edges, d
 
 A polished 35mm network print: luminous black-and-white faces, diffused soundstage practicals and tidy optical tricks softened by a careful film-to-broadcast chain.
 
-**Variants:** `early-color` (Early Color Episode - The color-season print: warm faces, candy interiors and a little chroma wandering off the props.), `magic-trick` (Magic Trick Insert - The effects shot: a softer optical generation, visible matte seams and a harp-and-celesta flourish.), `network-negative` (Network Vault Print - The protected network element: finer grain, steadier gate and only a breath of composite softness.)
+**Variants:** `early-color` (Early Color Episode - The color-season print: warm faces, candy interiors and a little chroma wandering off the props.), `magic-trick` (Magic Trick Insert - The effects shot: a softer optical generation, visible matte seams and stronger diffusion.), `network-negative` (Network Vault Print - The protected network element: finer grain, steadier gate and only a breath of composite softness.)
 
 **Picture:**
 - **Stock / Process Look** - `stock.profile=eastman_60s`, `stock.strength=0.0`
@@ -860,14 +860,13 @@ A polished 35mm network print: luminous black-and-white faces, diffused soundsta
 - **Framing / Aspect** - `framing.aspect=4:3`, `framing.mode=box`, `framing.edge_soft=0.006`
 
 **Sound:**
-- **Period Orchestral Score** - `a_period_score.style=fantasy_sitcom_1964`, `a_period_score.level_db=-25.0`, `a_period_score.energy=0.55`, `a_period_score.duck=0.45`
 - **Bandwidth** - `a_bandlimit.low_hz=90.0`, `a_bandlimit.high_hz=7600.0`
 - **Mono Fold** - `a_mono.amount=1.0`
 - **Small Room** - `a_room.size=0.8`, `a_room.decay_s=0.42`, `a_room.mix=0.1`, `a_room.mode=room`
 - **Optical Soundtrack** - `a_optical_track.low_hz=100.0`, `a_optical_track.high_hz=7000.0`, `a_optical_track.academy_rolloff=none`, `a_optical_track.cell_noise=-52.0`, `a_optical_track.flutter=0.3`, `a_optical_track.drive=1.35`
 - **Compressor** - `a_compressor.threshold_db=-20.0`, `a_compressor.ratio=3.5`, `a_compressor.attack_ms=8.0`, `a_compressor.release_ms=220.0`
 
-*181 adjustable parameters in this preset.*
+*176 adjustable parameters in this preset.*
 
 ### `golf-sunday-1977` - Sunday Golf (1977)
 
@@ -2713,9 +2712,9 @@ Cinema's first decade: blue-blind emulsion that turns skies to milk and lips to 
 
 ### `adventure-answer-print-1985` - Adventure Answer Print (1985)
 
-Warm Kodak 35mm under practical lamps: blue-gray shadow detail, damp green exteriors, flare in the haze and a well-traveled answer print driven by a full orchestral score.
+Warm Kodak 35mm under practical lamps: blue-gray shadow detail, damp green exteriors, flare in the haze and a well-traveled answer print with warm, slightly compressed theatrical sound.
 
-**Variants:** `rainy-cavern` (Rainy Cavern - Cooler and a stop down: wet flare, longer stone reflections and the low motif taking the lead.), `saturday-matinee` (Saturday Matinee - The crowd-pleasing reel: brighter amber, louder brass and a few more miles of print wear.), `vault-answer-print` (Vault Answer Print - Before the roadshow: cleaner dyes, a steadier gate and the orchestra tucked politely under dialogue.)
+**Variants:** `rainy-cavern` (Rainy Cavern - Cooler and a stop down: wet flare, longer stone reflections and a more cavernous theatrical track.), `saturday-matinee` (Saturday Matinee - The crowd-pleasing reel: brighter amber, firmer track compression and a few more miles of print wear.), `vault-answer-print` (Vault Answer Print - Before the roadshow: cleaner dyes, a steadier gate and quieter optical-track noise.)
 
 **Picture:**
 - **Stock / Process Look** - `stock.profile=kodak_80s`, `stock.strength=0.9`
@@ -2736,14 +2735,13 @@ Warm Kodak 35mm under practical lamps: blue-gray shadow detail, damp green exter
 - **Framing / Aspect** - `framing.aspect=1.85`, `framing.mode=box`
 
 **Sound:**
-- **Period Orchestral Score** - `a_period_score.style=adventure_1985`, `a_period_score.level_db=-23.0`, `a_period_score.energy=0.78`, `a_period_score.duck=0.32`
 - **Bandwidth** - `a_bandlimit.low_hz=45.0`, `a_bandlimit.high_hz=12500.0`
 - **Tape Saturation** - `a_tape_sat.drive=1.4`, `a_tape_sat.bump_db=1.2`, `a_tape_sat.hf_loss=0.15`
 - **Optical Soundtrack** - `a_optical_track.low_hz=60.0`, `a_optical_track.high_hz=9000.0`, `a_optical_track.academy_rolloff=none`, `a_optical_track.cell_noise=-58.0`, `a_optical_track.flutter=0.22`, `a_optical_track.drive=1.2`
 - **Compressor** - `a_compressor.threshold_db=-20.0`, `a_compressor.ratio=2.8`, `a_compressor.attack_ms=10.0`, `a_compressor.release_ms=260.0`
 - **Small Room** - `a_room.size=1.15`, `a_room.decay_s=0.72`, `a_room.mix=0.12`, `a_room.mode=chamber`
 
-*140 adjustable parameters in this preset.*
+*135 adjustable parameters in this preset.*
 
 ### `bolex-diary-1968` - Bolex Diary (1968)
 
@@ -5203,7 +5201,7 @@ Hour nineteen of the broadcast: tired studio cameras, smeary phosphor trails, th
 
 Tokyo-studio Eastmancolor: cyan sky, emerald sets and crimson costumes printed through soft optical mattes, then worn into a magenta-leaning television survivor.
 
-**Variants:** `miniature-stage` (Miniature Stage - The composite-heavy effects reel: softer model depth, brighter matte seams and harder percussion.), `swordplay-stage` (Swordplay Stage - Cleaner mattes, amber tungsten and a leaner low-string march for the studio duel.), `television-transfer` (Television Transfer - The 4:3 station element: softer bandwidth, stronger hue drift and another decade in the can.)
+**Variants:** `miniature-stage` (Miniature Stage - The composite-heavy effects reel: softer model depth, brighter matte seams and heavier print breathing.), `swordplay-stage` (Swordplay Stage - Cleaner mattes, amber tungsten and a slightly roomier optical mono track for the studio duel.), `television-transfer` (Television Transfer - The 4:3 station element: softer bandwidth, stronger hue drift and another decade in the can.)
 
 **Picture:**
 - **Stock / Process Look** - `stock.profile=eastman_60s`, `stock.strength=0.95`
@@ -5227,14 +5225,13 @@ Tokyo-studio Eastmancolor: cyan sky, emerald sets and crimson costumes printed t
 - **Framing / Aspect** - `framing.aspect=2.35`, `framing.mode=box`
 
 **Sound:**
-- **Period Orchestral Score** - `a_period_score.style=japanese_spectacle_1962`, `a_period_score.level_db=-23.0`, `a_period_score.energy=0.82`, `a_period_score.duck=0.35`
 - **Bandwidth** - `a_bandlimit.low_hz=90.0`, `a_bandlimit.high_hz=7200.0`
 - **Mono Fold** - `a_mono.amount=1.0`
 - **Small Room** - `a_room.size=1.4`, `a_room.decay_s=0.85`, `a_room.mix=0.16`, `a_room.mode=chamber`
 - **Optical Soundtrack** - `a_optical_track.low_hz=100.0`, `a_optical_track.high_hz=6500.0`, `a_optical_track.academy_rolloff=none`, `a_optical_track.cell_noise=-42.0`, `a_optical_track.flutter=0.65`, `a_optical_track.drive=1.8`
 - **Compressor** - `a_compressor.threshold_db=-22.0`, `a_compressor.ratio=5.0`, `a_compressor.attack_ms=5.0`, `a_compressor.release_ms=180.0`
 
-*165 adjustable parameters in this preset.*
+*160 adjustable parameters in this preset.*
 
 ### `training-film-1966` - Corporate Training Film (1966)
 

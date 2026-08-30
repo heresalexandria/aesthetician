@@ -9,7 +9,7 @@ register_preset(Preset(
     era="1964",
     desc="A polished 35mm network print: luminous black-and-white faces, diffused soundstage practicals and tidy optical tricks softened by a careful film-to-broadcast chain.",
     tagline="Luminous faces, tidy tricks, soft broadcast",
-    tags=("60s", "sitcom", "fantasy", "35mm", "network", "score"),
+    tags=("60s", "sitcom", "fantasy", "35mm", "network"),
     proc_height=600,
     upscale="soft",
     video=[
@@ -39,8 +39,6 @@ register_preset(Preset(
         ("framing", {"aspect": "4:3", "mode": "box", "edge_soft": 0.006}),
     ],
     audio=[
-        ("a_period_score", {"style": "fantasy_sitcom_1964", "level_db": -25.0,
-                            "energy": 0.55, "duck": 0.45}),
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7600.0}),
         ("a_mono", {"amount": 1.0}),
         ("a_room", {"size": 0.8, "decay_s": 0.42, "mix": 0.1, "mode": "room"}),
@@ -55,16 +53,15 @@ register_preset(Preset(
                        "halation.tint": "orange", "optical_composite.registration": 0.22,
                        "ntsc.phase_noise": 1.6, "ntsc.diff_phase": 0.8,
                        "ntsc.chroma_agc": 0.12, "crt.bloom": 0.24}),
-        Variant("magic-trick", "Magic Trick Insert", "The effects shot: a softer optical generation, visible matte seams and a harp-and-celesta flourish.",
+        Variant("magic-trick", "Magic Trick Insert", "The effects shot: a softer optical generation, visible matte seams and stronger diffusion.",
                 video={"optical_composite.softness": 0.38, "optical_composite.matte_line": 0.48,
                        "optical_composite.registration": 0.42, "optical_composite.layer_haze": 0.18,
-                       "optics.diffusion": 0.3},
-                audio={"a_period_score.energy": 0.72, "a_period_score.level_db": -23.0}),
+                       "optics.diffusion": 0.3}),
         Variant("network-negative", "Network Vault Print", "The protected network element: finer grain, steadier gate and only a breath of composite softness.",
                 video={"grain.amount": 0.22, "dust.density": 0.12, "scratches.count": 0,
                        "gate_weave.amount": 0.35, "ntsc.strength": 0.1,
                        "optical_composite.softness": 0.08},
-                audio={"a_optical_track.cell_noise": -57.0, "a_period_score.level_db": -27.0}),
+                audio={"a_optical_track.cell_noise": -57.0}),
     ],
 ))
 
