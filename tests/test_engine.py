@@ -916,6 +916,35 @@ def test_new_archive_presets_are_audio_only_and_score_free():
     assert all("score" not in eid and "music" not in eid for eid in all_effects())
 
 
+def test_new_audiovisual_presets_treat_picture_and_supplied_sound():
+    """The new era looks process both sections without authoring program material."""
+    from aesthetician.engine.presets import all_presets
+
+    wanted = {
+        "vitaphone-palace-1929", "precode-studio-print-1932",
+        "cinecolor-travel-print-1948", "anscochrome-pageant-1954",
+        "vistavision-release-1956", "todd-ao-roadshow-1958",
+        "hammer-eastmancolor-1960", "techniscope-blowup-1966",
+        "supermarionation-print-1966", "psychedelic-optical-1968",
+        "panavision-disaster-print-1974", "slasher-answer-print-1980",
+        "quadruplex-variety-1958", "regional-weather-1973",
+        "disco-variety-master-1979", "cband-superstation-1982",
+        "fitness-vhs-1984", "home-shopping-cable-1987",
+        "music-countdown-master-1987", "corporate-umatic-1988",
+        "tabloid-reenactment-1992", "cdrom-mjpeg-1995",
+        "local-cable-infomercial-1997", "digicam-mjpeg-2002",
+    }
+    presets = all_presets()
+    assert len(wanted) == 24
+    assert wanted <= presets.keys()
+    for pid in wanted:
+        preset = presets[pid]
+        assert preset.family != "audio", pid
+        assert preset.video, f"{pid} has no picture chain"
+        assert preset.audio, f"{pid} has no sound chain"
+        assert all(eid.startswith("a_") for eid, _ in preset.audio), pid
+
+
 def test_optical_composite_and_color_switches_are_live():
     """New optical and color dials have real zero stops and visible active states."""
     from aesthetician.engine.graph import Context, get_effect
