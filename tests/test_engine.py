@@ -841,6 +841,80 @@ def test_audio_effects_hand_back_the_block_they_were_given():
             f"{era}: silence or NaN, so the shape check proves nothing"
 
 
+def test_period_scores_run_throughout_and_stay_on_the_clip_timeline():
+    """Each period score is audible throughout, repeatable and preview-safe."""
+    from aesthetician.engine.graph import Context, get_effect
+
+    sr = 24000
+    n = sr * 4
+    silence = np.zeros((n, 2), np.float32)
+    styles = ("japanese_spectacle_1962", "fantasy_sitcom_1964", "adventure_1985")
+    rendered = []
+    for style in styles:
+        ctx = Context(64, 48, 24.0, 96, sr=sr, channels=2, seed=19)
+        eff = get_effect("a_period_score")(style=style, level_db=-24.0, energy=0.7, duck=0.0)
+        eff.resolve(ctx)
+        out = eff.process_audio(silence.copy(), ctx)
+        assert out.shape == silence.shape and out.dtype == np.float32
+        assert np.isfinite(out).all()
+        assert float(np.sqrt(np.mean(out[:sr] ** 2))) > 0.004, f"{style} is silent at the start"
+        assert float(np.sqrt(np.mean(out[-sr:] ** 2))) > 0.004, f"{style} stops before the clip ends"
+
+        again = get_effect("a_period_score")(style=style, level_db=-24.0, energy=0.7, duck=0.0)
+        again.resolve(ctx)
+        assert np.array_equal(out, again.process_audio(silence.copy(), ctx)), style
+        rendered.append(out)
+
+    assert not np.allclose(rendered[0], rendered[1], atol=1e-5)
+    assert not np.allclose(rendered[1], rendered[2], atol=1e-5)
+
+    # A two-second preview at 2.0 s must contain the same samples as that span
+    # of a full export, including tails from notes that began before the window.
+    full_ctx = Context(64, 48, 24.0, 96, sr=sr, channels=2, seed=23, t0=0.0)
+    full = get_effect("a_period_score")(style="adventure_1985", duck=0.0)
+    full.resolve(full_ctx)
+    whole = full.process_audio(silence.copy(), full_ctx)
+    preview_ctx = Context(64, 48, 24.0, 48, sr=sr, channels=2, seed=23, t0=2.0)
+    preview = get_effect("a_period_score")(style="adventure_1985", duck=0.0)
+    preview.resolve(preview_ctx)
+    window = preview.process_audio(np.zeros((sr * 2, 2), np.float32), preview_ctx)
+    assert np.allclose(window, whole[sr * 2:], atol=2e-6), "preview score moved off the clip timeline"
+
+
+def test_optical_composite_and_color_switches_are_live():
+    """New optical and color dials have real zero stops and visible active states."""
+    from aesthetician.engine.graph import Context, get_effect
+
+    ctx = Context(160, 120, 24.0, 48, seed=9)
+    frame = np.random.default_rng(4).random((120, 160, 3)).astype(np.float32)
+
+    flat = get_effect("optical_composite")()
+    flat.resolve(ctx)
+    flat.prepare(ctx)
+    assert flat.process(frame.copy(), ctx) is not None
+    assert np.array_equal(flat.process(frame.copy(), ctx), frame)
+
+    active = get_effect("optical_composite")(softness=0.4, matte_line=0.6, registration=0.8,
+                                               layer_haze=0.2, density_breath=0.3)
+    active.resolve(ctx)
+    active.prepare(ctx)
+    treated = active.process(frame.copy(), ctx)
+    assert float(np.abs(treated - frame).mean()) > 0.005
+
+    mono_off = get_effect("mono")(amount=0.0)
+    mono_off.resolve(ctx)
+    assert np.array_equal(mono_off.process(frame.copy(), ctx), frame)
+    mono_on = get_effect("mono")(amount=1.0)
+    mono_on.resolve(ctx)
+    assert not np.array_equal(mono_on.process(frame.copy(), ctx), frame)
+
+    sixties = get_effect("stock")(profile="eastman_60s")
+    eighties = get_effect("stock")(profile="kodak_80s")
+    sixties.resolve(ctx)
+    eighties.resolve(ctx)
+    assert not np.allclose(sixties.process(frame.copy(), ctx), eighties.process(frame.copy(), ctx))
+
+
 def test_interlaced_codec_era_survives_an_ffmpeg_without_top():
     """codec_era's interlaced mode must not lean on the removed -top option.
 

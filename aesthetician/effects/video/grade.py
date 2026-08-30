@@ -189,7 +189,8 @@ class StockLook(Effect):
     PARAMS = (
         Param("profile", "Profile", "enum", "none",
               choices=("none", "technicolor3", "technicolor2", "kodachrome", "ektachrome",
-                       "eastman_70s", "agfa_60s", "orwo_east", "vision_90s", "tube_70s", "tube_80s"),
+                       "eastman_60s", "eastman_70s", "kodak_80s", "agfa_60s", "orwo_east",
+                       "vision_90s", "tube_70s", "tube_80s"),
               desc="Era color-rendering profile."),
         Param("strength", "Strength", "float", 1.0, 0.0, 1.0),
     )
@@ -200,7 +201,9 @@ class StockLook(Effect):
         "technicolor2": np.array([[1.15, 0.10, -0.25], [0.05, 0.95, 0.00], [-0.30, 0.20, 1.10]]),
         "kodachrome": np.array([[1.22, -0.14, -0.08], [-0.06, 1.10, -0.04], [-0.04, -0.10, 1.14]]),
         "ektachrome": np.array([[1.08, -0.04, -0.04], [-0.02, 1.04, -0.02], [0.00, -0.06, 1.12]]),
+        "eastman_60s": np.array([[1.18, -0.09, -0.09], [-0.05, 1.12, -0.07], [-0.04, -0.10, 1.14]]),
         "eastman_70s": np.array([[1.10, -0.03, -0.07], [-0.02, 1.02, 0.00], [-0.04, -0.02, 1.02]]),
+        "kodak_80s": np.array([[1.10, -0.04, -0.06], [-0.03, 1.06, -0.03], [-0.04, -0.01, 1.05]]),
         "agfa_60s": np.array([[1.06, 0.02, -0.08], [0.02, 1.00, -0.02], [-0.02, 0.04, 0.98]]),
         "orwo_east": np.array([[1.02, 0.06, -0.08], [0.04, 0.96, 0.00], [0.02, 0.08, 0.90]]),
         "vision_90s": np.array([[1.12, -0.08, -0.04], [-0.04, 1.08, -0.04], [-0.02, -0.06, 1.08]]),
@@ -209,7 +212,8 @@ class StockLook(Effect):
     }
     _SAT = {
         "technicolor3": 1.35, "technicolor2": 1.10, "kodachrome": 1.18, "ektachrome": 1.06,
-        "eastman_70s": 0.92, "agfa_60s": 0.95, "orwo_east": 0.85, "vision_90s": 1.05,
+        "eastman_60s": 1.12, "eastman_70s": 0.92, "kodak_80s": 1.02,
+        "agfa_60s": 0.95, "orwo_east": 0.85, "vision_90s": 1.05,
         "tube_70s": 0.95, "tube_80s": 1.12,
     }
 
@@ -238,6 +242,8 @@ class Mono(Effect):
     kind = "frame"
     desc = "Monochrome conversion with period filter response and optional paper/print tint."
     PARAMS = (
+        Param("amount", "Amount", "float", 1.0, 0.0, 1.0,
+              desc="1 = full monochrome; 0 leaves the source color intact."),
         Param("response", "Film Response", "enum", "panchromatic",
               choices=("panchromatic", "orthochromatic", "blue_sensitive", "modern"),
               desc="Orthochromatic (pre-1927) renders reds dark; blue-sensitive even darker lips/skin."),
@@ -260,6 +266,9 @@ class Mono(Effect):
     }
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
+        amount = self.v["amount"]
+        if amount <= 0:
+            return frame
         w = np.asarray(self._W[self.v["response"]], np.float32)
         y = frame @ w
         x = np.repeat(y[..., None], 3, axis=-1)
@@ -267,4 +276,6 @@ class Mono(Effect):
             t = np.asarray(self._T[self.v["tint"]], np.float32)
             gains = 1.0 + (t - 1.0) * self.v["tint_amt"]
             x = x * gains
+        if amount < 1.0:
+            x = frame * (1.0 - amount) + x * amount
         return np.clip(x, 0.0, 1.0).astype(np.float32)
