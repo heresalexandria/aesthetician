@@ -376,6 +376,11 @@ register_preset(Preset(
         ("a_agc", {"amount": 0.6}),
         ("a_speaker", {"device": "tv_mono_1985", "strength": 0.45}),
     ],
+    variants=[
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                video={"framing.corner_radius": 0.0}),
+    ],
 ))
 
 register_preset(Preset(

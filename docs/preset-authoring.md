@@ -32,6 +32,20 @@ exhibition.py effects, projection).
 → transmission (radio/phone/codec) → device (a_speaker) → room (a_room/a_slap)
 → beds last (a_projector, a_bed, a_hum).
 
+### Real digital codec controls
+
+`codec_era` uses the actual ffmpeg encoders. MPEG-1/2/4, H.264, FLV, H.263 and MJPEG
+use `kbps`, or their period-style `qscale` when it is above zero. H.264 uses
+libx264 and has two deliberately exclusive rate-control modes: `crf=-1` uses
+`kbps`; `crf=0..51` uses constant quality and ignores `kbps` (0 is lossless,
+18 is visually transparent, 23 is a common delivery value). Do not use
+`qscale` for H.264 because its quantizer has different semantics.
+
+For contemporary camera, mobile and streaming sound, `a_codec_aac` performs a
+real native AAC-LC round trip. `kbps` is the total stream bitrate, and `mono`
+controls the encoded channel count. Keep MP3 on period web/Flash chains where
+MP3 is the historically correct carrier.
+
 The `captions` effect belongs to the presentation stage: text is drawn onto
 whatever the chain has already made of the picture. The captions *family*
 keeps deliberately pure single-effect chains with no `proc_height`, so the

@@ -245,6 +245,87 @@ def test_source_counts_match_the_registry():
     )
 
 
+def test_source_preserving_aesthetic_collection_contract():
+    """The requested historical collection must never become an edit preset.
+
+    These looks may model the camera, stock, carrier, transfer, and playback,
+    but the user's frames, timing, graphics, and programme audio remain theirs.
+    Keep this guard close to the registry count check so adding a tempting
+    editorial effect fails before a release is packaged.
+    """
+    from aesthetician.engine.presets import all_presets
+
+    collection = {
+        pid: preset
+        for pid, preset in all_presets().items()
+        if "source-preserving" in preset.tags
+    }
+    assert len(collection) == 138, sorted(collection)
+    assert all(pid.startswith("auth-") for pid in collection), sorted(collection)
+
+    forbidden_video = {
+        "cadence", "animate_on", "frame_damage", "codec_glitch",
+        "vcr_transport", "changeover", "tape_junk", "framing",
+        "captions", "osd", "timestamp",
+    }
+    forbidden_audio = {
+        "a_gain", "a_bed", "a_projector", "a_cd_skip", "a_needle",
+        "a_digital_glitch", "a_dat_error", "a_8track",
+    }
+
+    for pid, preset in collection.items():
+        video_keys = {effect for effect, _ in preset.video}
+        audio_keys = {effect for effect, _ in preset.audio}
+        assert preset.video, f"{pid} has no capture/medium treatment"
+        assert preset.audio, f"{pid} has no period-appropriate audio treatment"
+        assert not video_keys & forbidden_video, (pid, video_keys & forbidden_video)
+        assert not audio_keys & forbidden_audio, (pid, audio_keys & forbidden_audio)
+
+        # A variant cannot smuggle a forbidden effect back into the chain.
+        for variant in preset.variants:
+            variant_video = {path.split(".", 1)[0].split("#", 1)[0]
+                             for path in variant.video}
+            variant_audio = {path.split(".", 1)[0].split("#", 1)[0]
+                             for path in variant.audio}
+            assert not variant_video & forbidden_video, (pid, variant.id, variant_video)
+            assert not variant_audio & forbidden_audio, (pid, variant.id, variant_audio)
+
+
+def test_legacy_matches_offer_source_clean_transfers():
+    """Existing matches with incidental loss/masking expose a neutral carrier variant."""
+    from aesthetician.engine.presets import all_presets
+
+    expected = {
+        "neorealismo-1948": {
+            "frame_damage.splice_skip_rate": 0.0,
+            "frame_damage.slip_rate": 0.0,
+            "frame_damage.blotch_rate": 0.0,
+            "frame_damage.static_flash": 0.0,
+            "frame_damage.burn": False,
+        },
+        "golf-sunday-1977": {"framing.corner_radius": 0.0},
+        "talk-show-1984": {"framing.corner_radius": 0.0},
+        "game-show-1978": {"framing.corner_radius": 0.0},
+        "fitness-vhs-1984": {"a_video_tape_audio.dropout_rate": 0.0},
+        "corporate-umatic-1988": {"a_video_tape_audio.dropout_rate": 0.0},
+        "tabloid-reenactment-1992": {"a_video_tape_audio.dropout_rate": 0.0},
+        "local-cable-infomercial-1997": {"a_video_tape_audio.dropout_rate": 0.0},
+        "wedding-master-1991": {"a_tape_dropouts.rate": 0.0},
+        "vhs-dub-generation": {"a_tape_dropouts.rate": 0.0},
+    }
+
+    presets = all_presets()
+    for pid, overrides in expected.items():
+        variant = presets[pid].variant("source-clean")
+        authored = {**variant.video, **variant.audio}
+        assert authored.items() >= overrides.items(), (pid, authored)
+
+    # Their aspect treatment is matte-box only: it retains every source pixel.
+    for pid in ("golf-sunday-1977", "talk-show-1984", "game-show-1978"):
+        framing = next(params for eid, params in presets[pid].video if eid == "framing")
+        assert framing.get("mode", "box") == "box" and framing.get("zoom", 0.0) == 0.0
+
+
 def test_segmenting():
     tone = get_effect("tone")()
     fade = get_effect("fade")()
@@ -779,6 +860,54 @@ def test_optional_ffmpeg_encoders_degrade_instead_of_dying():
         digicodec._available_encoders = real
 
 
+def test_aac_codec_is_real_mono_capable_and_fails_soft():
+    """Modern source presets use native AAC, not an EQ approximation.
+
+    Exercise the real encode/decode leg and its channel control, then remove
+    AAC from the reported encoder inventory and prove that an unusually small
+    ffmpeg build copies the source rather than aborting the render.
+    """
+    import subprocess
+
+    from aesthetician.engine import media
+    from aesthetician.effects.audio import digicodec
+
+    root = os.path.join(os.path.dirname(__file__), "..")
+    out_dir = os.path.join(root, "out")
+    os.makedirs(out_dir, exist_ok=True)
+    src = os.path.join(out_dir, "_t_aac_src.wav")
+    encoded = os.path.join(out_dir, "_t_aac_roundtrip.wav")
+    copied = os.path.join(out_dir, "_t_aac_fallback.wav")
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "sine=f=733:sample_rate=48000:duration=1.03", "-ac", "2",
+         "-c:a", "pcm_s24le", src], check=True,
+    )
+
+    ctx = Context(width=64, height=48, fps=30.0, n_frames=31, sr=48000, channels=2)
+    effect = get_effect("a_codec_aac")(kbps=64, mono=True)
+    effect.resolve(ctx)
+    effect.prepare(ctx)
+    assert effect._usable, "AAC is a required encoder in the supported ffmpeg build"
+    effect.file_pass(src, encoded, ctx)
+    got = media.probe(encoded)
+    assert got.has_audio and got.channels == 1, got
+    assert abs(got.duration - 1.03) < 0.04, got.duration
+
+    real = digicodec._available_encoders
+    digicodec._available_encoders = lambda: frozenset()
+    try:
+        fallback = get_effect("a_codec_aac")(kbps=128, mono=False)
+        fallback.resolve(ctx)
+        fallback.prepare(ctx)
+        assert fallback._usable is False
+        fallback.file_pass(src, copied, ctx)
+        with open(src, "rb") as before, open(copied, "rb") as after:
+            assert before.read() == after.read(), "missing AAC must be a byte-for-byte pass-through"
+    finally:
+        digicodec._available_encoders = real
+
+
 def test_audio_effects_hand_back_the_block_they_were_given():
     """An audio effect must return exactly the samples it was passed.
 
@@ -1041,6 +1170,71 @@ def test_interlaced_codec_era_survives_an_ffmpeg_without_top():
     # Both generations, every frame: interlaced and top field first.
     assert frame_flags and all(f.startswith("1,1") for f in frame_flags), frame_flags[:4]
     assert media.probe(out).n_frames >= 28
+
+
+def test_h264_codec_era_keeps_bitrate_and_crf_modes_distinct():
+    """libx264 must receive bitrate or CRF control, never an accidental mix."""
+    ctx = Context(width=192, height=144, fps=30.0, n_frames=30, seed=1)
+
+    bitrate = get_effect("codec_era")(
+        codec="h264", kbps=2800, qscale=19, crf=-1, gop=48,
+    )
+    bitrate.resolve(ctx)
+    bargs = bitrate._codec_args("h264", None)
+    assert bargs[bargs.index("-c:v") + 1] == "libx264", bargs
+    assert bargs[bargs.index("-b:v") + 1] == "2800k", bargs
+    assert "-maxrate" in bargs and "-bufsize" in bargs, bargs
+    assert "-crf" not in bargs and "-q:v" not in bargs, bargs
+
+    constant_quality = get_effect("codec_era")(
+        codec="h264", kbps=2800, qscale=19, crf=22, gop=48,
+    )
+    constant_quality.resolve(ctx)
+    cargs = constant_quality._codec_args("h264", None)
+    assert cargs[cargs.index("-crf") + 1] == "22", cargs
+    assert "-b:v" not in cargs and "-maxrate" not in cargs, cargs
+    assert "-q:v" not in cargs, cargs
+
+    lossless = get_effect("codec_era")(codec="h264", crf=0)
+    lossless.resolve(ctx)
+    largs = lossless._codec_args("h264", None)
+    assert largs[largs.index("-crf") + 1] == "0", largs
+    assert "-profile:v" not in largs, "plain High rejects x264 lossless"
+
+
+def test_source_modern_uses_avc_aac_without_rewriting_earlier_web_codecs():
+    """2010s carriers are AVC/AAC; Flash, ASP and HDV remain of their time."""
+    from aesthetician.engine.presets import all_presets
+
+    presets = all_presets()
+    avc_aac = {
+        "auth-anime-web-fansub-encode-2006",
+        "auth-dslr-indie-naturalism-2012",
+        "auth-gopro-action-footage-2014",
+        "auth-body-camera-evidence-2017",
+        "auth-dashcam-archive-2015",
+        "auth-doorbell-camera-night-2018",
+        "auth-streaming-true-crime-2017",
+        "auth-square-social-filter-2013",
+        "auth-asmr-close-mic-2018",
+    }
+    for pid in avc_aac:
+        preset = presets[pid]
+        video = dict(preset.video)
+        audio_ids = {eid for eid, _ in preset.audio}
+        assert video["codec_era"]["codec"] == "h264", (pid, video["codec_era"])
+        assert "a_codec_aac" in audio_ids and "a_codec_mp3" not in audio_ids, (pid, audio_ids)
+
+    period_carriers = {
+        "auth-early-youtube-webcam-2006": ("flv1", "a_codec_mp3"),
+        "auth-machinima-web-series-2005": ("mpeg4", "a_codec_mp3"),
+        "auth-food-network-studio-2005": ("mpeg2video", "a_codec_mp3"),
+        "auth-live-truck-local-news-2004": ("mpeg2video", "a_codec_mp3"),
+    }
+    for pid, (codec, audio_codec) in period_carriers.items():
+        preset = presets[pid]
+        assert dict(preset.video)["codec_era"]["codec"] == codec, pid
+        assert audio_codec in {eid for eid, _ in preset.audio}, pid
 
 
 def test_every_effect_can_be_switched_off_in_place():

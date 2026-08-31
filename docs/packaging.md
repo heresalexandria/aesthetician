@@ -148,7 +148,7 @@ env -i HOME=/tmp PATH=/usr/bin:/bin \
   "from aesthetician.engine.graph import all_effects; \
    from aesthetician.engine.presets import all_presets; \
    print(len(all_effects()), 'effects', len(all_presets()), 'presets')"
-# expect: 103 effects 192 presets
+# expect: the current effect and preset totals reported by the source scan
 
 # 2. a real render, from a COPY of the app, to prove relocatability
 cp -R app/dist/mac-arm64/Aesthetician.app /tmp/AesthRelo/

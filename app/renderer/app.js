@@ -1787,9 +1787,9 @@ const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAA
    wanted at all. Then the looks people reach for most; audio-only sits last
    because those rows leave the picture untouched (their thumbnails are all the
    same untreated frame, so alphabetical order opened the app on 29 of them). */
-const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'western', 'arthouse', 'modern', 'broadcast',
-  'cartoon', 'digital', 'world', 'decay', 'exhibition', 'print', 'transmission', 'stylized',
-  'captions', 'audio'];
+const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'archive', 'western', 'arthouse', 'modern',
+  'broadcast', 'cartoon', 'digital', 'world', 'decay', 'exhibition', 'print', 'transmission',
+  'stylized', 'captions', 'audio'];
 
 function famRank(f) {
   // With an audio source, the audio-first presets are the relevant ones, so they
@@ -1825,7 +1825,7 @@ function taglineFor(p) {
 }
 
 /* Exactly one animated image exists in the document at any time: it is moved
-   into whichever row the pointer is over. 192 rows never animate at once. */
+   into whichever row the pointer is over. The whole library never animates at once. */
 const hoverAnim = document.createElement('img');
 hoverAnim.className = 't-anim';
 hoverAnim.alt = '';
@@ -2624,7 +2624,7 @@ async function pickOnly(id) {
   else if (choice === 'go') applyOnly(id);
 }
 
-/* Moving the highlight is a class flip, not a rebuild of 192 rows - which is
+/* Moving the highlight is a class flip, not a rebuild of the full library - which is
    what makes holding ↓ feel like scrubbing rather than stuttering. A favorited
    preset owns two rows and both light up. */
 function syncSelection() {

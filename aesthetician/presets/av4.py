@@ -240,6 +240,9 @@ register_preset(Preset(
                        "vhs.dropouts": 2.8, "vhs.time_base_error": 0.48},
                 audio={"a_video_tape_audio.tracking": 0.65,
                        "a_video_tape_audio.dropout_rate": 18.0, "a_agc.amount": 0.9}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_video_tape_audio.dropout_rate": 0.0}),
     ],
 ))
 
@@ -400,6 +403,9 @@ register_preset(Preset(
                        "vhs.dropouts": 0.0, "vhs.time_base_error": 0.04},
                 audio={"a_video_tape_audio.tracking": 0.04,
                        "a_video_tape_audio.noise_db": -57.0}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_video_tape_audio.dropout_rate": 0.0}),
     ],
 ))
 
@@ -463,6 +469,9 @@ register_preset(Preset(
                        "optics.focus_drift": 0.04, "vhs.luma_noise": 0.12},
                 audio={"a_video_tape_audio.tracking": 0.08,
                        "a_historical_mic.handling": 0.0, "a_room.mix": 0.08}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_video_tape_audio.dropout_rate": 0.0}),
     ],
 ))
 
@@ -564,6 +573,9 @@ register_preset(Preset(
                        "balance.shadow_amt": 0.24},
                 audio={"a_video_tape_audio.tracking": 0.7,
                        "a_video_tape_audio.dropout_rate": 22.0, "a_agc.amount": 0.95}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_video_tape_audio.dropout_rate": 0.0}),
     ],
 ))
 

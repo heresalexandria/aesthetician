@@ -121,6 +121,13 @@ register_preset(Preset(
         Variant("bicycle-print", "Bicycle Print", "Screened nightly for a decade, repaired with tape.",
                 video={"dust.density": 1.0, "scratches.count": 5,
                        "frame_damage.splice_skip_rate": 3.0, "tone.lift": 0.08}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                video={"frame_damage.splice_skip_rate": 0.0,
+                       "frame_damage.slip_rate": 0.0,
+                       "frame_damage.blotch_rate": 0.0,
+                       "frame_damage.static_flash": 0.0,
+                       "frame_damage.burn": False}),
     ],
 ))
 

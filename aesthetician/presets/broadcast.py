@@ -163,6 +163,11 @@ register_preset(Preset(
         ("a_tape_hiss", {"level_db": -46.0}),
         ("a_speaker", {"device": "tv_mono_1985", "strength": 0.35}),
     ],
+    variants=[
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                video={"framing.corner_radius": 0.0}),
+    ],
 ))
 
 register_preset(Preset(
