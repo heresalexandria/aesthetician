@@ -53,6 +53,17 @@ class Preset:
 
 _PRESETS: dict[str, Preset] = {}
 
+# Preset identifiers are persisted by the desktop app and commonly appear in
+# CLI scripts.  Keep renamed, brand-specific identifiers readable without
+# advertising them as separate presets in the catalog.
+PRESET_ALIASES: dict[str, str] = {
+    "cartoon-filmation-1975": "cartoon-syndicated-1975",
+    "auth-early-youtube-webcam-2006": "auth-early-video-sharing-webcam-2006",
+    "auth-food-network-studio-2005": "auth-cable-food-studio-2005",
+    "auth-gopro-action-footage-2014": "auth-first-wave-action-camera-2014",
+    "auth-nasa-mission-tape-1972": "auth-space-agency-mission-tape-1972",
+}
+
 
 def register_preset(p: Preset) -> Preset:
     if p.id in _PRESETS:
@@ -64,6 +75,7 @@ def register_preset(p: Preset) -> Preset:
 def get_preset(pid: str) -> Preset:
     from .. import presets  # noqa: F401  (triggers registration)
 
+    pid = PRESET_ALIASES.get(pid, pid)
     if pid not in _PRESETS:
         import difflib
 

@@ -184,7 +184,7 @@ register_preset(Preset(
                   "phase_noise": 1.2, "rainbow": 0.12, "dot_crawl": 0.1,
                   "chroma_agc": 0.1}),
         ("vignette", {"amount": 0.28, "softness": 0.68, "roundness": 0.65}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7200.0}),
@@ -234,7 +234,7 @@ register_preset(Preset(
         ("frame_damage", {"splice_skip_rate": 2.0, "blotch_rate": 0.8}),
         ("cadence", {"pattern": "pulldown_judder", "field_blend": 0.3}),
         ("vignette", {"amount": 0.35}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_film_audio(hi=5000.0, cell=-40.0, rolloff="newsreel_1930s", ratio=5.0),
 ))
@@ -316,7 +316,7 @@ register_preset(Preset(
         ("scratches", {"count": 5, "transient_rate": 2.0}),
         ("frame_damage", {"splice_skip_rate": 3.0, "slip_rate": 0.8}),
         ("vignette", {"amount": 0.4}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_film_audio(hi=5200.0, cell=-40.0, rolloff="newsreel_1930s", ratio=5.0),
 ))
@@ -367,7 +367,7 @@ register_preset(Preset(
         ("ntsc", {"strength": 0.95, "phase_noise": 3.2, "rainbow": 0.4, "dot_crawl": 0.35}),
         ("interlace", {"combing": 0.55}),
         ("crt", {"bloom": 0.45, "scan_strength": 0.12, "misconvergence": 0.5}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.07}),
+        ("framing", {"aspect": "source", "corner_radius": 0.07}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -42.0}),
@@ -543,7 +543,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 2.5}),
         ("vignette", {"amount": 0.45, "softness": 0.6}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -575,7 +575,7 @@ register_preset(Preset(
                  "time_base_error": 0.35}),
         ("interlace", {"combing": 0.55}),
         ("crt", {"bloom": 0.4, "scan_strength": 0.12}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -40.0}),

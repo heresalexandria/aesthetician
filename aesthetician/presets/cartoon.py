@@ -4,18 +4,18 @@ from ..engine.presets import Preset, Variant, register_preset
 
 register_preset(Preset(
     id="cartoon-saturday-1969",
-    name="Saturday Morning 1969",
+    name="Saturday-Morning Limited Animation",
     family="cartoon",
     era="1969",
-    desc="The Hanna-Barbera chain complete: cels on twos with wobbling registration, dirt under the rostrum glass, a 16mm print aired through NTSC. Cereal not included.",
+    desc="Late-1960s limited television animation: cels on twos with wobbling registration, dirt under the rostrum glass, and a 16mm print aired through NTSC.",
     tagline="Cels on twos, rostrum dirt, 16mm print",
-    tags=("hanna-barbera", "60s", "cel", "tv"),
+    tags=("limited-animation", "60s", "cel", "tv"),
     proc_height=576,
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 14, "flatness": 0.5}),
-        ("color_era", {"profile": "hb_1960s_tv", "strength": 0.9}),
-        ("animate_on", {"pattern": "hb_mixed"}),
+        ("color_era", {"profile": "limited_1960s_tv", "strength": 0.9}),
+        ("animate_on", {"pattern": "limited_mixed"}),
         ("cel_wobble", {"amount": 1.2}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.09, "glass_shadows": 0.15}),
         ("paper_texture", {"amount": 0.05}),
@@ -68,7 +68,7 @@ register_preset(Preset(
         ("dust", {"density": 0.9, "size": 1.3, "hairs": 0.6}),
         ("scratches", {"count": 4, "transient_rate": 1.2}),
         ("vignette", {"amount": 0.45}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 180.0, "high_hz": 4800.0}),
@@ -100,7 +100,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.12}),
         ("dust", {"density": 0.5}),
         ("vignette", {"amount": 0.3}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7000.0}),
@@ -122,8 +122,8 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 14, "flatness": 0.4}),
-        ("color_era", {"profile": "hb_1970s", "strength": 0.85}),
-        ("animate_on", {"pattern": "hb_mixed"}),
+        ("color_era", {"profile": "limited_1970s", "strength": 0.85}),
+        ("animate_on", {"pattern": "limited_mixed"}),
         ("cel_wobble", {"amount": 1.0}),
         ("grain", {"amount": 0.3, "size": 2.0, "chroma_grain": 0.15, "stock": "doc_16"}),
         ("ntsc", {"strength": 0.9, "phase_noise": 2.4, "rainbow": 0.35, "dot_crawl": 0.35}),

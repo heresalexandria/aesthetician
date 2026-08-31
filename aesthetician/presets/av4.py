@@ -22,7 +22,7 @@ register_preset(Preset(
         ("interlace", {"field_order": "tff", "combing": 0.58, "twitter": 0.38}),
         ("crt", {"scan_strength": 0.16, "bloom": 0.54, "beam_bloom": 0.42,
                  "glass_glow": 0.18, "curvature": 0.03}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -69,7 +69,7 @@ register_preset(Preset(
                   "phase_noise": 2.2, "setup_level": 0.062, "diff_phase": 1.4}),
         ("interlace", {"combing": 0.52, "twitter": 0.3}),
         ("crt", {"bloom": 0.3, "beam_bloom": 0.24, "misconvergence": 0.45}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -117,7 +117,7 @@ register_preset(Preset(
                   "diff_phase": 2.6, "chroma_agc": 0.2, "setup_level": 0.05}),
         ("interlace", {"combing": 0.48, "twitter": 0.24}),
         ("crt", {"bloom": 0.38, "beam_bloom": 0.38, "misconvergence": 0.55}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_analog_dub", {"format": "reel_15ips", "generations": 1,
@@ -169,7 +169,7 @@ register_preset(Preset(
                   "fringing": 2.1, "setup_level": 0.055}),
         ("interlace", {"combing": 0.54, "twitter": 0.24}),
         ("crt", {"bloom": 0.25, "beam_bloom": 0.2}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -217,7 +217,7 @@ register_preset(Preset(
                  "chroma_noise": 0.3, "head_switch": 0.58, "dropouts": 0.7,
                  "time_base_error": 0.24, "flagging": 0.15, "tracking_error": 0.04}),
         ("interlace", {"combing": 0.58, "twitter": 0.3}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_video_tape_audio", {"format": "vhs_linear", "tracking": 0.25,
@@ -270,7 +270,7 @@ register_preset(Preset(
                   "sync_jitter": 0.12}),
         ("interlace", {"combing": 0.54, "twitter": 0.36}),
         ("crt", {"bloom": 0.42, "beam_bloom": 0.46, "misconvergence": 0.35}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -324,7 +324,7 @@ register_preset(Preset(
                  "time_base_error": 0.1, "flagging": 0.04, "tracking_error": 0.0}),
         ("interlace", {"combing": 0.48, "twitter": 0.25}),
         ("crt", {"bloom": 0.16, "beam_bloom": 0.12, "misconvergence": 0.14}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_video_tape_audio", {"format": "betahifi", "tracking": 0.12,
@@ -378,7 +378,7 @@ register_preset(Preset(
                  "chroma_noise": 0.15, "head_switch": 0.28, "dropouts": 0.35,
                  "time_base_error": 0.12, "flagging": 0.06, "tracking_error": 0.01}),
         ("interlace", {"combing": 0.5, "twitter": 0.28}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -440,7 +440,7 @@ register_preset(Preset(
                  "chroma_noise": 0.24, "head_switch": 0.22, "dropouts": 0.4,
                  "time_base_error": 0.1, "flagging": 0.05, "fm_sparkle": 0.18}),
         ("interlace", {"combing": 0.62, "twitter": 0.34}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.58,
@@ -494,7 +494,7 @@ register_preset(Preset(
         ("codec_era", {"codec": "mjpeg", "kbps": 380, "qscale": 14,
                        "res": "240p", "gop": 1, "passes": 1,
                        "field_mode": "progressive", "denoise_pre": 0.0}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -547,7 +547,7 @@ register_preset(Preset(
                  "time_base_error": 0.2, "flagging": 0.08, "tracking_error": 0.02,
                  "fm_sparkle": 0.22}),
         ("interlace", {"combing": 0.58, "twitter": 0.34}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -603,7 +603,7 @@ register_preset(Preset(
         ("codec_era", {"codec": "mjpeg", "kbps": 900, "qscale": 12,
                        "res": "240p", "gop": 1, "passes": 1,
                        "field_mode": "progressive", "denoise_pre": 0.0}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),

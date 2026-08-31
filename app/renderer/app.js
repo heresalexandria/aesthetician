@@ -128,6 +128,30 @@ function saveHistory() {
   } catch (_) { /* storage full or unavailable: remembering is a courtesy */ }
 }
 
+/* Preset ids are durable user data: favorites, custom looks, stacks and export
+   history can all outlive the release that named them.  The engine schema
+   carries quiet redirects for renamed presets so those saves follow the new,
+   generic catalog names instead of disappearing. */
+function migratePresetAliases() {
+  const aliases = (G.schema && G.schema.preset_aliases) || {};
+  const resolve = (id) => aliases[id] || id;
+  if (!Object.keys(aliases).length) return;
+
+  G.favs = new Set([...G.favs].map(resolve));
+  for (const custom of G.customs) custom.base = resolve(custom.base);
+  for (const stack of G.stacks) {
+    for (const layer of stack.layers || []) layer.base = resolve(layer.base);
+  }
+  for (const run of G.history) {
+    for (const layer of run.layers || []) {
+      if (layer.base) layer.base = resolve(layer.base);
+      if (layer.presetId) layer.presetId = resolve(layer.presetId);
+    }
+  }
+  saveStore();
+  saveHistory();
+}
+
 /* ── layers ──────────────────────────────────────────────────────────
    A session is a stack of layers rendered bottom to top, each one treating what
    the one below actually produced. One layer is the overwhelmingly common case
@@ -257,6 +281,7 @@ const videoB = $('video-b'); // original
   }
   try {
     G.schema = await window.aesth.schema();
+    migratePresetAliases();
     buildFilterBar();
     buildPresetList();
   } catch (err) {

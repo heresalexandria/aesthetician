@@ -260,7 +260,7 @@ def test_source_preserving_aesthetic_collection_contract():
         for pid, preset in all_presets().items()
         if "source-preserving" in preset.tags
     }
-    assert len(collection) == 138, sorted(collection)
+    assert len(collection) == 141, sorted(collection)
     assert all(pid.startswith("auth-") for pid in collection), sorted(collection)
 
     forbidden_video = {
@@ -324,6 +324,56 @@ def test_legacy_matches_offer_source_clean_transfers():
     for pid in ("golf-sunday-1977", "talk-show-1984", "game-show-1978"):
         framing = next(params for eid, params in presets[pid].video if eid == "framing")
         assert framing.get("mode", "box") == "box" and framing.get("zoom", 0.0) == 0.0
+
+
+def test_preset_framing_defaults_to_the_source_aspect():
+    """A look may suggest an era ratio, but it must not impose one by default."""
+    from aesthetician.engine.presets import all_presets
+
+    framed = []
+    for preset in all_presets().values():
+        for eid, params in preset.video:
+            if eid == "framing":
+                framed.append(preset.id)
+                assert params.get("aspect", "source") == "source", (preset.id, params)
+    assert len(framed) >= 90
+
+    ctx = Context(width=320, height=180, fps=30.0, n_frames=1)
+    effect = get_effect("framing")(aspect="source", mode="crop")
+    effect.resolve(ctx)
+    effect.prepare(ctx)
+    frame = np.random.default_rng(4).random((180, 320, 3), dtype=np.float32)
+    assert np.array_equal(effect.process(frame, ctx), frame)
+
+
+def test_ip_neutral_cartoon_enums_accept_legacy_saved_values():
+    """Old sessions keep rendering while the schema exposes generic names."""
+    ctx = Context(width=64, height=48, fps=30.0, n_frames=4)
+    cadence = get_effect("animate_on")(pattern="hb_mixed")
+    cadence.resolve(ctx)
+    assert cadence.v["pattern"] == "limited_mixed"
+
+    color = get_effect("color_era")(profile="filmation_1975")
+    color.resolve(ctx)
+    assert color.v["profile"] == "syndication_1975"
+
+
+def test_ip_neutral_preset_names_accept_legacy_saved_ids():
+    """Previously published ids redirect without reappearing in the catalog."""
+    from aesthetician.engine.presets import all_presets, get_preset
+    from aesthetician.schema import full_schema
+
+    aliases = {
+        "cartoon-filmation-1975": "cartoon-syndicated-1975",
+        "auth-early-youtube-webcam-2006": "auth-early-video-sharing-webcam-2006",
+        "auth-food-network-studio-2005": "auth-cable-food-studio-2005",
+        "auth-gopro-action-footage-2014": "auth-first-wave-action-camera-2014",
+        "auth-nasa-mission-tape-1972": "auth-space-agency-mission-tape-1972",
+    }
+    assert full_schema()["preset_aliases"] == aliases
+    for old, new in aliases.items():
+        assert old not in all_presets()
+        assert get_preset(old) is get_preset(new)
 
 
 def test_segmenting():
@@ -1210,7 +1260,7 @@ def test_source_modern_uses_avc_aac_without_rewriting_earlier_web_codecs():
     avc_aac = {
         "auth-anime-web-fansub-encode-2006",
         "auth-dslr-indie-naturalism-2012",
-        "auth-gopro-action-footage-2014",
+        "auth-first-wave-action-camera-2014",
         "auth-body-camera-evidence-2017",
         "auth-dashcam-archive-2015",
         "auth-doorbell-camera-night-2018",
@@ -1226,9 +1276,9 @@ def test_source_modern_uses_avc_aac_without_rewriting_earlier_web_codecs():
         assert "a_codec_aac" in audio_ids and "a_codec_mp3" not in audio_ids, (pid, audio_ids)
 
     period_carriers = {
-        "auth-early-youtube-webcam-2006": ("flv1", "a_codec_mp3"),
+        "auth-early-video-sharing-webcam-2006": ("flv1", "a_codec_mp3"),
         "auth-machinima-web-series-2005": ("mpeg4", "a_codec_mp3"),
-        "auth-food-network-studio-2005": ("mpeg2video", "a_codec_mp3"),
+        "auth-cable-food-studio-2005": ("mpeg2video", "a_codec_mp3"),
         "auth-live-truck-local-news-2004": ("mpeg2video", "a_codec_mp3"),
     }
     for pid, (codec, audio_codec) in period_carriers.items():

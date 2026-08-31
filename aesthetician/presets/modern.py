@@ -252,7 +252,7 @@ register_preset(Preset(
                    "layers": "color_neg"}),
         ("halation", {"strength": 0.15, "tint": "red_orange", "threshold": 0.78}),
         ("vignette", {"amount": 0.18, "softness": 0.8}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[],
     variants=[

@@ -839,9 +839,9 @@ register_preset(_preset(
 ))
 
 register_preset(_preset(
-    "auth-nasa-mission-tape-1972", "NASA Mission Tape", "1972", "broadcast",
+    "auth-space-agency-mission-tape-1972", "Space-Agency Mission Tape", "1972", "broadcast",
     "A washed institutional color feed preserved on early videotape: raised setup, tired cyan, clipped console whites, narrow composite bandwidth, mild RF instability and oxide noise, while any source telemetry remains untouched and headset speech stays synchronized.",
-    "Washed mission color, RF drift, headset tape", ("70s", "nasa", "mission", "videotape"),
+    "Washed mission color, RF drift, headset tape", ("70s", "space-program", "mission", "videotape"),
     _broadcast(stock="tube_70s", strength=0.68, exposure=0.12, contrast=0.98, lift=0.075,
                knee=0.65, warmth=-0.08, tint=-0.04, shadow_tint="teal", shadow_amt=0.16,
                high_tint="cyan", high_amt=0.08, sat=0.72, soft=0.12, diffusion=0.04,
@@ -1099,6 +1099,32 @@ register_preset(_preset(
               carrier="reel_75ips", generations=2, tracking=0.2,
               noise_db=-55.0, agc=0.5, ratio=5.0, width=0.22),
     proc_height=580, upscale="soft",
+))
+
+register_preset(_preset(
+    "auth-syndicated-limited-animation-1973", "Syndicated Limited-Animation Print", "1973", "cartoon",
+    "A source-preserving cel-and-carrier treatment with flat cheerful paint, clean black outlines, rostrum registration jitter, soft 16 mm grain, light print wear, composite chroma bleed and a boxy mono television master; it does not invent drawing holds, repeated cycles, captions or music.",
+    "Flat cel paint through a worn mono TV master", ("70s", "limited-animation", "cel", "syndication"),
+    [
+        ("cel_flatten", {"levels": 14, "flatness": 0.48, "sat_snap": 0.24}),
+        ("color_era", {"profile": "limited_1970s", "strength": 0.88}),
+        ("cel_wobble", {"amount": 0.9, "rot": 0.05, "layers": 2}),
+        ("cel_dirt", {"density": 0.42, "visibility": 0.075, "glass_shadows": 0.12}),
+        ("ink_line", {"weight": 0.38, "xerox_grit": 0.22}),
+        ("grain", {"amount": 0.34, "size": 2.05, "chroma_grain": 0.11,
+                    "stock": "doc_16", "layers": "print_from_neg", "mottle": 0.08}),
+        ("gate_weave", {"amount": 0.9, "rotation": 0.025}),
+        ("flicker", {"amount": 0.09, "color_flicker": 0.04, "spatial": 0.08}),
+        ("dust", {"density": 0.34, "size": 0.9, "hairs": 0.12}),
+        ("ntsc", {"strength": 0.72, "luma_bw": 3.2, "chroma_bw": 0.62,
+                  "phase_noise": 1.9, "rainbow": 0.3, "dot_crawl": 0.34}),
+        ("interlace", {"combing": 0.42, "twitter": 0.2}),
+        ("crt", {"bloom": 0.27, "scan_strength": 0.08}),
+    ],
+    _tv_audio(mic=None, mono=1.0, low=110.0, high=6800.0,
+              carrier="umatic_linear", tracking=0.24, noise_db=-51.0,
+              agc=0.56, ratio=5.2, width=0.18),
+    proc_height=560, upscale="soft",
 ))
 
 register_preset(_preset(

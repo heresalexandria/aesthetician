@@ -20,8 +20,8 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 
 | | |
 |---|---|
-| **426 presets** | 18 families: film (93), broadcast (57), audio-only (54), world cinema (45), digital (33), VHS (30), cartoon (22), captions (14), modern (14), arthouse (10), archive (9), decay (8), exhibition (7), stylized (7), western (7), transmission (6), print (6), adjust (4) |
-| **680 variants** | alternate states of each look: clean transfers, worn prints, fifth-generation dubs, storm reception, terminal decay |
+| **429 presets** | 18 families: film (93), broadcast (57), audio-only (54), world cinema (45), digital (35), VHS (30), cartoon (23), captions (14), modern (14), arthouse (10), archive (9), decay (8), exhibition (7), stylized (7), western (7), transmission (6), print (6), adjust (4) |
+| **686 variants** | alternate states of each look: clean transfers, worn prints, fifth-generation dubs, storm reception, terminal decay |
 | **114 effects, 692 parameters** | every one exposed and documented, in the app and from the CLI |
 | **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
 
@@ -161,7 +161,7 @@ the one-time repository setup.
 
 - [docs/app-guide.md](docs/app-guide.md) - using the desktop app
 - [docs/usage.md](docs/usage.md) - setup and CLI workflows
-- [docs/catalog.md](docs/catalog.md) - all 426 presets and every knob
+- [docs/catalog.md](docs/catalog.md) - all 429 presets and every knob
 - [docs/historical-coverage.md](docs/historical-coverage.md) - crosswalk for the 200-look historical brief
 - [docs/packaging.md](docs/packaging.md) - building installable macOS/Windows apps
 - [docs/releases.md](docs/releases.md) - how a release is cut, and the CI setup it needs

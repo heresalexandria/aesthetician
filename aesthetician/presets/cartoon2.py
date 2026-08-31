@@ -31,7 +31,7 @@ register_preset(Preset(
         ("dust", {"density": 0.85, "hairs": 0.5}),
         ("scratches", {"count": 3, "transient_rate": 1.0}),
         ("vignette", {"amount": 0.4}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -74,7 +74,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.1}),
         ("dust", {"density": 0.3}),
         ("vignette", {"amount": 0.25}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 9000.0}),
@@ -91,19 +91,19 @@ register_preset(Preset(
 ))
 
 register_preset(Preset(
-    id="cartoon-filmation-1975",
-    name="Filmation Economy",
+    id="cartoon-syndicated-1975",
+    name="Syndicated Limited Animation",
     family="cartoon",
     era="1975",
     desc="The economy plan: heroic four-frame holds, the same run cycle you saw last week, xerox lines over syndication-print wear, one tired mono TV speaker.",
     tagline="Four-frame holds, xerox lines, print wear",
-    tags=("70s", "filmation", "cel", "tv"),
+    tags=("70s", "limited-animation", "cel", "tv"),
     proc_height=560,
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 14, "flatness": 0.5}),
-        ("color_era", {"profile": "filmation_1975", "strength": 0.9}),
-        ("animate_on", {"pattern": "filmation"}),
+        ("color_era", {"profile": "syndication_1975", "strength": 0.9}),
+        ("animate_on", {"pattern": "economy_holds"}),
         ("cel_wobble", {"amount": 1.0}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.08}),
         ("ink_line", {"weight": 0.45, "xerox_grit": 0.5}),
@@ -142,7 +142,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 16, "flatness": 0.45}),
-        ("color_era", {"profile": "nick_90s", "strength": 0.55}),
+        ("color_era", {"profile": "cable_90s", "strength": 0.55}),
         ("tone", {"contrast": 1.12, "knee": 0.84}),
         ("saturation", {"amount": 1.12, "vibrance": 0.15}),
         ("animate_on", {"pattern": "twos"}),
@@ -181,7 +181,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 16, "flatness": 0.45, "sat_snap": 0.35}),
-        ("color_era", {"profile": "nick_90s", "strength": 0.9}),
+        ("color_era", {"profile": "cable_90s", "strength": 0.9}),
         ("animate_on", {"pattern": "twos"}),
         ("cel_wobble", {"amount": 0.8}),
         ("ink_line", {"weight": 0.4}),
@@ -217,7 +217,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 12, "flatness": 0.5}),
-        ("color_era", {"profile": "mtv_1994", "strength": 0.9}),
+        ("color_era", {"profile": "alt_1994", "strength": 0.9}),
         ("animate_on", {"pattern": "threes"}),
         ("cel_wobble", {"amount": 1.4}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.1}),
@@ -381,7 +381,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 1.4}),
         ("flicker", {"amount": 0.2, "character": "projector"}),
         ("dust", {"density": 0.6}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -422,7 +422,7 @@ register_preset(Preset(
         ("ntsc", {"strength": 0.55, "phase_noise": 1.8}),
         ("interlace", {"combing": 0.45}),
         ("crt", {"bloom": 0.35}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 9000.0}),
@@ -464,7 +464,7 @@ register_preset(Preset(
         ("dust", {"density": 0.5}),
         ("scratches", {"count": 1, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.35}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 8000.0}),

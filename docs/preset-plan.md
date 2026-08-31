@@ -22,8 +22,8 @@ timestamps, print fade).
   noir-1947, scope-1958, kodachrome-1964, super8-1974, doc-16mm-1968,
   classroom-1976, grindhouse-1973, eastman-faded-1979, drive-in-1959,
   tv-movie-1977, newsreel-1942
-- **cartoon** - rubberhose-1932, technicolor-1944, saturday-1969 (Hanna-
-  Barbera), rerun-1978, cartoon-vhs-1985, anime-ova-1988
+- **cartoon** - rubberhose-1932, technicolor-1944, saturday-1969
+  limited animation, rerun-1978, cartoon-vhs-1985, anime-ova-1988
 - **digital** - dvd-2001, vcd-1997, webvideo-2006, webcam-2004,
   cameraphone-2007, minidv-2000, digicam-2003, datamosh, security-vcr-1994,
   nightshot-2001

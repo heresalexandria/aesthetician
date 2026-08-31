@@ -13,11 +13,11 @@ class Framing(Effect):
     eid = "framing"
     label = "Framing / Aspect"
     kind = "frame"
-    desc = "Fit the image into an era aspect ratio inside the canvas (letterbox/pillarbox or crop), with CRT-style rounded corners and overscan."
+    desc = "Keep the source/input aspect by default, or fit the image into a chosen era aspect ratio inside the canvas (letterbox/pillarbox or crop), with CRT-style rounded corners and overscan."
     PARAMS = (
-        Param("aspect", "Target Aspect", "enum", "none",
-              choices=("none", "4:3", "16:9", "1.37", "1.85", "2.35", "1:1", "9:16"),
-              desc="Aspect of the framed content."),
+        Param("aspect", "Target Aspect", "enum", "source",
+              choices=("source", "4:3", "16:9", "1.37", "1.85", "2.35", "1:1", "9:16", "none"),
+              desc="Source keeps the input file's aspect. Other choices add a matte or crop."),
         Param("mode", "Fit Mode", "enum", "box",
               choices=("box", "crop"), desc="box = matte bars, crop = center-cut."),
         Param("zoom", "Overscan Zoom", "float", 0.0, 0.0, 0.25, desc="CRT overscan: pushes edges out of frame."),
@@ -54,7 +54,8 @@ class Framing(Effect):
         if (x0, y0, w, h) == (0, 0, W, H) and zoom == 1.0 and self.v["corner_radius"] <= 0:
             return frame
 
-        if self.v["mode"] == "crop" and self.v["aspect"] != "none":
+        target_aspect = self._ASPECTS.get(self.v["aspect"])
+        if self.v["mode"] == "crop" and target_aspect is not None:
             # center-crop source to target aspect, scaled to fill canvas.
             # Overscan zoom pre-shrinks the window first - the dial was simply
             # never read on this branch, which made it a dead knob in crop mode.
@@ -63,7 +64,7 @@ class Framing(Effect):
                 zw, zh = int(W / zoom), int(H / zoom)
                 src = frame[(H - zh) // 2 : (H - zh) // 2 + zh, (W - zw) // 2 : (W - zw) // 2 + zw]
             sh, sw = src.shape[:2]
-            a = self._ASPECTS[self.v["aspect"]]
+            a = target_aspect
             src_a = sw / sh
             if a > src_a:
                 ch = int(round(sw / a))

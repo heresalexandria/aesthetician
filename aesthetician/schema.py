@@ -6,7 +6,7 @@ from typing import Any
 
 from . import __version__
 from .engine.graph import all_effects
-from .engine.presets import all_presets
+from .engine.presets import PRESET_ALIASES, all_presets
 
 
 def effect_schema() -> dict[str, Any]:
@@ -65,4 +65,9 @@ def preset_schema() -> dict[str, Any]:
 
 
 def full_schema() -> dict[str, Any]:
-    return {"version": __version__, "effects": effect_schema(), "presets": preset_schema()}
+    return {
+        "version": __version__,
+        "effects": effect_schema(),
+        "presets": preset_schema(),
+        "preset_aliases": dict(PRESET_ALIASES),
+    }

@@ -40,7 +40,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 1.0}),
         ("vignette", {"amount": 0.55, "radius": 0.7, "softness": 0.5}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -77,7 +77,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.12}),
         ("dust", {"density": 0.5}),
         ("vignette", {"amount": 0.4, "softness": 0.65}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_optical(hi=6500.0, cell=-50.0, rolloff="feature_1940s", ratio=4.0),
     variants=[
@@ -111,7 +111,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "transient_rate": 1.2}),
         ("frame_damage", {"splice_skip_rate": 1.5}),
         ("vignette", {"amount": 0.3}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_optical(hi=6000.0, cell=-46.0, rolloff="classroom_16mm", ratio=4.5),
     variants=[
@@ -148,7 +148,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.7}),
         ("dust", {"density": 0.25}),
         ("vignette", {"amount": 0.35, "softness": 0.7}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 8000.0}),

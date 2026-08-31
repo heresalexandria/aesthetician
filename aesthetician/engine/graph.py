@@ -205,6 +205,9 @@ class Effect:
     kind: EffectKind = "frame"
     desc: str = ""
     PARAMS: tuple[Param, ...] = ()
+    # Renamed enum values can remain valid for saved sessions and CLI scripts
+    # without keeping old, user-facing names in the schema.
+    PARAM_ALIASES: dict[str, dict[Any, Any]] = {}
 
     def __init__(self, **overrides: Any):
         self.overrides = dict(overrides)
@@ -223,6 +226,7 @@ class Effect:
         explicit = set(merged)
         for p in self.PARAMS:
             raw = merged.get(p.name, p.default)
+            raw = self.PARAM_ALIASES.get(p.name, {}).get(raw, raw)
             val = p.coerce(raw)
             if p.iscale and p.kind in ("float", "int") and ctx.intensity != 1.0:
                 val = p.coerce(float(val) * ctx.intensity)

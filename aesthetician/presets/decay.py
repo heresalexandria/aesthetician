@@ -26,7 +26,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 2.0, "blotch_rate": 2.0}),
         ("vignette", {"amount": 0.45}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -69,7 +69,7 @@ register_preset(Preset(
         ("plate", {"pack": "emulsion_decay", "opacity": 0.45, "blend": "screen", "cycle": "hold",
                    "drift": 4.0, "flicker": 0.2}),
         ("vignette", {"amount": 0.55, "softness": 0.55, "roundness": 0.9}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -224,7 +224,7 @@ register_preset(Preset(
                  "dropouts": 8.0, "dropout_burst": 0.6, "tracking_error": 0.2, "sharpen": 0.5}),
         ("interlace", {"combing": 0.5}),
         ("crt", {"bloom": 0.25}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.06}),
+        ("framing", {"aspect": "source", "corner_radius": 0.06}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 9000.0}),
@@ -312,7 +312,7 @@ register_preset(Preset(
                            "frame_edge_crop": 0.4}),
         ("auto_color", {"wb_pump": 0.25, "level_pump": 0.3, "lag_s": 0.8}),
         ("vignette", {"amount": 0.25}),
-        ("framing", {"aspect": "4:3", "matte_gray": 0.08}),
+        ("framing", {"aspect": "source", "matte_gray": 0.08}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 8000.0}),

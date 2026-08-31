@@ -23,7 +23,7 @@ register_preset(Preset(
         ("dust", {"density": 0.9, "size": 1.4, "hairs": 0.6}),
         ("frame_damage", {"splice_skip_rate": 2.0, "blotch_rate": 1.0}),
         ("vignette", {"amount": 0.55, "softness": 0.6, "roundness": 0.9}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.02}),
+        ("framing", {"aspect": "source", "corner_radius": 0.02}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -186,7 +186,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35}),
         ("vignette", {"amount": 0.35, "roundness": 0.6}),
         ("fade", {"amount": 0.22, "profile": "eastman_pink"}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9500.0}),
@@ -416,7 +416,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "transient_rate": 1.0}),
         ("cadence", {"pattern": "pulldown_judder", "field_blend": 0.3}),
         ("vignette", {"amount": 0.35}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -447,7 +447,7 @@ register_preset(Preset(
         ("ntsc", {"strength": 0.8, "phase_noise": 2.4, "dot_crawl": 0.3}),
         ("interlace", {"combing": 0.5}),
         ("crt", {"bloom": 0.35, "scan_strength": 0.12, "curvature": 0.08}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.07}),
+        ("framing", {"aspect": "source", "corner_radius": 0.07}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -44.0}),
