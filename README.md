@@ -20,9 +20,9 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 
 | | |
 |---|---|
-| **236 presets** | 17 families: film (31), audio-only (29), vhs (23), broadcast (21), digital (20), world cinema (20), cartoon (17), captions (14), arthouse (10), modern (9), decay (8), western (7), exhibition (6), print (6), stylized (6), transmission (5), adjust (4) |
-| **339 variants** | alternate states of each look: worn prints, fifth-generation dubs, storm reception, terminal decay |
-| **105 effects, 530 parameters** | every one exposed and documented, in the app and from the CLI |
+| **426 presets** | 18 families: film (93), broadcast (57), audio-only (54), world cinema (45), digital (33), VHS (30), cartoon (22), captions (14), modern (14), arthouse (10), archive (9), decay (8), exhibition (7), stylized (7), western (7), transmission (6), print (6), adjust (4) |
+| **680 variants** | alternate states of each look: clean transfers, worn prints, fifth-generation dubs, storm reception, terminal decay |
+| **114 effects, 692 parameters** | every one exposed and documented, in the app and from the CLI |
 | **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
 
 ## Features
@@ -30,8 +30,9 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Drag and drop video *or* audio.** Drop a WAV, MP3 or FLAC and the picture controls step aside, leaving only the sound chain.
 - **Session tabs.** Open as many clips as you like, each with its own aesthetic and knob positions. Try one clip several ways side by side; switching back is instant.
 - **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
+- **Source-preserving historical treatments.** Capture, stock, carrier and playback can span the 1890s through the 2010s without inventing cuts, cropping or rearranging the picture, adding graphics or replacing the supplied program audio.
 - **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
-- **Search, filters and favorites.** Family chips and an era dropdown narrow the 192 looks; star the keepers and they float to the top, across launches.
+- **Search, filters and favorites.** Family chips and an era dropdown narrow the full library; star the keepers and they float to the top, across launches.
 - **Audition the catalog with ↑ / ↓.** Step through the list you filtered down to and every stop renders, so you can run a whole family past the player without touching the mouse.
 - **Save your own aesthetics.** Once a preset is dialled in, save the knobs, dials and seed under your own name. Saved looks sit at the top of the list with a ✎ badge, have their own filter, and name the files they export.
 - **Editable on-screen text.** Camcorder date stamps, security clocks, tape counters and channel labels are yours to set - a real date picker for the clock, and one switch to turn the whole overlay off.
@@ -50,9 +51,9 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **VHS** models color-under chroma, VCR edge-enhancement ringing, head-switch bending, azimuth herringbone, a two-head chroma beat, comet-tail dropouts written by a compensator holding the line above, tracking storms, time-base error and generation loss.
 - **Film** gets living multi-scale grain with per-layer colour-negative sizing and emulsion mottle, red halation, gate weave, hand-crank flicker, refracting emulsion scratches, splice jumps, static-discharge flashes and dye-fade profiles.
 - **Decay** goes where archives fear to: five-stage nitrate decomposition, vinegar-syndrome warp with layers physically separating, water tide marks, mould creep, sticky-shed tape.
-- **Digital-era looks run the real codecs**: MPEG-1/2, MSMPEG4, FLV, H.263, MJPEG at era bitrates, plus true bitstream-corruption datamosh decoded through error concealment.
+- **Digital-era looks run the real codecs**: MPEG-1/2/4, H.264/AVC, MS-MPEG4, FLV, H.263 and MJPEG at era bitrates, plus true bitstream-corruption datamosh decoded through error concealment.
 - **Print** does real rotated-screen CMYK halftone with genuine rosettes, photocopy generation collapse, red-blind microfilm and two-ink risograph.
-- **Audio** is treated with the same seriousness: wow and flutter from an integrated speed curve, tape saturation with head bump, Dolby mistracking, vinyl crackle and warp thump, optical-track noise, synthesized projector clatter, shortwave RTTY interference, era telephones with real mu-law, real low-bitrate MP3/AMR/G.726 round-trips, and seventeen period speaker recipes.
+- **Audio** is treated with the same seriousness: wow and flutter from an integrated speed curve, tape saturation with head bump, Dolby mistracking, vinyl crackle and warp thump, optical-track noise, synthesized projector clatter, shortwave RTTY interference, era telephones with real mu-law, real AAC/MP3/AMR/G.726 round-trips, and seventeen period speaker recipes.
 
 ## Setup (macOS)
 
@@ -160,7 +161,8 @@ the one-time repository setup.
 
 - [docs/app-guide.md](docs/app-guide.md) - using the desktop app
 - [docs/usage.md](docs/usage.md) - setup and CLI workflows
-- [docs/catalog.md](docs/catalog.md) - all 236 presets and every knob
+- [docs/catalog.md](docs/catalog.md) - all 426 presets and every knob
+- [docs/historical-coverage.md](docs/historical-coverage.md) - crosswalk for the 200-look historical brief
 - [docs/packaging.md](docs/packaging.md) - building installable macOS/Windows apps
 - [docs/releases.md](docs/releases.md) - how a release is cut, and the CI setup it needs
 - [docs/updates.md](docs/updates.md) - how the app updates itself

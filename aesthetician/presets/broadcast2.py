@@ -397,6 +397,9 @@ register_preset(Preset(
     variants=[
         Variant("final-round", "Final Round Sun", "High glare, deeper greens, hotter chroma noise.",
                 video={"tone.exposure": 0.15, "vhs.chroma_noise": 0.6, "ntsc.phase_noise": 3.0}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                video={"framing.corner_radius": 0.0}),
     ],
 ))
 

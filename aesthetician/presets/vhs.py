@@ -213,6 +213,9 @@ register_preset(Preset(
         Variant("gen5", "Fifth Generation", "Traded through five hands. Barely hanging on.",
                 video={"vhs.generation": 5, "vhs.chroma_noise": 0.85, "vhs.tracking_error": 0.2},
                 audio={"a_tape_hiss.level_db": -33.0, "a_wow_flutter.wow_depth": 12.0}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_tape_dropouts.rate": 0.0}),
     ],
 ))
 

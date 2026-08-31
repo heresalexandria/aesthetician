@@ -149,6 +149,9 @@ register_preset(Preset(
                 video={"vhs.generation": 2, "vhs.luma_bw": 3.0, "vhs.luma_noise": 0.4,
                        "vhs.chroma_noise": 0.45, "ntsc.strength": 0.8},
                 audio={"a_tape_hiss.level_db": -42.0}),
+        Variant("source-clean", "Source-Clean Transfer",
+                "Preserves the period carrier and color response while disabling momentary source loss or masking.",
+                audio={"a_tape_dropouts.rate": 0.0}),
     ],
 ))
 

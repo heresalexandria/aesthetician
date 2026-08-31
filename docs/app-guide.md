@@ -6,7 +6,7 @@ cd app && npm start
 
 ## Finding a look: search, filters, favorites
 
-The browse pane is built for 192 presets:
+The browse pane is built for the full preset library:
 
 - **Search** matches name, id, era, family, tagline and tags. Press **/**
   (or **⌘F**) to jump to it from anywhere.
@@ -79,9 +79,9 @@ switches into an audio session:
 - the **picture** half of the parameter panel disappears - only **SOUND** is
   shown, with a note saying how many picture effects the chosen preset is
   skipping;
-- the audio-first presets move to the top of the browse list (all 192 still work
-  - every preset has a sound chain - but the `audio` family is the one designed
-  for this);
+- the audio-first presets move to the top of the browse list (the full library
+  still works - every preset has a sound chain - but the `audio` family is the
+  one designed for this);
 - the video/audio-only export toggles are hidden, the export button becomes
   **Export Full Audio**, and the save dialog offers audio formats;
 - the tab is marked with a **♪**, and the player becomes a listening surface -
@@ -411,6 +411,9 @@ Two caveats worth knowing at reduced scale:
 
 - Real-codec presets (`codec_era`, `codec_glitch`) encode at the preview's
   smaller frame size, so blocking is proportionally coarser than the export.
+- In `codec_era`, H.264's **CRF** at `-1` means the **Bitrate** dial controls
+  libx264. Set CRF from 0–51 to use constant quality instead; H.264 never mixes
+  the two modes. The older codec choices continue to use Bitrate or Quantizer.
 - Grain is a fixed fraction of the frame, so it matches; but if you set
   `grain.size_ref = output` it becomes an absolute pixel size and will read
   differently between a half-res preview and the full export.

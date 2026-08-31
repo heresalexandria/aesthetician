@@ -1,4 +1,4 @@
-"""Early-digital artifacts: real lossy codec round-trips (mp3, telephony),
+"""Digital artifacts: real lossy codec round-trips (AAC, MP3, telephony),
 bitcrushing, and buffer glitches."""
 
 from __future__ import annotations
@@ -88,6 +88,47 @@ class ACodecMp3(Effect):
         if self.v["mono"]:
             args += ["-ac", "1"]
         media.audio_roundtrip(in_path, out_path, args, mid_ext="mp3")
+
+
+@register
+class ACodecAac(Effect):
+    eid = "a_codec_aac"
+    label = "AAC Codec"
+    kind = "audio_filepass"
+    desc = (
+        "Real native-ffmpeg AAC-LC encode/decode round-trip for DSLR, action-"
+        "camera, mobile and streaming sound; bitrate and mono are modelled at "
+        "the carrier rather than approximated with filters."
+    )
+    PARAMS = (
+        Param("kbps", "Bitrate", "int", 128, 24, 320, unit="kbps",
+              desc="Total AAC-LC bitrate. 48–96 kbps suits mono evidence/mobile "
+                   "audio; 128–256 kbps suits stereo camera and streaming tracks.",
+              group="Bandwidth"),
+        Param("mono", "Mono", "bool", False,
+              desc="Encode a single AAC channel; decoded audio remains compatible "
+                   "with the source channel layout downstream.", group="Bandwidth"),
+    )
+
+    def prepare(self, ctx: Context) -> None:
+        # AAC is part of the packaged ffmpeg contract. Still fail soft when a
+        # user points the CLI at an unusually minimal system build: losing one
+        # codec generation is preferable to losing their entire render.
+        self._usable = "aac" in _available_encoders()
+        if not self._usable:
+            _warn_missing(self.eid, "aac", None)
+
+    def file_pass(self, in_path: str, out_path: str, ctx: Context) -> None:
+        if not self._usable:
+            shutil.copyfile(in_path, out_path)
+            return
+        args = [
+            "-c:a", "aac", "-profile:a", "aac_low",
+            "-b:a", f"{int(self.v['kbps'])}k",
+        ]
+        if self.v["mono"]:
+            args += ["-ac", "1"]
+        media.audio_roundtrip(in_path, out_path, args, mid_ext="m4a")
 
 
 @register

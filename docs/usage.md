@@ -102,5 +102,5 @@ The output format follows the extension you ask for: `.wav`/`.aiff` stay
 lossless (24-bit PCM), `.flac` is lossless compressed, `.mp3`/`.m4a`/`.aac`
 encode at 320k. With no `-o`, the source's own extension is kept.
 
-All 191 presets carry an audio chain, so any of them does something to an audio
+Every preset carries an audio chain, so any of them does something to an audio
 file - but the 29 in the `audio` family are the ones designed sound-first.

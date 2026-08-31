@@ -2,9 +2,10 @@
 palettized computer graphics, DV chroma subsampling, LCD playback surfaces.
 
 `codec_era` and `codec_glitch` shell out to ffmpeg and push the video through
-the actual period encoders (MPEG-1/2/4, MS-MPEG4 v3, Sorenson/FLV1, H.263+,
-MJPEG): the block structure, mosquito noise, rate-control pulsing and error
-concealment are produced by the real codecs, not approximated with filters.
+the actual period encoders (MPEG-1/2/4, H.264/AVC, MS-MPEG4 v3,
+Sorenson/FLV1, H.263+, MJPEG): the block structure, mosquito noise,
+rate-control pulsing and error concealment are produced by the real codecs,
+not approximated with filters.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ _ENCODER_FOR = {
     "mpeg2video": "mpeg2video",  # DVD / broadcast MPEG-2
     "mpeg1video": "mpeg1video",  # VCD
     "mpeg4": "mpeg4",            # early-2000s MPEG-4 ASP (DivX/XviD era)
+    "h264": "libx264",            # H.264/AVC - DSLR, action camera, modern web
     "msmpeg4": "msmpeg4",        # MS-MPEG4 v3 - late-90s web video / WMV7-ish
     "flv1": "flv",               # Sorenson Spark - 2005 Flash web video
     "h263p": "h263p",            # H.263+ videoconferencing
@@ -95,25 +97,31 @@ class CodecEra(Effect):
     label = "Codec Era"
     kind = "filepass"
     desc = (
-        "Round-trip through a real period video encoder (MPEG-1/2/4, MS-MPEG4, "
-        "FLV1, H.263+, MJPEG): authentic macroblocking, mosquito noise, DCT "
-        "ringing and rate-control breathing, with optional era resolution "
-        "ladder and repeated re-encode generation loss."
+        "Round-trip through a real period video encoder (MPEG-1/2/4, "
+        "H.264/AVC, MS-MPEG4, FLV1, H.263+, MJPEG): authentic macroblocking, "
+        "mosquito noise, DCT ringing and rate-control breathing, with optional "
+        "era resolution ladder and repeated re-encode generation loss."
     )
     PARAMS = (
         Param("codec", "Codec", "enum", _DEFAULT_CODEC, choices=_CODECS, group="Codec",
               desc="mpeg2video = DVD/broadcast, mpeg1video = VCD, mpeg4 = DivX era, "
-                   "msmpeg4 = late-90s web/WMV, flv1 = 2005 Flash video, "
-                   "h263p = videoconferencing, mjpeg = motion-JPEG cameras."),
+                   "h264 = DSLR/action-camera/modern web AVC via libx264, msmpeg4 = "
+                   "late-90s web/WMV, flv1 = 2005 Flash video, h263p = "
+                   "videoconferencing, mjpeg = motion-JPEG cameras."),
         # A 100 kbps floor assumed broadband. The presets that exist for the era
         # before it - RealPlayer over a 56k modem, a 2007 cameraphone - were
         # written at 60-96 and silently pulled back up to 100, which is precisely
         # the starvation they were built to show.
         Param("kbps", "Bitrate", "int", 900, 8, 8000, unit="kbps", group="Quality",
-              desc="Target bitrate. Low values starve the encoder into classic blocks; "
-                   "under ~100 is modem territory."),
+              desc="Target bitrate. Used by every codec unless H.264 CRF is enabled; "
+                   "low values starve the encoder into classic blocks."),
         Param("qscale", "Quantizer", "int", 0, 0, 31, group="Quality",
-              desc="Fixed quantizer 2–31 (31 = worst). When > 0 it replaces the bitrate."),
+              desc="Fixed MPEG-era/MJPEG quantizer 2–31 (31 = worst). When > 0 it "
+                   "replaces bitrate for those codecs; H.264 uses CRF instead."),
+        Param("crf", "H.264 CRF", "int", -1, -1, 51, group="Quality",
+              desc="H.264 constant-quality rate control: -1 uses target bitrate, "
+                   "0 is lossless, 18 is visually transparent, 23 is typical, and "
+                   "51 is worst. Ignored by the other codecs."),
         Param("res", "Resolution", "enum", "native",
               choices=("native", "480p", "360p", "240p", "144p"), group="Geometry",
               desc="Downscale to the era ladder before encoding, upscale back after; "
@@ -148,7 +156,28 @@ class CodecEra(Effect):
             # AVOption it falls through to is decode-only, so the bundled
             # ffmpeg rejects the whole encode.
             args += ["-flags", "+ilme+ildct"]
-        if codec == "mjpeg":
+        if codec == "h264":
+            # libx264's qscale mode is not the MPEG-4 Part 2 quantizer exposed
+            # above. AVC has two distinct and useful controls: constrained
+            # average bitrate for cameras/delivery ladders, or CRF for a
+            # constant-quality transcode. Never pass both: doing so silently
+            # turns CRF into constrained quality and makes the UI lie about
+            # which rate-control mode is being modelled.
+            crf = int(self.v["crf"])
+            args += ["-preset", "medium"]
+            # x264's mathematically lossless CRF 0 stream is signalled as High
+            # 4:4:4 Predictive even with 4:2:0 samples; forcing plain High makes
+            # the encoder reject it. Let x264 choose that profile only at 0.
+            if crf != 0:
+                args += ["-profile:v", "high"]
+            if crf >= 0:
+                args += ["-crf", str(crf)]
+            else:
+                kbps = int(self.v["kbps"])
+                args += ["-b:v", f"{kbps}k", "-maxrate", f"{int(kbps * 1.6)}k",
+                         "-bufsize", f"{max(kbps * 2, 200)}k"]
+            args += ["-pix_fmt", "yuv420p"]
+        elif codec == "mjpeg":
             q = int(self.v["qscale"]) or max(2, min(31, int(round(24 - 20 * (self.v["kbps"] / 8000.0)))))
             args += ["-q:v", str(q), "-pix_fmt", "yuvj420p"]
         else:
