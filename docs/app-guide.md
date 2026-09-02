@@ -30,6 +30,11 @@ The browse pane is built for a library of hundreds of presets
   ready-made stacks for looks one preset cannot cover (an eighties adventure
   feature on a rental tape). Clicking a recipe applies its layers like a
   saved stack.
+- Search answers in two tiers: **RESULTS** are presets your words landed
+  in; **RELATED**, folded under its own label, are presets only a synonym
+  reached (click the label to unfold it).
+- The **sort dropdown** beside the era filter orders the library by family,
+  A to Z, year, or by when a preset was added (newest or oldest first).
 - **◷ Recent** leads an unfiltered list with the last eight aesthetics you
   picked by hand.
 - The panel header under a preset's name now reads its year, family, genre

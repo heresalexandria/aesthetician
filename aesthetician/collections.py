@@ -188,7 +188,7 @@ COLLECTIONS: tuple[Collection, ...] = (
     _c("tv-2000s", "Television in the 2000s",
        "Early 1080i edges, flag-wave cable news, desaturated procedurals and reality night-cams.",
        ["hd-1080i-2008", "channel-cable-news-flag-2003", "tv-procedural-hd-2005", "tv-reality-house-2001",
-        "channel-late-night-animation-block-2003", "auth-food-network-studio-2005"], group="eras"),
+        "channel-late-night-animation-block-2003", "auth-cable-food-studio-2005"], group="eras"),
     _c("british-television", "British television",
        "405-line silver, PAL studio video with 16 mm exteriors, teatime adverts and teletext.",
        ["channel-british-public-1962", "channel-british-public-1978", "tv-british-studio-sitcom-1975",

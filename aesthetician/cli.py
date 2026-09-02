@@ -156,7 +156,12 @@ def info(preset_id: str) -> None:
     if p.keywords:
         console.print(f"[dim]keywords:[/dim] {', '.join(p.keywords)}")
     if facets:
-        console.print(f"[dim]facets:[/dim] {facets}\n")
+        console.print(f"[dim]facets:[/dim] {facets}")
+    from .presets._introduced import INTRODUCED
+
+    day, ver = INTRODUCED.get(p.id, ("", "unreleased"))
+    if day:
+        console.print(f"[dim]added:[/dim] {day} (v{ver})\n" if ver != "unreleased" else f"[dim]added:[/dim] {day} (unreleased)\n")
     if p.variants:
         t = Table(title="Variants", show_lines=False)
         t.add_column("id", style="bold")

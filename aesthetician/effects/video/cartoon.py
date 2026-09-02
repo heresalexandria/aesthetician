@@ -140,19 +140,20 @@ class AnimateOn(Effect):
     kind = "frame"
     desc = (
         "Limited-animation cadence: hold each drawing for 1/2/3 frames (shot "
-        "'on ones/twos/threes'), the Hanna-Barbera mix of mostly twos with "
-        "scattered ones and threes, the Filmation syndication economy of "
+        "'on ones/twos/threes'), a television mix of mostly twos with "
+        "scattered ones and threes, the syndication economy of "
         "4–8-frame holds, or straight shot-on-video (no held drawings)."
     )
     PARAMS = (
-        Param("pattern", "Cadence", "enum", "hb_mixed",
-              choices=("ones", "twos", "threes", "hb_mixed", "filmation", "shot_on_video"),
+        Param("pattern", "Cadence", "enum", "limited_mixed",
+              choices=("ones", "twos", "threes", "limited_mixed", "economy_holds", "shot_on_video"),
               group="Timing",
-              desc="hb_mixed = mostly twos, occasional ones/threes, seed-stable. "
-                   "filmation = very long 4–8 frame holds with a rare single - "
+              desc="limited_mixed = mostly twos, occasional ones/threes, seed-stable. "
+                   "economy_holds = very long 4–8 frame holds with a rare single - "
                    "the 1975 syndication budget. shot_on_video = every frame "
                    "fresh, the 59.94i videotape cadence (pair with interlace)."),
     )
+    PARAM_ALIASES = {"pattern": {"hb_mixed": "limited_mixed", "filmation": "economy_holds"}}
 
     def prepare(self, ctx: Context) -> None:
         n = ctx.n_frames
@@ -171,7 +172,7 @@ class AnimateOn(Effect):
         pos = 0
         while pos < n:
             r = g.random()
-            if pat == "filmation":
+            if pat == "economy_holds":
                 h = 1 if r < 0.07 else 4 + int(g.integers(0, 5))
             else:
                 h = 1 if r < 0.12 else (2 if r < 0.82 else 3)
@@ -692,30 +693,30 @@ class ColorEra(Effect):
     label = "Cartoon Color Era"
     kind = "frame"
     desc = (
-        "Cartoon-specific color rendering: Hanna-Barbera 1960s TV paint (warm "
+        "Cartoon-specific color rendering: 1960s limited-TV paint (warm "
         "paper whites, teal-leaning blues, gently muted primaries), brighter "
         "70s Saturday-morning, 1930s rubber-hose duotone, saturated 40s "
-        "Technicolor cartoon, a dye-faded 16mm classroom print, flat olive "
-        "Filmation syndication, bright 90s Nick punch, or grungy 1994 MTV "
+        "three-strip cartoon, a dye-faded 16mm classroom print, flat olive "
+        "syndication color, bright 90s cable punch, or grungy 1994 alt-animation "
         "bleach."
     )
     PARAMS = (
-        Param("profile", "Profile", "enum", "hb_1960s_tv",
-              choices=("hb_1960s_tv", "hb_1970s", "rubber_hose_1930s",
+        Param("profile", "Profile", "enum", "limited_1960s_tv",
+              choices=("limited_1960s_tv", "limited_1970s", "rubber_hose_1930s",
                        "technicolor_cartoon_1940s", "tv_print_faded",
-                       "filmation_1975", "nick_90s", "mtv_1994"),
+                       "syndication_1975", "cable_90s", "alt_1994"),
               group="Color", desc="Era rendering profile."),
         Param("strength", "Strength", "float", 1.0, 0.0, 1.0, group="Color"),
     )
 
     # matrix, saturation, gain, lift amount, lift color, highlight tint (amt, rgb)
     _P = {
-        "hb_1960s_tv": dict(
+        "limited_1960s_tv": dict(
             m=np.array([[1.02, 0.05, -0.07], [0.01, 1.00, -0.01], [-0.03, 0.08, 0.92]]),
             sat=0.88, gain=0.985, lift=0.045, lift_col=(1.25, 1.06, 0.82),
             high=(0.045, (0.9, 0.75, 0.25)),
         ),
-        "hb_1970s": dict(
+        "limited_1970s": dict(
             m=np.array([[1.09, -0.02, -0.02], [-0.02, 1.03, -0.01], [0.01, -0.03, 1.05]]),
             sat=1.10, gain=1.045, lift=0.028, lift_col=(1.18, 0.92, 1.05),
             high=(0.02, (1.0, 0.85, 0.9)),
@@ -732,23 +733,32 @@ class ColorEra(Effect):
             high=(0.0, (1.0, 1.0, 1.0)),
         ),
         # 1975 syndication economy: flat, dull, everything drifting olive
-        "filmation_1975": dict(
+        "syndication_1975": dict(
             m=np.array([[1.00, 0.08, -0.05], [0.02, 0.99, -0.03], [-0.02, 0.07, 0.85]]),
             sat=0.80, gain=0.950, lift=0.060, lift_col=(1.02, 1.05, 0.80),
             high=(0.035, (0.92, 0.90, 0.55)),
         ),
         # 90s cable: bright SVHS-hot saturation, clean-ish whites
-        "nick_90s": dict(
+        "cable_90s": dict(
             m=np.array([[1.12, -0.05, -0.02], [-0.03, 1.07, -0.02], [-0.02, -0.04, 1.10]]),
             sat=1.30, gain=1.050, lift=0.022, lift_col=(1.06, 0.94, 1.08),
             high=(0.025, (1.0, 0.90, 0.96)),
         ),
         # 1994 alt-animation grunge: desaturated, contrasty, faintly bleached
-        "mtv_1994": dict(
+        "alt_1994": dict(
             m=np.array([[1.06, 0.03, -0.04], [0.00, 1.02, -0.02], [-0.01, 0.03, 0.96]]),
             sat=0.76, gain=1.065, lift=0.070, lift_col=(0.97, 1.00, 0.95),
             high=(0.020, (0.90, 0.92, 0.84)),
         ),
+    }
+    PARAM_ALIASES = {
+        "profile": {
+            "hb_1960s_tv": "limited_1960s_tv",
+            "hb_1970s": "limited_1970s",
+            "filmation_1975": "syndication_1975",
+            "nick_90s": "cable_90s",
+            "mtv_1994": "alt_1994",
+        }
     }
 
     def prepare(self, ctx: Context) -> None:

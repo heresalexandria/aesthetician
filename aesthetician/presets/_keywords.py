@@ -19,6 +19,18 @@ but adds nothing either.
 from __future__ import annotations
 
 KEYWORDS: dict[str, tuple[str, ...]] = {
+    "auth-observational-handheld-dv-2005": (
+        "verite", "documentary", "handheld", "mumblecore", "observational", "fly-on-the-wall",
+        "camcorder", "home-video", "autofocus", "fluorescent", "indie", "dv-doc",
+    ),
+    "auth-stunt-reality-minidv-2001": (
+        "stunt", "prank", "reality", "skate", "fisheye", "jackass", "camcorder", "home-video",
+        "backyard", "skateboard", "sports", "minidv-fisheye",
+    ),
+    "auth-syndicated-limited-animation-1973": (
+        "cartoon", "kids", "saturday-morning", "syndication", "limited-animation", "cel",
+        "seventies-cartoon", "rerun", "tv-cartoon", "flat-paint", "after-school",
+    ),
     "actuality-1900": (
         "early-cinema", "lumiere", "hand-crank", "nitrate", "primitive", "nonfiction", "fragile",
         "flickering"
@@ -385,7 +397,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
         "musical", "vaudeville", "broadway", "chorus-line", "vitaphone", "backstage",
         "song-and-dance", "pre-code"
     ),
-    "auth-early-youtube-webcam-2006": (
+    "auth-early-video-sharing-webcam-2006": (
         "webcore", "vlog", "internet-fame", "geocities", "bedroom-broadcast", "early-internet",
         "low-res", "confessional"
     ),
@@ -425,7 +437,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
         "haute-couture", "vogue", "runway", "glamour-shoot", "commercial", "studio-lighting",
         "high-fashion", "editorial-spread"
     ),
-    "auth-food-network-studio-2005": (
+    "auth-cable-food-studio-2005": (
         "cooking-show", "celebrity-chef", "kitchen-set", "recipe", "studio-audience",
         "cable-cooking", "culinary", "how-to-cook"
     ),
@@ -445,7 +457,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
         "midcentury-modern", "space-age-design", "kitchen-appliance", "populuxe", "atomic-ranch",
         "housewife", "boomerang-shapes", "suburban-dream"
     ),
-    "auth-gopro-action-footage-2014": (
+    "auth-first-wave-action-camera-2014": (
         "extreme-sports", "pov", "helmet-cam", "adrenaline", "mountain-biking", "surfing",
         "skiing", "first-person"
     ),
@@ -573,7 +585,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
         "tv-movie", "network-premiere", "disease-of-the-week", "issue-drama", "weepie",
         "star-studded", "sunday-night", "tearjerker"
     ),
-    "auth-nasa-mission-tape-1972": (
+    "auth-space-agency-mission-tape-1972": (
         "apollo-era", "space-program", "flight-controllers", "telemetry-feed",
         "astronaut-footage", "houston", "orbital", "splashdown"
     ),
@@ -883,7 +895,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
         "muted-stock", "cine-club", "short-film", "painterly", "gentle", "understated",
         "prize-winner", "fine-art"
     ),
-    "cartoon-filmation-1975": (
+    "cartoon-syndicated-1975": (
         "kids", "saturday-morning", "limited-animation", "after-school", "rerun", "cheap",
         "recycled", "budget"
     ),

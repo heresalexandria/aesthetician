@@ -39,6 +39,8 @@ const G = {
   stackOnly: false,    // the ▤ chip: show saved stacks only
   filterFacets: {},    // facet id -> selected value id (empty = any facet value)
   refineOpen: true,    // the facet dropdown row is unfolded (persisted)
+  sortBy: 'family',    // family | name | year | newest | oldest (persisted)
+  relatedOpen: false,  // the RELATED (synonym-only) search group is unfolded
   guideOpen: false,    // the ✦ chip: browse the curated collections instead of the library
   recents: [],         // preset ids picked by hand, newest first (persisted)
   searchIndex: new Map(),   // preset id -> tokenized search fields (see searchFields)
@@ -66,6 +68,16 @@ let updatePollTimer = null;
    Everything degrades to defaults if storage is unavailable or stale. */
 const STORE_KEY = 'aesthetician.ui.v1';
 const RECENTS_MAX = 8;
+/* How the library list can be ordered. Family is the shelf order the app has
+   always used; the rest flatten the list. "Added" comes from git history the
+   engine ships in the schema (scripts/gen_introduced.py). */
+const SORT_OPTIONS = [
+  { id: 'family', label: 'Family' },
+  { id: 'name', label: 'A to Z' },
+  { id: 'year', label: 'Year' },
+  { id: 'newest', label: 'Newest added' },
+  { id: 'oldest', label: 'Oldest added' },
+];
 
 function loadStore() {
   try {
@@ -74,6 +86,7 @@ function loadStore() {
     if (Array.isArray(s.collapsed)) G.collapsed = new Set(s.collapsed);
     if (Array.isArray(s.recents)) G.recents = s.recents.filter((id) => typeof id === 'string').slice(0, RECENTS_MAX);
     if (typeof s.refineOpen === 'boolean') G.refineOpen = s.refineOpen;
+    if (typeof s.sortBy === 'string' && SORT_OPTIONS.some((o) => o.id === s.sortBy)) G.sortBy = s.sortBy;
     if (typeof s.duration === 'number' && s.duration >= 1 && s.duration <= 10) G.duration = s.duration;
     if (typeof s.scale === 'number' && s.scale >= 0.2 && s.scale <= 1) G.scale = s.scale;
     if (typeof s.autoPreview === 'boolean') G.autoPreview = s.autoPreview;
@@ -109,6 +122,7 @@ function saveStore() {
       stacks: G.stacks,
       recents: G.recents,
       refineOpen: G.refineOpen,
+      sortBy: G.sortBy,
     }));
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
@@ -136,6 +150,30 @@ function saveHistory() {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify({ runs: G.history }));
   } catch (_) { /* storage full or unavailable: remembering is a courtesy */ }
+}
+
+/* Preset ids are durable user data: favorites, custom looks, stacks and export
+   history can all outlive the release that named them.  The engine schema
+   carries quiet redirects for renamed presets so those saves follow the new,
+   generic catalog names instead of disappearing. */
+function migratePresetAliases() {
+  const aliases = (G.schema && G.schema.preset_aliases) || {};
+  const resolve = (id) => aliases[id] || id;
+  if (!Object.keys(aliases).length) return;
+
+  G.favs = new Set([...G.favs].map(resolve));
+  for (const custom of G.customs) custom.base = resolve(custom.base);
+  for (const stack of G.stacks) {
+    for (const layer of stack.layers || []) layer.base = resolve(layer.base);
+  }
+  for (const run of G.history) {
+    for (const layer of run.layers || []) {
+      if (layer.base) layer.base = resolve(layer.base);
+      if (layer.presetId) layer.presetId = resolve(layer.presetId);
+    }
+  }
+  saveStore();
+  saveHistory();
 }
 
 /* ── layers ──────────────────────────────────────────────────────────
@@ -267,6 +305,7 @@ const videoB = $('video-b'); // original
   }
   try {
     G.schema = await window.aesth.schema();
+    migratePresetAliases();
     buildFilterBar();
     buildPresetList();
   } catch (err) {
@@ -1796,13 +1835,24 @@ function expandQuery(query) {
 const DEFAULT_FIELD_WEIGHTS = { name: 10, tagline: 6, keywords: 5, tags: 4, facets: 3, id: 3, era: 3,
   family: 2, variants: 1.5, desc: 1 };
 
-/* 0 when any token group misses; otherwise the summed weighted best hits. */
-function searchScore(p, groups) {
+const DEFAULT_AUTHORED_FIELDS = ['name', 'tagline', 'keywords', 'tags', 'id', 'family'];
+
+/* 0 when any token group misses; otherwise the summed weighted best hits.
+
+   Two tiers, mirroring the engine: "direct" counts only the words typed (and
+   the other spellings of a decade); "related" also lets a synonym land, but
+   only as a whole word in a field somebody authored (name, tagline, keywords,
+   tags, id), never in facet labels or prose. So "witch" is two folk-horror
+   looks, not all of horror, and "scifi" cannot reach every sound-only preset
+   through the words "playback space". */
+function searchScore(p, groups, tier = 'related') {
   if (!groups.length) return 1;
   const tx = taxonomy();
   const weights = Object.keys(tx.weights || {}).length ? tx.weights : DEFAULT_FIELD_WEIGHTS;
   const prefixFactor = tx.prefix_factor == null ? 0.6 : tx.prefix_factor;
   const coverageBonus = tx.name_coverage_bonus == null ? 2 : tx.name_coverage_bonus;
+  const authored = new Set(tx.authored_fields || DEFAULT_AUTHORED_FIELDS);
+  const directOnly = tier === 'direct';
   const fields = searchFields(p);
   let total = 0;
   let nameHits = 0;
@@ -1815,8 +1865,10 @@ function searchScore(p, groups) {
       let hit = 0;
       for (const ft of ftoks) {
         for (const [a, factor] of alts) {
+          const typed = factor >= 1;
+          if (!typed && (directOnly || !authored.has(fname))) continue;
           if (ft === a) hit = Math.max(hit, w * factor);
-          else if (a.length >= 3 && ft.startsWith(a)) hit = Math.max(hit, w * factor * prefixFactor);
+          else if (typed && a.length >= 3 && ft.startsWith(a)) hit = Math.max(hit, w * factor * prefixFactor);
         }
         if (hit >= w) break;
       }
@@ -1831,6 +1883,31 @@ function searchScore(p, groups) {
   const nName = new Set(fields.name).size || 1;
   return total + coverageBonus * nameHits / nName;
 }
+
+/* Which tier a preset lands in for a query: 'direct', 'related' or null. */
+function searchTier(p, groups) {
+  if (!groups.length) return 'direct';
+  if (searchScore(p, groups, 'direct') > 0) return 'direct';
+  if (searchScore(p, groups, 'related') > 0) return 'related';
+  return null;
+}
+
+/* Order a list of presets for the flat (non-family) sorts. */
+function sortPresets(list, sortBy) {
+  const intro = (p) => (p.introduced && p.introduced.date) || '';
+  const ver = (p) => (p.introduced && p.introduced.version) || '';
+  const year = (p) => parseInt(p.era, 10) || 9999;
+  const byId = (a, b) => a.id.localeCompare(b.id);
+  const out = [...list];
+  if (sortBy === 'name') out.sort((a, b) => a.name.localeCompare(b.name) || byId(a, b));
+  else if (sortBy === 'year') out.sort((a, b) => (year(a) - year(b)) || byId(a, b));
+  else if (sortBy === 'newest') out.sort((a, b) => intro(b).localeCompare(intro(a)) || ver(b).localeCompare(ver(a)) || byId(a, b));
+  else if (sortBy === 'oldest') out.sort((a, b) => intro(a).localeCompare(intro(b)) || ver(a).localeCompare(ver(b)) || byId(a, b));
+  else out.sort((a, b) => (famRank(a.family) - famRank(b.family)) || byId(a, b));
+  return out;
+}
+
+const SORT_LABELS = { name: 'A TO Z', year: 'BY YEAR', newest: 'NEWEST ADDED', oldest: 'OLDEST ADDED' };
 
 function passesFacets(p) {
   for (const [fid, vid] of Object.entries(G.filterFacets || {})) {
@@ -1864,7 +1941,7 @@ function buildFacetRow() {
       for (const [fid, vid] of Object.entries(others)) {
         if (vid && !((p.facets || {})[fid] || []).includes(vid)) return false;
       }
-      return !q || searchScore(p, groups) > 0;
+      return !q || searchTier(p, groups) !== null;
     });
     const counts = {};
     for (const p of pool) for (const v of (p.facets || {})[facet.id] || []) counts[v] = (counts[v] || 0) + 1;
@@ -1998,7 +2075,7 @@ function buildGuideList(list, q, addNav) {
     const own = searchTokens(`${c.title} ${c.blurb}`);
     const okOwn = groups.every(({ alts }) => own.some((t) => alts.some(([a]) => t === a || (a.length >= 3 && t.startsWith(a)))));
     if (okOwn) return true;
-    return c.presets.some((id) => ps[id] && searchScore(ps[id], groups) > 0);
+    return c.presets.some((id) => ps[id] && searchTier(ps[id], groups) !== null);
   };
   const shown = collections().filter(inCollection);
   const GROUP_LABELS = { looks: 'MAKE IT LOOK LIKE', media: 'A PARTICULAR MEDIUM', eras: 'AN ERA OF TELEVISION', sound: 'A PARTICULAR SOUND' };
@@ -2182,6 +2259,20 @@ function buildFilterBar() {
   $('preset-search').placeholder = G.guideOpen
     ? 'Search the guide…'
     : `Search ${presets.length} aesthetics…`;
+
+  const sort = $('sort-by');
+  if (sort) {
+    sort.innerHTML = '';
+    for (const o of SORT_OPTIONS) {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.label;
+      if (o.id === G.sortBy) opt.selected = true;
+      sort.appendChild(opt);
+    }
+    sort.classList.toggle('active', G.sortBy !== 'family');
+    sort.title = 'Order the library';
+  }
   buildFacetRow();
 }
 
@@ -2356,7 +2447,8 @@ function presetCard(p, opts = {}) {
   const meta = document.createElement('span');
   meta.className = 'p-meta';
   const nv = p.variants.length;
-  meta.textContent = `${p.era}${opts.showFamily ? ` · ${p.family}` : ''}${nv ? ` · ${nv} variant${nv === 1 ? '' : 's'}` : ''}`;
+  const added = opts.showAdded && p.introduced ? ` · added ${p.introduced.version === 'unreleased' ? 'next release' : `v${p.introduced.version}`}` : '';
+  meta.textContent = `${p.era}${opts.showFamily ? ` · ${p.family}` : ''}${nv ? ` · ${nv} variant${nv === 1 ? '' : 's'}` : ''}${added}`;
   text.appendChild(name);
   text.appendChild(meta);
   const tag = taglineFor(p);
@@ -2516,8 +2608,9 @@ function buildPresetList() {
     .sort((a, b) => (famRank(a.family) - famRank(b.family)) || a.id.localeCompare(b.id));
   const q = ($('preset-search').value || '').trim();
   const groups = expandQuery(q);
-  const scoreOf = (p) => (q ? searchScore(p, groups) : 1);
-  const matches = (p) => passesFilters(p) && scoreOf(p) > 0;
+  const tierOf = (p) => (q ? searchTier(p, groups) : 'direct');
+  const scoreOf = (p) => (q ? searchScore(p, groups, tierOf(p) || 'related') : 1);
+  const matches = (p) => passesFilters(p) && tierOf(p) !== null;
 
   /* ↑/↓ walk this: the ids the eye can actually see, top to bottom. A favorite
      is rendered twice (its row at the top, and again inside its family) but is
@@ -2630,21 +2723,50 @@ function buildPresetList() {
   let shown = favRows.length + customRows.length + stackRows.length;
 
   /* A search is a ranked list, not a tour of the families: the best answers
-     first, whatever shelf they live on, with the family named on each row. */
+     first, whatever shelf they live on, with the family named on each row.
+     Direct hits are the results; presets only a synonym reached sit under a
+     folded RELATED label, unfolded on click or when nothing hit directly. */
   if (q) {
-    const hits = presets.filter(matches)
-      .map((p) => [scoreOf(p), p])
-      .sort((a, b) => (b[0] - a[0]) || (famRank(a[1].family) - famRank(b[1].family)) || a[1].id.localeCompare(b[1].id));
-    if (hits.length) {
+    const rank = (a, b) => (b[0] - a[0]) || (famRank(a[1].family) - famRank(b[1].family)) || a[1].id.localeCompare(b[1].id);
+    const hits = presets.filter(matches).map((p) => [scoreOf(p), p, tierOf(p)]);
+    const direct = hits.filter((h) => h[2] === 'direct').sort(rank);
+    const related = hits.filter((h) => h[2] === 'related').sort(rank);
+    if (direct.length) {
       const rl = document.createElement('div');
       rl.className = 'family-label results';
-      rl.innerHTML = `RESULTS <span class="count">${hits.length}</span>`;
+      rl.innerHTML = `RESULTS <span class="count">${direct.length}</span>`;
       list.appendChild(rl);
-      for (const [, p] of hits) { list.appendChild(presetCard(p, { showFamily: true })); addNav(p.id); }
-      shown += hits.length;
+      for (const [, p] of direct) { list.appendChild(presetCard(p, { showFamily: true })); addNav(p.id); }
+      shown += direct.length;
+    }
+    if (related.length) {
+      const open = G.relatedOpen || !direct.length;
+      const rl = document.createElement('div');
+      rl.className = 'family-label related clickable';
+      rl.innerHTML = `<span class="chev">${open ? '▾' : '▸'}</span> RELATED <span class="count">${related.length}</span>`;
+      rl.title = 'Presets a synonym of your words reaches';
+      rl.onclick = () => { G.relatedOpen = !G.relatedOpen; buildPresetList(); };
+      list.appendChild(rl);
+      if (open) {
+        for (const [, p] of related) { list.appendChild(presetCard(p, { showFamily: true })); addNav(p.id); }
+      }
+      shown += related.length;
     }
   }
-  for (const p of (q ? [] : presets)) {
+  /* A flat sort (A to Z, year, newest, oldest) also skips the family tour. */
+  if (!q && G.sortBy !== 'family') {
+    const rows = sortPresets(presets.filter(matches), G.sortBy);
+    if (rows.length) {
+      const sl = document.createElement('div');
+      sl.className = 'family-label sorted';
+      sl.innerHTML = `${SORT_LABELS[G.sortBy] || G.sortBy.toUpperCase()} <span class="count">${rows.length}</span>`;
+      list.appendChild(sl);
+      const showAdded = G.sortBy === 'newest' || G.sortBy === 'oldest';
+      for (const p of rows) { list.appendChild(presetCard(p, { showFamily: true, showAdded })); addNav(p.id); }
+      shown += rows.length;
+    }
+  }
+  for (const p of ((q || G.sortBy !== 'family') ? [] : presets)) {
     if (!matches(p)) continue;
     shown++;
     if (p.family !== family) {
@@ -5296,6 +5418,12 @@ function wireControls() {
   $('era-filter').addEventListener('change', (e) => {
     G.filterEra = e.target.value;
     e.target.classList.toggle('active', !!G.filterEra);
+    buildPresetList();
+  });
+  $('sort-by').addEventListener('change', (e) => {
+    G.sortBy = SORT_OPTIONS.some((o) => o.id === e.target.value) ? e.target.value : 'family';
+    e.target.classList.toggle('active', G.sortBy !== 'family');
+    saveStore();
     buildPresetList();
   });
 

@@ -134,7 +134,10 @@ stranger could pick out of a lineup.
    everything else on untreated*.mp4 (untreated4 = dim interior, untreated2/3 = bright).
 5. Audio-led presets: render 6 s, generate `showspectrumpic` PNG, verify band
    edges/noise floors look like the era.
-6. `.venv/bin/python scripts/audit_similarity.py --only-new` - every new preset's nearest
+6. `.venv/bin/python scripts/gen_introduced.py` - regenerates the introduction-date table the
+   app sorts on (a preset with no commit yet reads "unreleased" until the next run after its
+   release tag exists).
+7. `.venv/bin/python scripts/audit_similarity.py --only-new` - every new preset's nearest
    neighbour, and a non-zero exit for near-clones (same effect list, authored parameters
    within 5% of each other). A clone is not a new look; commit harder to one identity or
    drop it.

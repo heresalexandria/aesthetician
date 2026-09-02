@@ -1,8 +1,10 @@
 # Historical Aesthetic Coverage
 
 The 200-look historical brief is fully represented without editorially
-rewriting the source. Aesthetician adds 138 exact-name, `source-preserving`
-presets; search the catalog by the title from the brief to find them. Those
+rewriting the source. Aesthetician adds 138 exact-name treatments for that
+brief plus three `source-preserving` treatments for stunt-reality MiniDV,
+observational handheld DV, and syndicated limited animation. Search the catalog
+by a medium, era, or title to find them. Those
 chains model acquisition, stock, optics, carrier, transfer, playback and
 program-audio treatment, but do not crop, retime, caption, globally mute or
 replace the supplied material.

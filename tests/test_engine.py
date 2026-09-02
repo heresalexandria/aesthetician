@@ -260,7 +260,7 @@ def test_source_preserving_aesthetic_collection_contract():
         for pid, preset in all_presets().items()
         if "source-preserving" in preset.tags
     }
-    assert len(collection) == 138, sorted(collection)
+    assert len(collection) == 141, sorted(collection)
     assert all(pid.startswith("auth-") for pid in collection), sorted(collection)
 
     forbidden_video = {
@@ -324,6 +324,36 @@ def test_legacy_matches_offer_source_clean_transfers():
     for pid in ("golf-sunday-1977", "talk-show-1984", "game-show-1978"):
         framing = next(params for eid, params in presets[pid].video if eid == "framing")
         assert framing.get("mode", "box") == "box" and framing.get("zoom", 0.0) == 0.0
+
+
+def test_ip_neutral_cartoon_enums_accept_legacy_saved_values():
+    """Old sessions keep rendering while the schema exposes generic names."""
+    ctx = Context(width=64, height=48, fps=30.0, n_frames=4)
+    cadence = get_effect("animate_on")(pattern="hb_mixed")
+    cadence.resolve(ctx)
+    assert cadence.v["pattern"] == "limited_mixed"
+
+    color = get_effect("color_era")(profile="filmation_1975")
+    color.resolve(ctx)
+    assert color.v["profile"] == "syndication_1975"
+
+
+def test_ip_neutral_preset_names_accept_legacy_saved_ids():
+    """Previously published ids redirect without reappearing in the catalog."""
+    from aesthetician.engine.presets import all_presets, get_preset
+    from aesthetician.schema import full_schema
+
+    aliases = {
+        "cartoon-filmation-1975": "cartoon-syndicated-1975",
+        "auth-early-youtube-webcam-2006": "auth-early-video-sharing-webcam-2006",
+        "auth-food-network-studio-2005": "auth-cable-food-studio-2005",
+        "auth-gopro-action-footage-2014": "auth-first-wave-action-camera-2014",
+        "auth-nasa-mission-tape-1972": "auth-space-agency-mission-tape-1972",
+    }
+    assert full_schema()["preset_aliases"] == aliases
+    for old, new in aliases.items():
+        assert old not in all_presets()
+        assert get_preset(old) is get_preset(new)
 
 
 def test_segmenting():
@@ -1210,7 +1240,7 @@ def test_source_modern_uses_avc_aac_without_rewriting_earlier_web_codecs():
     avc_aac = {
         "auth-anime-web-fansub-encode-2006",
         "auth-dslr-indie-naturalism-2012",
-        "auth-gopro-action-footage-2014",
+        "auth-first-wave-action-camera-2014",
         "auth-body-camera-evidence-2017",
         "auth-dashcam-archive-2015",
         "auth-doorbell-camera-night-2018",
@@ -1226,9 +1256,9 @@ def test_source_modern_uses_avc_aac_without_rewriting_earlier_web_codecs():
         assert "a_codec_aac" in audio_ids and "a_codec_mp3" not in audio_ids, (pid, audio_ids)
 
     period_carriers = {
-        "auth-early-youtube-webcam-2006": ("flv1", "a_codec_mp3"),
+        "auth-early-video-sharing-webcam-2006": ("flv1", "a_codec_mp3"),
         "auth-machinima-web-series-2005": ("mpeg4", "a_codec_mp3"),
-        "auth-food-network-studio-2005": ("mpeg2video", "a_codec_mp3"),
+        "auth-cable-food-studio-2005": ("mpeg2video", "a_codec_mp3"),
         "auth-live-truck-local-news-2004": ("mpeg2video", "a_codec_mp3"),
     }
     for pid, (codec, audio_codec) in period_carriers.items():
@@ -2129,6 +2159,15 @@ def test_taxonomy_finds_what_people_type():
         return [p.id for _, p in search(ps.values(), q)]
 
     assert ids("film noir")[0] == "noir-1947"
+    # Two tiers: the typed word decides the results; a synonym only relates.
+    direct = [p.id for _, p in search(ps.values(), "witch", "direct")]
+    related = [p.id for _, p in search(ps.values(), "witch", "related")]
+    assert 1 <= len(direct) <= 5 and "genre-found-footage-1999" in direct, direct
+    assert len(related) > len(direct) and not (set(direct) & set(related))
+    from aesthetician.taxonomy import is_audio_only
+    scifi = search(ps.values(), "scifi")
+    assert sum(1 for _, p in scifi if is_audio_only(p)) <= 3, "a synonym must not drag the sound-only shelf in"
+    assert search(ps.values(), "spooky", "direct") == [] and search(ps.values(), "spooky", "related")
     assert ids("80s adventure") == ids("eighties adventure") == ids("1980s adventure")
     assert "tokyo-spectacle-1962" in ids("kaiju")
     assert "adventure-answer-print-1985" in ids("80s adventure movie")
@@ -2137,6 +2176,43 @@ def test_taxonomy_finds_what_people_type():
     for pid in ids("black and white 1940s"):
         p = ps[pid]
         assert p.family == "audio" or str(p.era).startswith("194"), pid
+
+
+def test_every_preset_knows_when_it_arrived():
+    """The app sorts by introduction date; the generated table must cover the library."""
+    import re
+
+    from aesthetician.engine.presets import all_presets
+    from aesthetician.presets._introduced import INTRODUCED
+    from aesthetician.schema import preset_schema
+
+    ps = all_presets()
+    assert set(INTRODUCED) == set(ps), (set(INTRODUCED) ^ set(ps))
+    for pid, (day, ver) in INTRODUCED.items():
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", day), (pid, day)
+        assert ver == "unreleased" or re.fullmatch(r"\d+\.\d+\.\d+", ver), (pid, ver)
+    assert INTRODUCED["vhs-1985-sp"][1] == "0.3.0"
+    schema = preset_schema()
+    assert schema["noir-1947"]["introduced"] == {"date": INTRODUCED["noir-1947"][0], "version": INTRODUCED["noir-1947"][1]}
+
+
+def test_release_bump_stamps_unreleased_presets(tmp_path=None):
+    """Cutting a release gives every 'unreleased' preset that release's number."""
+    import importlib.util
+    import tempfile
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "bump_version", os.path.join(os.path.dirname(__file__), "..", "scripts", "release", "bump_version.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "_introduced.py"
+        p.write_text('INTRODUCED = {\n    "a": ("2026-09-02", "unreleased"),\n    "b": ("2026-08-01", "0.26.0"),\n}\n')
+        assert mod.stamp_introduced("0.28.0", p) == 1
+        assert '"a": ("2026-09-02", "0.28.0")' in p.read_text()
+        assert '"b": ("2026-08-01", "0.26.0")' in p.read_text()
+        assert mod.stamp_introduced("0.29.0", p) == 0
 
 
 def test_taxonomy_places_every_preset():

@@ -91,19 +91,19 @@ register_preset(Preset(
 ))
 
 register_preset(Preset(
-    id="cartoon-filmation-1975",
-    name="Filmation Economy",
+    id="cartoon-syndicated-1975",
+    name="Syndicated Limited Animation",
     family="cartoon",
     era="1975",
     desc="The economy plan: heroic four-frame holds, the same run cycle you saw last week, xerox lines over syndication-print wear, one tired mono TV speaker.",
     tagline="Four-frame holds, xerox lines, print wear",
-    tags=("70s", "filmation", "cel", "tv"),
+    tags=("70s", "limited-animation", "cel", "tv"),
     proc_height=560,
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 14, "flatness": 0.5}),
-        ("color_era", {"profile": "filmation_1975", "strength": 0.9}),
-        ("animate_on", {"pattern": "filmation"}),
+        ("color_era", {"profile": "syndication_1975", "strength": 0.9}),
+        ("animate_on", {"pattern": "economy_holds"}),
         ("cel_wobble", {"amount": 1.0}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.08}),
         ("ink_line", {"weight": 0.45, "xerox_grit": 0.5}),
@@ -142,7 +142,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 16, "flatness": 0.45}),
-        ("color_era", {"profile": "nick_90s", "strength": 0.55}),
+        ("color_era", {"profile": "cable_90s", "strength": 0.55}),
         ("tone", {"contrast": 1.12, "knee": 0.84}),
         ("saturation", {"amount": 1.12, "vibrance": 0.15}),
         ("animate_on", {"pattern": "twos"}),
@@ -181,7 +181,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 16, "flatness": 0.45, "sat_snap": 0.35}),
-        ("color_era", {"profile": "nick_90s", "strength": 0.9}),
+        ("color_era", {"profile": "cable_90s", "strength": 0.9}),
         ("animate_on", {"pattern": "twos"}),
         ("cel_wobble", {"amount": 0.8}),
         ("ink_line", {"weight": 0.4}),
@@ -217,7 +217,7 @@ register_preset(Preset(
     upscale="soft",
     video=[
         ("cel_flatten", {"levels": 12, "flatness": 0.5}),
-        ("color_era", {"profile": "mtv_1994", "strength": 0.9}),
+        ("color_era", {"profile": "alt_1994", "strength": 0.9}),
         ("animate_on", {"pattern": "threes"}),
         ("cel_wobble", {"amount": 1.4}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.1}),

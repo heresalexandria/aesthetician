@@ -26,9 +26,17 @@ app reads them from the engine's schema, so the two never disagree.
 
 Results come back ranked: a hit in the name outweighs one in the tagline,
 which outweighs the keywords, tags, facets, id and era; the description is the
-tie-breaker. While a query is active the list is a single ranked
-**RESULTS** group with the family named on each row, instead of a tour of the
-families.
+tie-breaker. While a query is active the list is a ranked **RESULTS** group
+with the family named on each row, instead of a tour of the families.
+
+Answers come in two tiers. **Results** are presets the typed words themselves
+landed in (a decade counts in all its spellings). **Related**, folded under
+its own label, holds presets that only a synonym reached, and a synonym only
+counts as a whole word in something a person wrote (name, tagline, keywords,
+tags, id), never in facet labels or prose. So `witch` is the two folk-horror
+looks, with the rest of horror one click away, and `scifi` cannot reach the
+sound-only shelf through the words "playback space". A word that lands
+nowhere directly (`spooky`) shows its related presets unfolded.
 
 From the CLI, `aesthetician info <id>` prints a preset's tags, keywords and
 facets, and the `search()` helper in `aesthetician.taxonomy` runs the same
@@ -77,6 +85,17 @@ already carries work.
 
 Collections are data (`aesthetician/collections.py`) and validated with the
 presets, so a renamed preset can never leave a dangling recommendation.
+
+## Sorting
+
+The dropdown beside the era filter orders the library: by **family** (the
+shelf order the app has always used), **A to Z**, **year**, or by when a
+preset **arrived** in the library, newest or oldest first. The arrival date and
+first release version come from git history, generated into
+`aesthetician/presets/_introduced.py` by `scripts/gen_introduced.py` (re-run
+it after adding presets); the packaged app has no git to ask. The flat sorts
+name the family on each row, and the two "added" sorts also show the release
+each preset first shipped in. `aesthetician info <id>` prints the same date.
 
 ## Recents
 

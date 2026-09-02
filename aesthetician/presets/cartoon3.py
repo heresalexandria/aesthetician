@@ -251,7 +251,7 @@ register_preset(Preset(
         ("animate_on", {"pattern": "threes"}),
         ("cel_flatten", {"smooth": 0.45, "levels": 10, "flatness": 0.5, "sat_snap": 0.35}),
         ("ink_line", {"weight": 0.3, "xerox_grit": 0.35}),
-        ("color_era", {"profile": "hb_1960s_tv", "strength": 0.5}),
+        ("color_era", {"profile": "limited_1960s_tv", "strength": 0.5}),
         ("paper_texture", {"amount": 0.03}),
         ("cel_wobble", {"amount": 0.9}),
         ("cel_dirt", {"density": 0.45, "visibility": 0.06}),
@@ -306,7 +306,7 @@ register_preset(Preset(
         ("cel_flatten", {"smooth": 0.4, "levels": 12, "flatness": 0.4}),
         ("ink_line", {"weight": 0.4, "xerox_grit": 0.2, "line_wobble": 0.15}),
         ("paper_texture", {"amount": 0.04}),
-        ("color_era", {"profile": "hb_1960s_tv", "strength": 0.3}),
+        ("color_era", {"profile": "limited_1960s_tv", "strength": 0.3}),
         ("cel_wobble", {"amount": 1.0}),
         ("cel_dirt", {"density": 0.45, "visibility": 0.06}),
         ("balance", {"warmth": 0.16, "high_tint": "cream", "high_amt": 0.18}),
@@ -363,7 +363,7 @@ register_preset(Preset(
         ("animate_on", {"pattern": "twos"}),
         ("cel_flatten", {"smooth": 0.4, "levels": 12, "flatness": 0.45, "sat_snap": 0.3}),
         ("ink_line", {"weight": 0.4, "xerox_grit": 0.15, "line_wobble": 0.2}),
-        ("color_era", {"profile": "hb_1970s", "strength": 0.6}),
+        ("color_era", {"profile": "limited_1970s", "strength": 0.6}),
         ("cel_wobble", {"amount": 1.0, "rot": 0.07}),
         ("cel_dirt", {"density": 0.5, "visibility": 0.07, "glass_shadows": 0.4}),
         ("saturation", {"amount": 1.25, "vibrance": 0.2}),
@@ -453,7 +453,7 @@ register_preset(Preset(
 ))
 
 
-# nearest: cartoon-filmation-1975; differs: 1961 feature on a clean Technicolor print with
+# nearest: cartoon-syndicated-1975; differs: 1961 feature on a clean Technicolor print with
 # no holds at all, the xerox grit carried by the line itself rather than by print wear.
 register_preset(Preset(
     id="cartoon-xerox-feature-1961",
@@ -504,7 +504,7 @@ register_preset(Preset(
 ))
 
 
-# nearest: cartoon-filmation-1975; differs: clean overseas-inked mid-eighties cels with no
+# nearest: cartoon-syndicated-1975; differs: clean overseas-inked mid-eighties cels with no
 # xerox line or print wear, delivered on one-inch syndication video rather than a 16 mm print.
 register_preset(Preset(
     id="cartoon-toy-line-syndicated-1985",
@@ -522,7 +522,7 @@ register_preset(Preset(
         ("animate_on", {"pattern": "twos"}),
         ("cel_flatten", {"smooth": 0.4, "levels": 12, "flatness": 0.45, "sat_snap": 0.3}),
         ("ink_line", {"weight": 0.35, "xerox_grit": 0.15}),
-        ("color_era", {"profile": "filmation_1975", "strength": 0.4}),
+        ("color_era", {"profile": "syndication_1975", "strength": 0.4}),
         ("cel_wobble", {"amount": 0.7}),
         ("cel_dirt", {"density": 0.4, "visibility": 0.05}),
         ("saturation", {"amount": 1.2, "vibrance": 0.12}),

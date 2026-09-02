@@ -7,7 +7,8 @@ from typing import Any
 from . import __version__
 from .collections import collections_schema
 from .engine.graph import all_effects
-from .engine.presets import all_presets
+from .engine.presets import PRESET_ALIASES, all_presets
+from .presets._introduced import INTRODUCED
 from .taxonomy import facets_for, taxonomy_schema
 
 
@@ -56,6 +57,7 @@ def preset_schema() -> dict[str, Any]:
             "tags": list(p.tags),
             "keywords": list(p.keywords),
             "facets": facets_for(p),
+            "introduced": dict(zip(("date", "version"), INTRODUCED.get(p.id, ("", "unreleased")))),
             "proc_height": p.proc_height,
             "upscale": p.upscale,
             "video": [[eid, params] for eid, params in p.video],
@@ -75,4 +77,5 @@ def full_schema() -> dict[str, Any]:
         "presets": preset_schema(),
         "taxonomy": taxonomy_schema(),
         "collections": collections_schema(),
+        "preset_aliases": dict(PRESET_ALIASES),
     }
