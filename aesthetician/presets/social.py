@@ -334,7 +334,7 @@ register_preset(Preset(
 ))
 
 
-# nearest: webvideo-2006 (240p Sorenson, 32k mono), auth-early-youtube-webcam-2006 (FLV webcam);
+# nearest: webvideo-2006 (240p Sorenson, 32k mono), auth-early-video-sharing-webcam-2006 (FLV webcam);
 # differs: 2010 H.264 at 360 lines with the site's own upload sharpening and a tinny 96 kbps AAC track.
 register_preset(Preset(
     id="social-youtube-360p-2010",

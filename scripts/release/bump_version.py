@@ -65,6 +65,25 @@ def _sub_once(path: Path, pattern: str, replacement: str) -> None:
     path.write_text(new)
 
 
+INTRODUCED_PY = REPO_ROOT / "aesthetician" / "presets" / "_introduced.py"
+
+
+def stamp_introduced(version: str, path: Path = INTRODUCED_PY) -> int:
+    """Presets that entered the library since the last release now have one.
+
+    scripts/gen_introduced.py writes "unreleased" for a preset no release tag
+    contains yet; the tag is being created right now, so this is the version
+    those presets first ship in. Returns how many entries were stamped.
+    """
+    if not path.exists():
+        return 0
+    text = path.read_text()
+    new, n = re.subn(r'"unreleased"\)', f'"{version}")', text)
+    if n:
+        path.write_text(new)
+    return n
+
+
 def write(version: str) -> list[str]:
     """Set `version` in every file that carries it. Returns what changed."""
     touched: list[str] = []
@@ -87,6 +106,9 @@ def write(version: str) -> list[str]:
             lock["packages"][""]["version"] = version
         PACKAGE_LOCK.write_text(json.dumps(lock, indent=2) + "\n")
         touched.append(str(PACKAGE_LOCK.relative_to(REPO_ROOT)))
+
+    if stamp_introduced(version):
+        touched.append(str(INTRODUCED_PY.relative_to(REPO_ROOT)))
 
     return touched
 

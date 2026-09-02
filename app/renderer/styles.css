@@ -364,11 +364,13 @@ aside { background: var(--bg2); overflow-y: auto; }
   transition: border-color .12s ease, box-shadow .12s ease;
 }
 #preset-search:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
-#era-filter {
-  flex: 0 0 auto; width: 96px; background: var(--bg); color: var(--dim);
-  border: 1px solid var(--line); border-radius: 8px; padding: 6px 6px; font-size: 11.5px; outline: none;
+#era-filter, #sort-by {
+  flex: 0 0 auto; width: 88px; background: var(--bg); color: var(--dim);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; font-size: 11px; outline: none;
+  text-overflow: ellipsis;
 }
-#era-filter.active { color: var(--accent); border-color: var(--accent-dim); }
+#sort-by { width: 96px; }
+#era-filter.active, #sort-by.active { color: var(--accent); border-color: var(--accent-dim); }
 
 #family-chips {
   display: flex; gap: 5px; margin-top: 9px;
@@ -422,6 +424,8 @@ aside { background: var(--bg2); overflow-y: auto; }
 .list-empty .suggest-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 8px; }
 .family-label.recents { color: #9fb0d8; }
 .family-label.results { color: var(--accent); }
+.family-label.related { color: var(--dim); }
+.family-label.sorted { color: #9fb0d8; }
 
 /* Guide mode: a collection is a heading with a blurb, then its rows. */
 .family-label.guide-group { color: #ffb36b; }

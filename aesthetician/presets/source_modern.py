@@ -121,6 +121,8 @@ def _dv(
     soft: float = 0.08,
     corner: float = 0.12,
     focus: float = 0.08,
+    distortion: float = 0.0,
+    aberration: float = 0.0,
     gain_noise: float = 0.28,
     wb: float = 0.22,
     sharpen: float = 0.45,
@@ -131,7 +133,8 @@ def _dv(
         ("balance", {"warmth": warmth, "tint": tint}),
         ("saturation", {"amount": sat, "vibrance": 0.04}),
         ("optics", {"diffusion": diffusion, "soft_focus": soft, "corner_softness": corner,
-                     "focus_drift": focus}),
+                     "focus_drift": focus, "distortion": distortion,
+                     "chromatic_aberration": aberration}),
         ("exposure_auto", {"lag": 0.72, "overshoot": 0.24, "max_boost": 3.5,
                            "agc_gain_noise": gain_noise, "wb_amount": wb, "iris_step": 0.14}),
         ("chroma_dv", {"ratio": "4:1:1", "edge_sharpen": sharpen, "dct_blocks": blocks}),
@@ -300,11 +303,14 @@ def _surveillance(
     return chain
 
 
-def _dv_audio(*, high: float = 15500.0, mono: float = 0.0, agc: float = 0.42) -> ChainSpec:
+def _dv_audio(
+    *, high: float = 15500.0, mono: float = 0.0, agc: float = 0.42,
+    handling: float = 0.06, overload: float = 0.18,
+) -> ChainSpec:
     chain: ChainSpec = [
         ("a_historical_mic", {"profile": "camcorder_1994", "amount": 0.5,
-                              "proximity": 0.05, "overload": 0.18,
-                              "self_noise_db": -58.0, "handling": 0.06}),
+                              "proximity": 0.05, "overload": overload,
+                              "self_noise_db": -58.0, "handling": handling}),
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": high}),
     ]
     if mono:
@@ -395,7 +401,29 @@ register_preset(_preset(
 ))
 
 register_preset(_preset(
-    "auth-early-youtube-webcam-2006", "Early YouTube Webcam", "2006", "digital",
+    "auth-stunt-reality-minidv-2001", "Anarchic Stunt-Reality MiniDV", "2001", "digital",
+    "Mixed consumer MiniDV camera character without editorial inserts: aggressive fisheye bowing, clipped daylight, crushed small-sensor shadows, hard edge enhancement, 4:1:1 chroma, interlace texture, and a handling-heavy onboard microphone that keeps the supplied program intact.",
+    "Fisheye DV, clipped sun, handling-heavy mic", ("00s", "stunt-reality", "minidv", "fisheye"),
+    _dv(contrast=1.2, lift=0.005, warmth=-0.04, sat=1.18, diffusion=0.0,
+        soft=0.03, corner=0.3, focus=0.2, distortion=0.24, aberration=1.1,
+        gain_noise=0.38, wb=0.42, sharpen=0.78, blocks=0.2),
+    _dv_audio(high=13500.0, agc=0.78, handling=0.3, overload=0.46),
+    proc_height=540, upscale="sharp",
+))
+
+register_preset(_preset(
+    "auth-observational-handheld-dv-2005", "Observational Handheld DV", "2005", "digital",
+    "A compact mid-2000s camcorder treatment for an uninterrupted handheld source: cool compressed color, fluorescent green drift, clipped highlights, breathing autofocus, stepped auto-iris, 4:1:1 chroma, interlace and onboard stereo with audible handling and gain control, without stabilizing or re-editing the input.",
+    "Cool handheld DV with breathing autofocus", ("00s", "handheld", "minidv", "observational"),
+    _dv(contrast=1.12, lift=0.012, warmth=-0.14, tint=-0.07, sat=1.08,
+        diffusion=0.0, soft=0.08, corner=0.2, focus=0.34, distortion=0.025,
+        aberration=0.55, gain_noise=0.5, wb=0.58, sharpen=0.7, blocks=0.18),
+    _dv_audio(high=14500.0, agc=0.72, handling=0.22, overload=0.34),
+    proc_height=550, upscale="sharp",
+))
+
+register_preset(_preset(
+    "auth-early-video-sharing-webcam-2006", "Early Video-Sharing Webcam", "2006", "digital",
     "A USB webcam compressed twice before broadband: soft fixed-focus glass, monitor-lit exposure pumping, 240-line FLV macroblocks, and narrow mono MP3 without synthetic dropouts.",
     "240-line FLV, pumping webcam exposure", ("00s", "webcam", "web-video"),
     _web(codec="flv1", kbps=220, res="240p", gop=120, contrast=1.08, sat=0.86,
@@ -423,7 +451,7 @@ register_preset(_preset(
 ))
 
 register_preset(_preset(
-    "auth-food-network-studio-2005", "Food-Network Studio Show", "2005", "broadcast",
+    "auth-cable-food-studio-2005", "Cable Food-Studio Show", "2005", "broadcast",
     "Warm tungsten-biased studio video with clean early-HD edges, gently polished highlights, restrained 4:2:0 chroma, interlaced delivery, and close lav audio under network compression.",
     "Warm early HD with restrained 4:2:0 color", ("00s", "food-tv", "studio"),
     _hd(contrast=1.06, warmth=0.22, tint=0.03, sat=1.12, diffusion=0.08, soft=0.03,
@@ -540,9 +568,9 @@ register_preset(_preset(
 ))
 
 register_preset(_preset(
-    "auth-gopro-action-footage-2014", "GoPro Action Footage", "2014", "modern",
+    "auth-first-wave-action-camera-2014", "First-Wave Action-Camera Footage", "2014", "modern",
     "A first-wave action camera: barrel-heavy ultra-wide optics, hard electronic sharpness, clipped blue skies, small-sensor autoexposure, dense 4:2:0 H.264, and wind-exposed AAC camera-mic capture.",
-    "Ultra-wide barrel warp and hard H.264 edges", ("10s", "action-camera", "gopro"),
+    "Ultra-wide barrel warp and hard H.264 edges", ("10s", "action-camera", "small-sensor"),
     _modern_capture(contrast=1.14, warmth=-0.05, tint=-0.02, sat=1.14, distortion=-0.24,
                     corner=0.2, gain_noise=0.18, wb=0.26, sharpen=0.92, kbps=7000,
                     crf=23),

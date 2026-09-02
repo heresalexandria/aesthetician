@@ -278,7 +278,7 @@ register_preset(Preset(
 ))
 
 
-# nearest: auth-gopro-action-footage-2014 (barrel warp, hard H.264), red-one-raw-2008;
+# nearest: auth-first-wave-action-camera-2014 (barrel warp, hard H.264), red-one-raw-2008;
 # differs: aerial gimbal footage with in-camera sharpening halos, a real-estate grade and prop-shadow flicker.
 register_preset(Preset(
     id="drone-aerial-2016",

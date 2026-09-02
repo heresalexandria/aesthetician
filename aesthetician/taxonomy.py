@@ -1435,6 +1435,18 @@ SYNONYM_FACTOR = 0.7
 PREFIX_FACTOR = 0.6
 NAME_COVERAGE_BONUS = 2.0
 
+# The fields a person authored by hand. Synonyms only ever match here, and
+# only whole words: "scifi" may reach a preset tagged "space", but not every
+# sound-only preset whose facet label happens to be "Playback device and
+# room", and "witch" may reach folk horror without dragging in all of horror.
+AUTHORED_FIELDS = ("name", "tagline", "keywords", "tags", "id", "family")
+
+# Search answers in two tiers. Direct: the typed words themselves (and the
+# other spellings of a decade) landed. Related: only a synonym landed. The app
+# shows direct hits as the results and folds related ones away, so a specific
+# word gives a specific list and a vague one still finds something.
+TIERS = ("direct", "related")
+
 Alternatives = list[tuple[str, float]]
 QueryGroup = tuple[Alternatives, bool]     # (alternatives, era_only)
 
@@ -1476,14 +1488,17 @@ def expand_query(query: str) -> list[QueryGroup]:
     return groups
 
 
-def score(fields: dict[str, str], groups: list[QueryGroup]) -> float:
+def score(fields: dict[str, str], groups: list[QueryGroup], tier: str = "related") -> float:
     """0 when any token group misses; otherwise the summed weighted hits.
 
-    A group hits when any alternative equals a field token, or is a prefix of
-    one (typing "adventur" already finds adventure). Exact beats prefix, the
-    typed word beats its synonyms, and the name beats the prose.
+    A typed word hits when it equals a field token or is a prefix of one
+    (typing "adventur" already finds adventure), in any field. A synonym
+    (factor below 1) hits only as a whole word in an authored field, and not
+    at all when scoring the "direct" tier. Exact beats prefix, the typed word
+    beats its synonyms, and the name beats the prose.
     """
     field_tokens = {f: tokens(v) for f, v in fields.items()}
+    direct_only = tier == "direct"
     total = 0.0
     name_hits = 0
     for alts, era_only in groups:
@@ -1497,9 +1512,12 @@ def score(fields: dict[str, str], groups: list[QueryGroup]) -> float:
             hit = 0.0
             for ft in ftoks:
                 for a, factor in alts:
+                    typed = factor >= 1.0
+                    if not typed and (direct_only or fname not in AUTHORED_FIELDS):
+                        continue
                     if ft == a:
                         hit = max(hit, w * factor)
-                    elif len(a) >= 3 and ft.startswith(a):
+                    elif typed and len(a) >= 3 and ft.startswith(a):
                         hit = max(hit, w * factor * PREFIX_FACTOR)
             if hit > 0 and fname == "name":
                 name_hits += 1
@@ -1514,17 +1532,34 @@ def score(fields: dict[str, str], groups: list[QueryGroup]) -> float:
     return total
 
 
-def search(presets: Iterable[Preset], query: str) -> list[tuple[float, Preset]]:
+def search(presets: Iterable[Preset], query: str, tier: str | None = None) -> list[tuple[float, Preset]]:
+    """Ranked hits for a query: the direct tier first, then the related tier.
+
+    `tier="direct"` or `"related"` returns only that tier; the default returns
+    both, direct hits ahead of related ones, each ranked by score.
+    """
     groups = expand_query(query)
     if not groups:
         return [(0.0, p) for p in presets]
-    hits = []
+    presets = list(presets)
+    direct: list[tuple[float, Preset]] = []
+    related: list[tuple[float, Preset]] = []
     for p in presets:
-        s = score(search_text(p), groups)
+        fields = search_text(p)
+        s = score(fields, groups, "direct")
         if s > 0:
-            hits.append((s, p))
-    hits.sort(key=lambda t: (-t[0], t[1].id))
-    return hits
+            direct.append((s, p))
+            continue
+        s = score(fields, groups, "related")
+        if s > 0:
+            related.append((s, p))
+    direct.sort(key=lambda t: (-t[0], t[1].id))
+    related.sort(key=lambda t: (-t[0], t[1].id))
+    if tier == "direct":
+        return direct
+    if tier == "related":
+        return related
+    return direct + related
 
 
 def taxonomy_schema() -> dict[str, Any]:
@@ -1543,4 +1578,5 @@ def taxonomy_schema() -> dict[str, Any]:
         "synonym_factor": SYNONYM_FACTOR,
         "prefix_factor": PREFIX_FACTOR,
         "name_coverage_bonus": NAME_COVERAGE_BONUS,
+        "authored_fields": list(AUTHORED_FIELDS),
     }

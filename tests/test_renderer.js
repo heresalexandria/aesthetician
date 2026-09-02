@@ -60,7 +60,8 @@ const R = vm.runInNewContext(
   `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
        automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters,
-       searchTokens, eraTokens, expandQuery, searchScore, passesFacets, presetSubline, facetLabel })`,
+       searchTokens, eraTokens, expandQuery, searchScore, searchTier, sortPresets, SORT_OPTIONS,
+       passesFacets, presetSubline, facetLabel })`,
   sandbox,
 );
 
@@ -430,6 +431,55 @@ function test_synonyms_and_facets_find_the_artifact_names() {
   assert.ok(hits('cassette', R.isAudioOnly).length >= 3, 'audio carriers are findable by format');
 }
 
+function test_search_answers_in_two_tiers() {
+  R.G.schema = S;
+  const tiers = (q) => {
+    const g = R.expandQuery(q);
+    const out = { direct: [], related: [] };
+    for (const p of Object.values(S.presets)) { const t = R.searchTier(p, g); if (t) out[t].push(p.id); }
+    return out;
+  };
+  const witch = tiers('witch');
+  assert.ok(witch.direct.length >= 1 && witch.direct.length <= 5, `witch direct: ${witch.direct}`);
+  assert.ok(witch.direct.includes('genre-found-footage-1999'));
+  assert.ok(witch.related.length > witch.direct.length, 'the synonym reach lives in the related tier');
+  const scifi = tiers('scifi');
+  const audio = [...scifi.direct, ...scifi.related].filter((id) => R.isAudioOnly(S.presets[id]));
+  assert.ok(audio.length <= 3, `scifi must not reach the sound-only shelf: ${audio}`);
+  const spooky = tiers('spooky');
+  assert.strictEqual(spooky.direct.length, 0);
+  assert.ok(spooky.related.length > 0, 'a vague word still relates to something');
+  // Mirror check: the engine and the app agree on the direct tier.
+  const py = spawnSync(path.join(ROOT, '.venv', 'bin', 'python'), ['-c',
+    'import json,aesthetician.presets\nfrom aesthetician.engine.presets import all_presets\nfrom aesthetician.taxonomy import search\nps=all_presets()\nprint(json.dumps({q:[p.id for _,p in search(ps.values(),q,"direct")] for q in ["witch","scifi","80s adventure","cassette"]}))'],
+    { cwd: ROOT });
+  if (py.status === 0) {
+    const engine = JSON.parse(py.stdout.toString());
+    for (const [q, ids] of Object.entries(engine)) {
+      assert.deepStrictEqual(Array.from(tiers(q).direct).sort(), ids.sort(), `direct tier for ${q} differs from the engine`);
+    }
+  }
+}
+
+function test_sorting_the_library() {
+  R.G.schema = S;
+  const all = Object.values(S.presets);
+  assert.deepStrictEqual(Array.from(R.SORT_OPTIONS.map((o) => o.id)), ['family', 'name', 'year', 'newest', 'oldest']);
+  const byName = R.sortPresets(all, 'name');
+  for (let i = 1; i < byName.length; i++) assert.ok(byName[i - 1].name.localeCompare(byName[i].name) <= 0, 'A to Z');
+  const byYear = R.sortPresets(all, 'year');
+  for (let i = 1; i < byYear.length; i++) assert.ok((parseInt(byYear[i - 1].era, 10) || 9999) <= (parseInt(byYear[i].era, 10) || 9999), 'year');
+  const newest = R.sortPresets(all, 'newest');
+  assert.ok(newest[0].introduced.date >= newest[newest.length - 1].introduced.date, 'newest first');
+  assert.ok(newest.every((p) => p.introduced && p.introduced.date), 'every preset carries an introduction date');
+  const oldest = R.sortPresets(all, 'oldest');
+  assert.strictEqual(oldest[0].introduced.version, '0.3.0', `the oldest presets shipped in 0.3.0, got ${oldest[0].introduced.version}`);
+  const byFamily = R.sortPresets(all, 'family');
+  assert.strictEqual(byFamily.length, all.length);
+  assert.strictEqual(byFamily[0].family, 'adjust', 'family order starts with the utility shelf');
+  assert.strictEqual(byFamily[byFamily.length - 1].family, 'audio', 'and ends with the sound-only shelf');
+}
+
 function test_ranking_prefers_the_name_over_the_prose() {
   const ranked = hits('film noir');
   assert.strictEqual(ranked[0], 'noir-1947', `expected the noir preset first, got ${ranked.slice(0, 3)}`);
@@ -479,6 +529,8 @@ function test_collections_name_real_presets() {
 
 const tests = [
   test_search_tokens_fold_phrases_and_decades,
+  test_search_answers_in_two_tiers,
+  test_sorting_the_library,
   test_every_typed_word_has_to_land,
   test_synonyms_and_facets_find_the_artifact_names,
   test_ranking_prefers_the_name_over_the_prose,
