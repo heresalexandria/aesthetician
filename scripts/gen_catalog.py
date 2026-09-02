@@ -11,6 +11,7 @@ sys.path.insert(0, ROOT)
 
 from aesthetician.engine.graph import get_effect
 from aesthetician.engine.presets import all_presets
+from aesthetician.taxonomy import facets_for
 
 OUT = os.path.join(ROOT, "docs", "catalog.md")
 
@@ -37,6 +38,16 @@ def main() -> None:
             fam = p.family
             lines += [f"## {fam.upper()}", ""]
         lines += [f"### `{p.id}` - {p.name} ({p.era})", "", p.desc, ""]
+        facets = ", ".join(f"{k}: {'/'.join(v)}" for k, v in facets_for(p).items() if v)
+        meta = []
+        if p.tags:
+            meta.append("tags: " + ", ".join(p.tags))
+        if p.keywords:
+            meta.append("keywords: " + ", ".join(p.keywords))
+        if facets:
+            meta.append("facets: " + facets)
+        if meta:
+            lines += ["*" + " · ".join(meta) + "*", ""]
         if p.variants:
             lines.append("**Variants:** " + ", ".join(f"`{v.id}` ({v.name} - {v.desc})" for v in p.variants))
             lines.append("")

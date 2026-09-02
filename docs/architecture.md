@@ -51,6 +51,19 @@ Two temporal keys matter: `ctx.fi_out` (output timeline - film/tape-level
 artifacts like grain refresh every frame) and `ctx.fi_src` (source timeline -
 cel/content-level artifacts stick during frame holds).
 
+## Finding presets (`aesthetician/taxonomy.py`, `aesthetician/collections.py`)
+
+`schema.py` also ships the vocabulary the app searches with. `taxonomy.py`
+folds phrases ("black and white" -> `bw`), expands synonyms at a discount,
+scores a query against weighted preset fields (name > tagline > keywords >
+tags > facets > id/era > prose) and derives five facets per preset (medium,
+genre, region, condition, color) from the effects in its chain and its own
+words, so nothing is tagged by hand. `collections.py` is the Guide: curated
+"make it look like…" lists and recipes (ready-made stacks). The renderer
+mirrors the scorer line for line; `tests/test_renderer.js` and
+`tests/test_engine.py` keep the two in step. Legacy presets get their search
+keywords from `presets/_keywords.py`. See `docs/finding-presets.md`.
+
 ## Assets (`aesthetician/assets/`)
 
 Organic overlay plates (dust, light leaks, burns, grime, paper, tape creases)

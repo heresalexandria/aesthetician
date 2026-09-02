@@ -59,7 +59,8 @@ const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8'
 const R = vm.runInNewContext(
   `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
-       automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters })`,
+       automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters,
+       searchTokens, eraTokens, expandQuery, searchScore, passesFacets, presetSubline, facetLabel })`,
   sandbox,
 );
 
@@ -369,7 +370,120 @@ async function test_automatic_update_checks_only_when_due() {
   assert.strictEqual(R.U.staged, null, 'a missing staged file must stop looking installable');
 }
 
+/* ── finding presets ─────────────────────────────────────────────────
+   The search mirrors aesthetician/taxonomy.py: every typed token must land
+   somewhere (whole word or prefix), synonyms and decade words expand, and the
+   engine's schema supplies the vocabulary. These run against the real library,
+   so they double as a check that the vocabulary actually covers what people
+   type. */
+function hits(query, filter = () => true) {
+  R.G.schema = S;   // the vocabulary rides on the schema
+  const groups = R.expandQuery(query);
+  return Object.values(S.presets)
+    .filter(filter)
+    .map((p) => [R.searchScore(p, groups), p])
+    .filter(([s]) => s > 0)
+    .sort((a, b) => (b[0] - a[0]) || a[1].id.localeCompare(b[1].id))
+    .map(([, p]) => p.id);
+}
+
+function test_search_tokens_fold_phrases_and_decades() {
+  R.G.schema = S;
+  // Arrays cross the vm realm boundary with a foreign prototype: copy first.
+  assert.deepStrictEqual(Array.from(R.searchTokens("Black & White 80's sci-fi")), ['bw', '80s', 'scifi']);
+  assert.deepStrictEqual(Array.from(R.searchTokens('hong kong crime')), ['hong-kong', 'hong', 'kong', 'crime']);
+  assert.deepStrictEqual(Array.from(R.eraTokens('1985')), ['1985', '1980s', '80s', 'eighties']);
+  const raw = R.expandQuery('80s adventure');
+  const groups = raw.map((g) => g.alts.map(([a]) => a));
+  assert.ok(groups[0].includes('1980s') && groups[0].includes('eighties'), `decade did not expand: ${groups[0]}`);
+  assert.ok(!groups[0].includes('1980'), 'a decade must not match the single year');
+  assert.ok(raw[0].era && !raw[1].era, 'a decade is scored against the era only');
+  assert.ok(groups[1].includes('adventure'));
+  const noir = R.expandQuery('noir')[0].alts;
+  assert.ok(noir[0][1] === 1 && noir.slice(1).every(([, f]) => f < 1), 'a synonym must be worth less than the typed word');
+}
+
+function test_every_typed_word_has_to_land() {
+  const eightiesTv = hits('80s tv');
+  assert.ok(eightiesTv.length > 0, 'a plain decade + medium query must find something');
+  for (const id of eightiesTv) {
+    const p = S.presets[id];
+    assert.ok(String(p.era).startsWith('198') || /eighties|1980s|80s/.test(`${p.tags} ${p.keywords} ${p.desc}`.toLowerCase()),
+      `${id} matched "80s tv" without being from the eighties`);
+  }
+  assert.ok(!hits('80s tv kaiju zebra').length, 'a token nothing has must return nothing');
+  assert.ok(hits('adventur').includes('adventure-answer-print-1985'), 'a prefix still finds the word');
+}
+
+function test_synonyms_and_facets_find_the_artifact_names() {
+  // The name says "Tokyo Spectacle Print"; a person types this.
+  assert.ok(hits('kaiju').includes('tokyo-spectacle-1962'), 'kaiju must find the kaiju preset');
+  assert.ok(hits('monster movie 60s').includes('tokyo-spectacle-1962'), 'synonym + phrase + decade');
+  assert.ok(hits('80s adventure movie').includes('adventure-answer-print-1985'));
+  const bw40s = hits('black and white 1940s');
+  assert.ok(bw40s.length >= 5, `expected a shelf of 1940s B&W, got ${bw40s.length}`);
+  for (const id of bw40s) {
+    const p = S.presets[id];
+    assert.ok(p.facets.color.includes('bw') || p.family === 'audio', `${id} is not black and white`);
+  }
+  assert.ok(hits('security camera').includes('security-vcr-1994'));
+  assert.ok(hits('cassette', R.isAudioOnly).length >= 3, 'audio carriers are findable by format');
+}
+
+function test_ranking_prefers_the_name_over_the_prose() {
+  const ranked = hits('film noir');
+  assert.strictEqual(ranked[0], 'noir-1947', `expected the noir preset first, got ${ranked.slice(0, 3)}`);
+  // A decade word in a keyword list must not beat the era itself.
+  const a = hits('80s adventure');
+  const b = hits('eighties adventure');
+  assert.deepStrictEqual(Array.from(a), Array.from(b), 'decade spellings must rank identically');
+}
+
+function test_facet_filters_are_real_and_exhaustive() {
+  R.G.schema = S;
+  const facetIds = S.taxonomy.facets.map((f) => f.id);
+  assert.deepStrictEqual(facetIds, ['medium', 'genre', 'region', 'condition', 'color']);
+  for (const p of Object.values(S.presets)) {
+    for (const [fid, vals] of Object.entries(p.facets)) {
+      const f = S.taxonomy.facets.find((x) => x.id === fid);
+      assert.ok(f, `${p.id} carries an unknown facet ${fid}`);
+      for (const v of vals) assert.ok(f.values.some((x) => x.id === v), `${p.id}: unknown ${fid} value ${v}`);
+    }
+    if (!R.isAudioOnly(p) && !['adjust', 'captions'].includes(p.family)) {
+      assert.ok(p.facets.medium.length, `${p.id} has no medium facet`);
+      assert.ok(p.facets.genre.length, `${p.id} has no genre facet`);
+      assert.ok(p.facets.color.length, `${p.id} has no color facet`);
+    }
+  }
+  R.G.filterFacets = { medium: 'videotape' };
+  assert.strictEqual(R.passesFacets(S.presets['vhs-1985-sp']), true);
+  assert.strictEqual(R.passesFacets(S.presets['noir-1947']), false);
+  R.G.filterFacets = { color: 'bw', genre: 'crime' };
+  assert.strictEqual(R.passesFacets(S.presets['noir-1947']), true);
+  assert.strictEqual(R.passesFacets(S.presets['vhs-1985-sp']), false);
+  R.G.filterFacets = {};
+  assert.ok(R.presetSubline(S.presets['noir-1947']).startsWith('1947 · film · crime'), R.presetSubline(S.presets['noir-1947']));
+  assert.strictEqual(R.facetLabel('genre', 'kaiju'), 'Kaiju and tokusatsu');
+}
+
+function test_collections_name_real_presets() {
+  for (const c of S.collections) {
+    assert.ok(c.id && c.title && c.blurb, `collection ${c.id} is incomplete`);
+    for (const id of c.presets) assert.ok(S.presets[id], `collection ${c.id} names a missing preset ${id}`);
+    for (const r of c.recipes) {
+      assert.ok(r.layers.length >= 2, `recipe ${c.id}/${r.id} is not a stack`);
+      for (const id of r.layers) assert.ok(S.presets[id], `recipe ${c.id}/${r.id} names a missing preset ${id}`);
+    }
+  }
+}
+
 const tests = [
+  test_search_tokens_fold_phrases_and_decades,
+  test_every_typed_word_has_to_land,
+  test_synonyms_and_facets_find_the_artifact_names,
+  test_ranking_prefers_the_name_over_the_prose,
+  test_facet_filters_are_real_and_exhaustive,
+  test_collections_name_real_presets,
   test_the_grid_holds_every_authored_value,
   test_a_live_value_never_prints_as_the_minimum,
   test_committed_values_print_as_themselves,

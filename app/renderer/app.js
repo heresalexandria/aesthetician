@@ -37,6 +37,11 @@ const G = {
   favOnly: false,      // the ★ chip: show favorites only
   customOnly: false,   // the ✎ chip: show saved customs only
   stackOnly: false,    // the ▤ chip: show saved stacks only
+  filterFacets: {},    // facet id -> selected value id (empty = any facet value)
+  refineOpen: true,    // the facet dropdown row is unfolded (persisted)
+  guideOpen: false,    // the ✦ chip: browse the curated collections instead of the library
+  recents: [],         // preset ids picked by hand, newest first (persisted)
+  searchIndex: new Map(),   // preset id -> tokenized search fields (see searchFields)
 };
 
 /* Update state. Declared up here with G rather than beside the update code:
@@ -60,12 +65,15 @@ let updatePollTimer = null;
    Favorites, collapsed families and the preview knobs survive restarts.
    Everything degrades to defaults if storage is unavailable or stale. */
 const STORE_KEY = 'aesthetician.ui.v1';
+const RECENTS_MAX = 8;
 
 function loadStore() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
     if (Array.isArray(s.favs)) G.favs = new Set(s.favs);
     if (Array.isArray(s.collapsed)) G.collapsed = new Set(s.collapsed);
+    if (Array.isArray(s.recents)) G.recents = s.recents.filter((id) => typeof id === 'string').slice(0, RECENTS_MAX);
+    if (typeof s.refineOpen === 'boolean') G.refineOpen = s.refineOpen;
     if (typeof s.duration === 'number' && s.duration >= 1 && s.duration <= 10) G.duration = s.duration;
     if (typeof s.scale === 'number' && s.scale >= 0.2 && s.scale <= 1) G.scale = s.scale;
     if (typeof s.autoPreview === 'boolean') G.autoPreview = s.autoPreview;
@@ -99,6 +107,8 @@ function saveStore() {
       paused: G.paused,
       customs: G.customs,
       stacks: G.stacks,
+      recents: G.recents,
+      refineOpen: G.refineOpen,
     }));
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
@@ -1013,7 +1023,20 @@ function syncPresetSub() {
   const c = state.customId ? customById(state.customId) : null;
   $('preset-sub').textContent = c
     ? `custom · from ${p.name}${customDrifted() ? ' · edited' : ''}`
-    : `${p.era} · ${p.family}`;
+    : presetSubline(p);
+}
+
+/* "1964 · genre · kaiju and tokusatsu · 35 mm film": the year, the shelf and
+   the two facets that say what the thing IS, for a name that only says what
+   it is made of. */
+function presetSubline(p) {
+  const bits = [p.era, p.family];
+  const f = p.facets || {};
+  if (f.genre && f.genre.length) bits.push(facetLabel('genre', f.genre[0]).toLowerCase());
+  const medium = (f.medium || []).filter((m) => m !== 'film' && m !== 'broadcast');
+  const m = medium[0] || (f.medium || [])[0];
+  if (m) bits.push(facetLabel('medium', m).toLowerCase().replace(/ \(.*\)$/, ''));
+  return bits.join(' · ');
 }
 
 /* Electron has no window.prompt, and a name is worth asking for properly. */
@@ -1642,6 +1665,383 @@ function wireUpdates() {
   });
 }
 
+// ── finding presets: search, facets, guide, recents ─────────────────
+/* The engine owns the vocabulary (aesthetician/taxonomy.py) and ships it in
+   the schema: phrase folds ("black and white" -> "bw"), synonyms ("monster"
+   also finds kaiju), stop words, decade words, facet labels and the weight of
+   a hit in each field. The renderer mirrors the engine's tokenizing and
+   scoring exactly, so `aesthetician list` and the app agree on what a query
+   finds. Every token a person types has to land somewhere (AND, not OR);
+   a token matches a whole word or the start of one, so "adventur" already
+   finds adventure. */
+function taxonomy() {
+  return (G.schema && G.schema.taxonomy)
+    || { phrases: {}, synonyms: {}, stop: [], decades: {}, weights: {}, facets: [] };
+}
+
+let phraseFold = { src: null, re: null, stop: new Set() };
+function normalizeSearchText(text) {
+  const tx = taxonomy();
+  if (phraseFold.src !== tx.phrases) {
+    const keys = Object.keys(tx.phrases)
+      .sort((a, b) => b.length - a.length)
+      .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    phraseFold = { src: tx.phrases, re: keys.length ? new RegExp(keys.join('|'), 'g') : null,
+      stop: new Set(tx.stop || []) };
+  }
+  let t = String(text || '').toLowerCase().replace(/’/g, "'");
+  t = t.replace(/\b(\d{2,4})'s\b/g, '$1s');          // 80's -> 80s
+  if (phraseFold.re) t = t.replace(phraseFold.re, (m) => tx.phrases[m]);
+  return t;
+}
+
+/* "hong-kong crime" -> ["hong-kong", "hong", "kong", "crime"]: a hyphenated
+   phrase stays whole AND splits, digits stick to letters ("16mm", "1985"). */
+function searchTokens(text) {
+  normalizeSearchText('');   // make sure the stop set is built
+  const out = [];
+  for (let raw of normalizeSearchText(text).split(/[^a-z0-9\-.]+/)) {
+    raw = raw.replace(/^[-.]+|[-.]+$/g, '');
+    if (!raw) continue;
+    if (raw.includes('-')) {
+      out.push(raw);
+      for (const p of raw.split('-')) if (p) out.push(p);
+    } else {
+      out.push(raw);
+    }
+  }
+  return out.filter((t) => t && !phraseFold.stop.has(t));
+}
+
+/* "1985" -> ["1985", "1980s", "85s"? no: "80s", "eighties"], matching the engine. */
+function eraTokens(era) {
+  const m = /^(\d{4})/.exec(String(era || ''));
+  if (!m) return era ? [String(era)] : [];
+  const year = parseInt(m[1], 10);
+  const dec = Math.floor(year / 10) * 10;
+  const out = [String(year), `${dec}s`, `${String(dec % 100).padStart(2, '0')}s`];
+  const word = (taxonomy().decades || {})[String(dec)];
+  if (word) out.push(word);
+  return out;
+}
+
+function facetLabel(facetId, valueId) {
+  const f = (taxonomy().facets || []).find((x) => x.id === facetId);
+  const v = f && f.values.find((x) => x.id === valueId);
+  return v ? v.label : valueId;
+}
+
+/* Per-field token lists for one preset, built once and cached: the list is
+   rebuilt on every keystroke and tokenizing 800 descriptions each time would
+   be felt. */
+function searchFields(p) {
+  let f = G.searchIndex.get(p.id);
+  if (f) return f;
+  const facetWords = [];
+  for (const [fid, vals] of Object.entries(p.facets || {})) {
+    for (const vid of vals) { facetWords.push(vid); facetWords.push(facetLabel(fid, vid)); }
+  }
+  f = {
+    name: searchTokens(p.name),
+    id: searchTokens(p.id.replace(/-/g, ' ')),
+    era: eraTokens(p.era),
+    family: searchTokens(p.family),
+    tagline: searchTokens(p.tagline || ''),
+    tags: searchTokens((p.tags || []).join(' ')),
+    keywords: searchTokens((p.keywords || []).join(' ')),
+    facets: searchTokens(facetWords.join(' ')),
+    desc: searchTokens(p.desc || ''),
+    variants: searchTokens((p.variants || []).map((v) => `${v.name} ${v.id.replace(/-/g, ' ')}`).join(' ')),
+  };
+  G.searchIndex.set(p.id, f);
+  return f;
+}
+
+/* A query becomes one group of alternatives per token, each with how much a
+   hit on it is worth: "80s" also tries "1980s" and "eighties" at full value,
+   "monster" also tries "kaiju" and "creature" at a discount, so the word you
+   typed always outranks the words it merely implies. */
+function expandQuery(query) {
+  const tx = taxonomy();
+  const syn = tx.synonyms || {};
+  const synFactor = tx.synonym_factor == null ? 0.7 : tx.synonym_factor;
+  const decadeWords = Object.fromEntries(Object.entries(tx.decades || {}).map(([k, v]) => [v, k]));
+  const groups = [];
+  for (const tok of searchTokens(query)) {
+    const alts = [[tok, 1]];
+    const seen = new Set([tok]);
+    const m = /^(\d{2}|\d{4})s$/.exec(tok);
+    let dec = null;
+    if (m) {
+      const n = parseInt(m[1], 10);
+      dec = Math.floor((n < 100 ? 1900 + n : n) / 10) * 10;
+    } else if (decadeWords[tok]) {
+      dec = parseInt(decadeWords[tok], 10);
+    }
+    /* A decade is a fact about the preset, scored against its era only: the
+       keyword "eighties" must not outrank the tag "80s" for the same decade. */
+    if (dec != null) {
+      for (const t of eraTokens(String(dec))) {
+        if (t !== String(dec) && !seen.has(t)) { seen.add(t); alts.push([t, 1]); }   // "80s" is not the year 1980
+      }
+      groups.push({ alts, era: true });
+      continue;
+    }
+    for (const s of syn[tok] || []) if (!seen.has(s)) { seen.add(s); alts.push([s, synFactor]); }
+    groups.push({ alts, era: false });
+  }
+  return groups;
+}
+
+const DEFAULT_FIELD_WEIGHTS = { name: 10, tagline: 6, keywords: 5, tags: 4, facets: 3, id: 3, era: 3,
+  family: 2, variants: 1.5, desc: 1 };
+
+/* 0 when any token group misses; otherwise the summed weighted best hits. */
+function searchScore(p, groups) {
+  if (!groups.length) return 1;
+  const tx = taxonomy();
+  const weights = Object.keys(tx.weights || {}).length ? tx.weights : DEFAULT_FIELD_WEIGHTS;
+  const prefixFactor = tx.prefix_factor == null ? 0.6 : tx.prefix_factor;
+  const coverageBonus = tx.name_coverage_bonus == null ? 2 : tx.name_coverage_bonus;
+  const fields = searchFields(p);
+  let total = 0;
+  let nameHits = 0;
+  for (const { alts, era } of groups) {
+    let best = 0;
+    for (const [fname, ftoks] of Object.entries(fields)) {
+      if (era && fname !== 'era') continue;
+      const w = weights[fname] == null ? 1 : weights[fname];
+      if (w <= best) continue;      // nothing in this field can beat what we have
+      let hit = 0;
+      for (const ft of ftoks) {
+        for (const [a, factor] of alts) {
+          if (ft === a) hit = Math.max(hit, w * factor);
+          else if (a.length >= 3 && ft.startsWith(a)) hit = Math.max(hit, w * factor * prefixFactor);
+        }
+        if (hit >= w) break;
+      }
+      if (hit > 0 && fname === 'name') nameHits++;
+      best = Math.max(best, hit);
+    }
+    if (best <= 0) return 0;
+    total += best;
+  }
+  // A query that covers most of a short name beats one word buried in a long
+  // one: "noir" is Film Noir before it is Trip-Hop Noir Promo.
+  const nName = new Set(fields.name).size || 1;
+  return total + coverageBonus * nameHits / nName;
+}
+
+function passesFacets(p) {
+  for (const [fid, vid] of Object.entries(G.filterFacets || {})) {
+    if (vid && !((p.facets || {})[fid] || []).includes(vid)) return false;
+  }
+  return true;
+}
+
+/* The facet dropdowns: one native select per facet, listing only values that
+   still have presets under everything ELSE that is selected, with counts, so a
+   choice can never lead to an empty list. */
+function buildFacetRow() {
+  const row = $('facet-row');
+  if (!row || !G.schema) return;
+  row.innerHTML = '';
+  const live = Object.values(G.filterFacets || {}).some(Boolean);
+  row.classList.toggle('hidden', !(G.refineOpen || live) || G.guideOpen);
+  const presets = Object.values(G.schema.presets);
+  const q = ($('preset-search').value || '');
+  const groups = expandQuery(q);
+  for (const facet of taxonomy().facets || []) {
+    const current = (G.filterFacets || {})[facet.id] || '';
+    // Everything but this facet decides what is countable.
+    const others = { ...(G.filterFacets || {}) };
+    delete others[facet.id];
+    const pool = presets.filter((p) => {
+      if (G.favOnly && !G.favs.has(p.id)) return false;
+      if (G.audioOnly && !isAudioOnly(p)) return false;
+      if (G.filterFamilies.size && !G.filterFamilies.has(p.family)) return false;
+      if (G.filterEra && decadeOf(p) !== G.filterEra) return false;
+      for (const [fid, vid] of Object.entries(others)) {
+        if (vid && !((p.facets || {})[fid] || []).includes(vid)) return false;
+      }
+      return !q || searchScore(p, groups) > 0;
+    });
+    const counts = {};
+    for (const p of pool) for (const v of (p.facets || {})[facet.id] || []) counts[v] = (counts[v] || 0) + 1;
+    const sel = document.createElement('select');
+    sel.className = 'facet' + (current ? ' active' : '');
+    sel.dataset.facet = facet.id;
+    sel.title = facet.hint || facet.label;
+    const any = document.createElement('option');
+    any.value = '';
+    any.textContent = `Any ${facet.label.toLowerCase()}`;
+    sel.appendChild(any);
+    for (const v of facet.values) {
+      const n = counts[v.id] || 0;
+      if (!n && v.id !== current) continue;
+      const o = document.createElement('option');
+      o.value = v.id;
+      o.textContent = `${v.label} (${n})`;
+      if (v.id === current) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.onchange = () => {
+      G.filterFacets = { ...(G.filterFacets || {}), [facet.id]: sel.value };
+      G.guideOpen = false;
+      buildFilterBar();
+      buildPresetList();
+    };
+    row.appendChild(sel);
+  }
+}
+
+/* ── recents ──────────────────────────────────────────────────────── */
+function noteRecent(pid) {
+  if (!pid || !G.schema || !G.schema.presets[pid]) return;
+  G.recents = [pid, ...G.recents.filter((x) => x !== pid)].slice(0, RECENTS_MAX);
+  saveStore();
+}
+
+/* ── the guide: curated collections and recipes ───────────────────── */
+function collections() {
+  return (G.schema && G.schema.collections) || [];
+}
+
+function findRecipe(cid, rid) {
+  const c = collections().find((x) => x.id === cid);
+  return c && (c.recipes || []).find((r) => r.id === rid);
+}
+
+/* A recipe is a stack the library ships: the same preset seen through a
+   second carrier, applied bottom layer first, exactly like a saved stack. */
+function applyRecipe(cid, rid, opts = {}) {
+  const r = findRecipe(cid, rid);
+  if (!r) return;
+  const usable = r.layers.filter((id) => G.schema.presets[id]);
+  if (!usable.length) return;
+  state.layers = usable.map((id) => layerFromSaved({ base: id }));
+  state.activeLayer = state.layers.length - 1;
+  state.stackId = null;
+  for (const id of usable) noteRecent(id);
+  syncMasterDials();
+  syncSelection();
+  renderTabs();
+  buildParamPane();
+  buildLayersPanel();
+  schedulePreview(true, opts.previewDelay);
+}
+
+async function pickRecipe(cid, rid) {
+  const r = findRecipe(cid, rid);
+  if (!r) return;
+  if (!sessionHasWork()) { applyRecipe(cid, rid); return; }
+  const many = (state.layers || []).filter((l) => l.presetId).length;
+  const choice = await askChoice({
+    title: `Apply “${r.title}” over this stack?`,
+    sub: `This tab has ${many} layer${many === 1 ? '' : 's'} set up. Applying a recipe replaces all of them.`,
+    choices: [
+      { key: 'go', label: 'Replace stack', className: 'accent' },
+      { key: null, label: 'Cancel' },
+    ],
+  });
+  if (choice === 'go') applyRecipe(cid, rid);
+}
+
+function recipeCard(c, r) {
+  const usable = r.layers.filter((id) => G.schema.presets[id]);
+  const top = usable[usable.length - 1];
+  const card = document.createElement('div');
+  card.className = 'preset-card recipe' + (usable.length ? '' : ' broken');
+  card.dataset.pid = `recipe:${c.id}/${r.id}`;
+  const chain = r.layers.map((id) => (G.schema.presets[id] ? G.schema.presets[id].name : id)).join(' → ');
+  card.title = `${r.title}\n\nRecipe · ${chain}${r.note ? `\n\n${r.note}` : ''}`;
+  let holder;
+  if (top) {
+    holder = thumbFor(G.schema.presets[top]);
+  } else {
+    holder = document.createElement('div');
+    holder.className = 'p-thumb empty';
+  }
+  const badge = document.createElement('span');
+  badge.className = 's-badge recipe';
+  badge.textContent = '✦';
+  badge.title = 'Recipe: a ready-made stack';
+  holder.appendChild(badge);
+  card.appendChild(holder);
+  const text = document.createElement('div');
+  text.className = 'p-text';
+  const name = document.createElement('span');
+  name.className = 'p-name';
+  name.textContent = r.title;
+  const meta = document.createElement('span');
+  meta.className = 'p-meta';
+  meta.textContent = `recipe · ${usable.length} layer${usable.length === 1 ? '' : 's'}`;
+  const tl = document.createElement('span');
+  tl.className = 'p-tag';
+  tl.textContent = chain;
+  text.appendChild(name);
+  text.appendChild(meta);
+  text.appendChild(tl);
+  card.appendChild(text);
+  card.onclick = () => { if (usable.length) pickRecipe(c.id, r.id); };
+  return card;
+}
+
+/* Guide mode replaces the library list with the collections, each a header
+   with its blurb, its presets best-first and its recipes. The search box
+   narrows collections by title, blurb or member names. */
+function buildGuideList(list, q, addNav) {
+  const groups = expandQuery(q);
+  const ps = G.schema.presets;
+  const inCollection = (c) => {
+    if (!q) return true;
+    const own = searchTokens(`${c.title} ${c.blurb}`);
+    const okOwn = groups.every(({ alts }) => own.some((t) => alts.some(([a]) => t === a || (a.length >= 3 && t.startsWith(a)))));
+    if (okOwn) return true;
+    return c.presets.some((id) => ps[id] && searchScore(ps[id], groups) > 0);
+  };
+  const shown = collections().filter(inCollection);
+  const GROUP_LABELS = { looks: 'MAKE IT LOOK LIKE', media: 'A PARTICULAR MEDIUM', eras: 'AN ERA OF TELEVISION', sound: 'A PARTICULAR SOUND' };
+  let group = null;
+  for (const c of shown) {
+    if (c.group !== group) {
+      group = c.group;
+      const gl = document.createElement('div');
+      gl.className = 'family-label guide-group';
+      gl.textContent = GROUP_LABELS[group] || String(group).toUpperCase();
+      list.appendChild(gl);
+    }
+    const head = document.createElement('div');
+    head.className = 'guide-head';
+    const title = document.createElement('div');
+    title.className = 'guide-title';
+    title.textContent = c.title;
+    const blurb = document.createElement('div');
+    blurb.className = 'guide-blurb';
+    blurb.textContent = c.blurb;
+    head.appendChild(title);
+    head.appendChild(blurb);
+    list.appendChild(head);
+    for (const id of c.presets) {
+      const p = ps[id];
+      if (!p) continue;
+      list.appendChild(presetCard(p, { showFamily: true }));
+      addNav(p.id);
+    }
+    for (const r of c.recipes || []) list.appendChild(recipeCard(c, r));
+  }
+  if (!shown.length) {
+    const empty = document.createElement('div');
+    empty.className = 'list-empty';
+    empty.textContent = q ? 'No collection matches.' : 'No collections in this build.';
+    list.appendChild(empty);
+  }
+}
+
+/* What to try when a search finds nothing: a few asks the library answers well. */
+const SEARCH_SUGGESTIONS = ['80s adventure movie', 'kaiju', 'home video', 'security camera', 'silent film',
+  'cassette', 'news 1975', 'anime vhs'];
+
 // ── filter bar (family chips + era decades) ─────────────────────────
 function decadeOf(p) {
   const y = parseInt(p.era, 10);
@@ -1653,6 +2053,32 @@ function buildFilterBar() {
 
   const chips = $('family-chips');
   chips.innerHTML = '';
+  if (collections().length) {
+    const guide = document.createElement('span');
+    guide.className = 'chip guide-chip' + (G.guideOpen ? ' sel' : '');
+    guide.textContent = '✦ Guide';
+    guide.title = 'Starting points: “make it look like…” collections and ready-made stacks';
+    guide.onclick = () => {
+      G.guideOpen = !G.guideOpen;
+      if (G.guideOpen) { G.favOnly = false; G.customOnly = false; G.stackOnly = false; }
+      buildFilterBar(); buildPresetList();
+    };
+    chips.appendChild(guide);
+  }
+  /* The facet row is worth its height when you are narrowing and worth
+     folding away when you are scrolling; a live facet keeps it open. */
+  const facetsLive = Object.values(G.filterFacets || {}).some(Boolean);
+  const refine = document.createElement('span');
+  refine.className = 'chip refine-chip' + (facetsLive ? ' sel' : G.refineOpen ? ' open' : '');
+  refine.textContent = facetsLive ? '⌕ Refine ●' : '⌕ Refine';
+  refine.title = 'Narrow by medium, genre, region, condition and color';
+  refine.onclick = () => {
+    if (facetsLive && G.refineOpen) { G.filterFacets = {}; }
+    else G.refineOpen = !G.refineOpen;
+    saveStore();
+    buildFilterBar(); buildPresetList();
+  };
+  chips.appendChild(refine);
   if (G.favs.size) {
     const star = document.createElement('span');
     star.className = 'chip star-chip' + (G.favOnly ? ' sel' : '');
@@ -1690,7 +2116,7 @@ function buildFilterBar() {
     chips.appendChild(sc);
   }
   const all = document.createElement('span');
-  all.className = 'chip' + (G.filterFamilies.size || G.audioOnly || G.favOnly || G.customOnly || G.stackOnly ? '' : ' sel');
+  all.className = 'chip' + (G.filterFamilies.size || G.audioOnly || G.favOnly || G.customOnly || G.stackOnly || G.guideOpen ? '' : ' sel');
   all.textContent = 'All';
   all.onclick = () => {
     G.filterFamilies.clear();
@@ -1698,6 +2124,7 @@ function buildFilterBar() {
     G.customOnly = false;
     G.stackOnly = false;
     G.audioOnly = false;
+    G.guideOpen = false;
     buildFilterBar(); buildPresetList();
   };
   chips.appendChild(all);
@@ -1752,7 +2179,10 @@ function buildFilterBar() {
   }
   era.classList.toggle('active', !!current);
 
-  $('preset-search').placeholder = `Search ${presets.length} aesthetics…`;
+  $('preset-search').placeholder = G.guideOpen
+    ? 'Search the guide…'
+    : `Search ${presets.length} aesthetics…`;
+  buildFacetRow();
 }
 
 function passesFilters(p) {
@@ -1760,12 +2190,14 @@ function passesFilters(p) {
   if (G.audioOnly && !isAudioOnly(p)) return false;
   if (G.filterFamilies.size && !G.filterFamilies.has(p.family)) return false;
   if (G.filterEra && decadeOf(p) !== G.filterEra) return false;
+  if (!passesFacets(p)) return false;
   return true;
 }
 
 function anyFilterActive() {
   return G.favOnly || G.customOnly || G.stackOnly || G.audioOnly || G.filterFamilies.size > 0
-    || !!G.filterEra || !!$('preset-search').value;
+    || !!G.filterEra || !!$('preset-search').value
+    || Object.values(G.filterFacets || {}).some(Boolean) || G.guideOpen;
 }
 
 function clearFilters() {
@@ -1775,6 +2207,8 @@ function clearFilters() {
   G.audioOnly = false;
   G.filterFamilies.clear();
   G.filterEra = '';
+  G.filterFacets = {};
+  G.guideOpen = false;
   $('preset-search').value = '';
   buildFilterBar();
   buildPresetList();
@@ -1787,9 +2221,9 @@ const BLANK_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAA
    wanted at all. Then the looks people reach for most; audio-only sits last
    because those rows leave the picture untouched (their thumbnails are all the
    same untreated frame, so alphabetical order opened the app on 29 of them). */
-const FAMILY_ORDER = ['adjust', 'vhs', 'film', 'archive', 'western', 'arthouse', 'modern',
-  'broadcast', 'cartoon', 'digital', 'world', 'decay', 'exhibition', 'print', 'transmission',
-  'stylized', 'captions', 'audio'];
+const FAMILY_ORDER = ['adjust', 'genre', 'channel', 'vhs', 'film', 'archive', 'western', 'arthouse',
+  'modern', 'broadcast', 'cartoon', 'digital', 'social', 'world', 'process', 'decay', 'exhibition',
+  'print', 'transmission', 'stylized', 'captions', 'audio'];
 
 function famRank(f) {
   // With an audio source, the audio-first presets are the relevant ones, so they
@@ -1905,7 +2339,7 @@ function addLayerButton(id) {
   return add;
 }
 
-function presetCard(p) {
+function presetCard(p, opts = {}) {
   const card = document.createElement('div');
   card.className = 'preset-card' + (p.id === selectionId() ? ' sel' : '');
   card.dataset.pid = p.id;
@@ -1922,7 +2356,7 @@ function presetCard(p) {
   const meta = document.createElement('span');
   meta.className = 'p-meta';
   const nv = p.variants.length;
-  meta.textContent = `${p.era}${nv ? ` · ${nv} variant${nv === 1 ? '' : 's'}` : ''}`;
+  meta.textContent = `${p.era}${opts.showFamily ? ` · ${p.family}` : ''}${nv ? ` · ${nv} variant${nv === 1 ? '' : 's'}` : ''}`;
   text.appendChild(name);
   text.appendChild(meta);
   const tag = taglineFor(p);
@@ -2080,13 +2514,10 @@ function buildPresetList() {
   list.innerHTML = '';
   const presets = Object.values(G.schema.presets)
     .sort((a, b) => (famRank(a.family) - famRank(b.family)) || a.id.localeCompare(b.id));
-  const q = ($('preset-search').value || '').toLowerCase();
-  const matches = (p) => {
-    if (!passesFilters(p)) return false;
-    if (!q) return true;
-    const hay = `${p.id} ${p.name} ${p.era} ${p.family} ${p.tagline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
-    return hay.includes(q);
-  };
+  const q = ($('preset-search').value || '').trim();
+  const groups = expandQuery(q);
+  const scoreOf = (p) => (q ? searchScore(p, groups) : 1);
+  const matches = (p) => passesFilters(p) && scoreOf(p) > 0;
 
   /* ↑/↓ walk this: the ids the eye can actually see, top to bottom. A favorite
      is rendered twice (its row at the top, and again inside its family) but is
@@ -2095,6 +2526,13 @@ function buildPresetList() {
   const nav = [];
   const navSeen = new Set();
   const addNav = (pid) => { if (!navSeen.has(pid)) { navSeen.add(pid); nav.push(pid); } };
+
+  /* The guide is its own list: collections instead of families. */
+  if (G.guideOpen) {
+    buildGuideList(list, q, addNav);
+    G.navOrder = nav;
+    return;
+  }
 
   /* Saved stacks lead, then saved customs: the things this user made, biggest
      arrangement first. Stacks stay out of `nav` on purpose - ↑/↓ auditions one
@@ -2164,6 +2602,17 @@ function buildPresetList() {
     return;
   }
 
+  // Recently picked aesthetics lead an unfiltered list: with hundreds of rows,
+  // the one you used yesterday should not need finding twice.
+  const recentRows = anyFilterActive() ? [] : G.recents.map((id) => G.schema.presets[id]).filter(Boolean);
+  if (recentRows.length) {
+    const rl = document.createElement('div');
+    rl.className = 'family-label recents';
+    rl.innerHTML = `◷ RECENT <span class="count">${recentRows.length}</span>`;
+    list.appendChild(rl);
+    for (const p of recentRows) { list.appendChild(presetCard(p, { showFamily: true })); addNav(p.id); }
+  }
+
   // Favorites lead the list (unless the ★ chip already narrows to them, which
   // would render every row twice).
   const favRows = G.favOnly ? [] : presets.filter((p) => G.favs.has(p.id) && matches(p));
@@ -2179,7 +2628,23 @@ function buildPresetList() {
   let familyBody = null;
   let familyHidden = false;
   let shown = favRows.length + customRows.length + stackRows.length;
-  for (const p of presets) {
+
+  /* A search is a ranked list, not a tour of the families: the best answers
+     first, whatever shelf they live on, with the family named on each row. */
+  if (q) {
+    const hits = presets.filter(matches)
+      .map((p) => [scoreOf(p), p])
+      .sort((a, b) => (b[0] - a[0]) || (famRank(a[1].family) - famRank(b[1].family)) || a[1].id.localeCompare(b[1].id));
+    if (hits.length) {
+      const rl = document.createElement('div');
+      rl.className = 'family-label results';
+      rl.innerHTML = `RESULTS <span class="count">${hits.length}</span>`;
+      list.appendChild(rl);
+      for (const [, p] of hits) { list.appendChild(presetCard(p, { showFamily: true })); addNav(p.id); }
+      shown += hits.length;
+    }
+  }
+  for (const p of (q ? [] : presets)) {
     if (!matches(p)) continue;
     shown++;
     if (p.family !== family) {
@@ -2211,7 +2676,23 @@ function buildPresetList() {
   if (!shown) {
     const empty = document.createElement('div');
     empty.className = 'list-empty';
-    empty.textContent = 'No aesthetics match.';
+    empty.textContent = q ? `Nothing matches “${q}”.` : 'No aesthetics match.';
+    if (q) {
+      const tip = document.createElement('div');
+      tip.className = 'list-tip';
+      tip.textContent = 'Try fewer words, or one of these:';
+      empty.appendChild(tip);
+      const row = document.createElement('div');
+      row.className = 'suggest-row';
+      for (const sug of SEARCH_SUGGESTIONS) {
+        const c = document.createElement('span');
+        c.className = 'chip';
+        c.textContent = sug;
+        c.onclick = () => { $('preset-search').value = sug; buildFilterBar(); buildPresetList(); };
+        row.appendChild(c);
+      }
+      empty.appendChild(row);
+    }
     if (anyFilterActive()) {
       const btn = document.createElement('button');
       btn.textContent = 'Clear filters';
@@ -2559,6 +3040,7 @@ function openInNewTab(id) {
 async function pickFromList(id, opts = {}) {
   if (!id) return;
   const stack = isStackId(id);
+  if (!stack && !opts.nav && !isCustomId(id)) noteRecent(id);
   /* A caption style is a way of drawing a script, not a layer's worth of work
      to be replaced. With a track already in the stack the pick goes to it,
      wherever it sits and whatever is selected: nothing is lost, so nothing is
@@ -2653,7 +3135,7 @@ async function navPreset(delta) {
   if (order[next] === selectionId()) return;   // already against the end
   // Same guard as a click: a layer carrying work asks first. Cancelling leaves
   // the highlight where it was, and scrolling to it is a no-op.
-  await pickFromList(order[next], { previewDelay: NAV_PREVIEW_MS });
+  await pickFromList(order[next], { previewDelay: NAV_PREVIEW_MS, nav: true });
   const card = $('preset-list').querySelector('.preset-card.sel');
   if (card) card.scrollIntoView({ block: 'nearest' });
 }
@@ -2700,7 +3182,7 @@ function buildParamPane() {
   $('preset-title').title = c ? `Custom aesthetic based on ${p.name}\n\n${p.desc}` : p.desc;
   $('preset-sub').textContent = c
     ? `custom · from ${p.name}${customDrifted() ? ' · edited' : ''}`
-    : `${p.era} · ${p.family}`;
+    : presetSubline(p);
   syncFavButton();
   syncOverrideRow();
 
@@ -4810,7 +5292,7 @@ function wireShortcuts() {
 // ── controls ────────────────────────────────────────────────────────
 function wireControls() {
   document.querySelectorAll('input.range-fill').forEach(paintRange);
-  $('preset-search').addEventListener('input', buildPresetList);
+  $('preset-search').addEventListener('input', () => { buildFacetRow(); buildPresetList(); });
   $('era-filter').addEventListener('change', (e) => {
     G.filterEra = e.target.value;
     e.target.classList.toggle('active', !!G.filterEra);

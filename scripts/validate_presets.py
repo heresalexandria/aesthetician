@@ -37,10 +37,54 @@ def _out_of_range(eff, params: dict) -> list[str]:
     return bad
 
 
+def _vocabulary_problems(presets) -> list[str]:
+    """Findability and house-style checks that no render would ever catch."""
+    from aesthetician.collections import all_collections
+    from aesthetician.presets._keywords import KEYWORDS
+    from aesthetician.taxonomy import facets_for, is_audio_only
+
+    out: list[str] = []
+    for pid in KEYWORDS:
+        if pid not in presets:
+            out.append(f"_keywords.py names a preset that does not exist: '{pid}'")
+    for c in all_collections():
+        for pid in c.presets:
+            if pid not in presets:
+                out.append(f"collection '{c.id}' names a missing preset '{pid}'")
+        for r in c.recipes:
+            for pid in r.layers:
+                if pid not in presets:
+                    out.append(f"recipe '{c.id}/{r.id}' names a missing preset '{pid}'")
+    for pid, p in sorted(presets.items()):
+        texts = [("name", p.name), ("desc", p.desc), ("tagline", p.tagline)]
+        texts += [(f"variant {v.id}", v.desc) for v in p.variants]
+        texts += [(f"variant {v.id} name", v.name) for v in p.variants]
+        for label, t in texts:
+            if "\u2014" in t:
+                out.append(f"{pid}: {label} contains an em-dash (house style: none, anywhere)")
+        if len(p.tagline) > 45:
+            out.append(f"{pid}: tagline is {len(p.tagline)} chars; the list clamps at 45")
+        for k in p.keywords:
+            if k != k.lower() or k.strip() != k:
+                out.append(f"{pid}: keyword {k!r} must be lower-case and trimmed")
+        if len(set(p.keywords)) != len(p.keywords):
+            out.append(f"{pid}: duplicate keywords")
+        if not p.tags:
+            out.append(f"{pid}: no tags")
+        facets = facets_for(p)
+        if not facets["medium"] and p.family not in ("adjust", "captions"):
+            out.append(f"{pid}: no medium facet - add a format word to tags/keywords "
+                       f"(see aesthetician/taxonomy.py)")
+        if not facets["genre"] and not is_audio_only(p) and p.family not in ("adjust", "captions"):
+            out.append(f"{pid}: no genre facet - add a program/genre word to keywords")
+    return out
+
+
 def validate() -> int:
     ctx = Context(704, 1280, 30.0, 90, seed=3)
     problems: list[str] = []
     presets = all_presets()
+    problems.extend(_vocabulary_problems(presets))
     for pid, preset in sorted(presets.items()):
         for which in ("video", "audio"):
             spec = getattr(preset, which)

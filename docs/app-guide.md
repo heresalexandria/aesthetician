@@ -4,16 +4,37 @@
 cd app && npm start
 ```
 
-## Finding a look: search, filters, favorites
+## Finding a look: search, filters, the guide, favorites
 
-The browse pane is built for the full preset library:
+The browse pane is built for a library of hundreds of presets
+(`docs/finding-presets.md` has the full story):
 
-- **Search** matches name, id, era, family, tagline and tags. Press **/**
-  (or **⌘F**) to jump to it from anywhere.
+- **Search** understands what you type: every word has to land in the
+  preset's name, tagline, keywords, tags, facets, description or variants;
+  a word matches a whole word or the start of one; `80s`, `1980s` and
+  `eighties` are the same; `black and white` is `bw`; `monster movie` also
+  finds kaiju. Results come back **ranked** in one RESULTS group, best first,
+  with the family named on each row. Press **/** (or **⌘F**) to jump to the
+  box from anywhere. A search that finds nothing offers a few asks the library
+  answers well.
 - **Family chips** under the search box narrow the list to one or more
   families; click a chip again to release it, or **All** to reset.
 - The **era dropdown** narrows to a single decade, and combines with the
   family chips and search.
+- The **facet dropdowns** under the chips narrow by medium (35 mm film,
+  videotape, broadcast signal, web video…), genre (adventure, kaiju, news,
+  home movie…), region, condition and color. Each lists only values that
+  still have presets under everything else you have picked, with counts.
+- The **✦ Guide** chip swaps the library for curated starting points: "make
+  it look like…" collections with their best answers first, and **recipes**,
+  ready-made stacks for looks one preset cannot cover (an eighties adventure
+  feature on a rental tape). Clicking a recipe applies its layers like a
+  saved stack.
+- **◷ Recent** leads an unfiltered list with the last eight aesthetics you
+  picked by hand.
+- The panel header under a preset's name now reads its year, family, genre
+  and medium, so "Tokyo Spectacle Print" explains itself as `1962 · world ·
+  kaiju and tokusatsu · 35 mm film`.
 - **Favorites**: hover a preset row and click the star (or star the current
   preset from the panel header on the right). Favorites float to the top of
   the list in their own group, and the **★** chip shows only them. Favorites

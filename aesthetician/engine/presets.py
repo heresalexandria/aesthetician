@@ -38,6 +38,13 @@ class Preset:
     video: ChainSpec = field(default_factory=list)
     audio: ChainSpec = field(default_factory=list)
     tags: tuple[str, ...] = ()
+    # Search vocabulary the name deliberately leaves out: the genre and mood
+    # words a person types ("kaiju", "80s adventure movie", "home video"),
+    # canonical touchstones, format aliases. Never shown as a label; the
+    # taxonomy (aesthetician/taxonomy.py) also reads these to place the
+    # preset in its facets. Keep them lower-case, plain words or hyphenated
+    # phrases.
+    keywords: tuple[str, ...] = ()
     proc_height: int | None = None      # simulate at this vertical resolution
     upscale: str = "auto"               # auto | sharp | soft  (final upscale flavor)
     variants: list[Variant] = field(default_factory=list)

@@ -18,6 +18,20 @@ register_preset(Preset(
 - Get the full effect/param registry: `.venv/bin/aesthetician effects --json | python3 -m json.tool`
   (or read the effect source). NEVER guess a param name - validation will catch you.
 - Repeated effect in one chain → second instance is addressed `eid#2`.
+- `keywords=(...)`: 6-12 lower-case words or hyphenated phrases that a person types when
+  they want this look and the name does not say ("kaiju", "giant-monster", "godzilla" for a
+  preset named after its print). Genre and mood first, then format aliases, then at most two
+  canonical touchstones. Words already in the name, tagline or tags are harmless but add
+  nothing; spend the slots on what those fields leave out. They are searched, never
+  displayed. See `docs/finding-presets.md`.
+- Facets (medium, genre, region, condition, color) are derived, not authored: from the effects
+  in the chain and from the vocabulary in `aesthetician/taxonomy.py` matched against id, name,
+  tags, keywords and tagline. `validate_presets.py` refuses a picture preset that lands in no
+  medium or no genre; fix that by adding the right word to `keywords`, or, if the vocabulary is
+  missing a term, by adding the term to the taxonomy (once, for everyone).
+- Families `genre` and `channel` exist to be found by era and kind ("Sixties Kaiju Feature",
+  "Music-Video Channel, Launch Era"), so their names may lead with the era and genre; the
+  tagline and desc still name the physical artifact. Everywhere else, names describe the thing.
 
 ## Chain order (the physical signal path)
 
@@ -120,3 +134,7 @@ stranger could pick out of a lineup.
    everything else on untreated*.mp4 (untreated4 = dim interior, untreated2/3 = bright).
 5. Audio-led presets: render 6 s, generate `showspectrumpic` PNG, verify band
    edges/noise floors look like the era.
+6. `.venv/bin/python scripts/audit_similarity.py --only-new` - every new preset's nearest
+   neighbour, and a non-zero exit for near-clones (same effect list, authored parameters
+   within 5% of each other). A clone is not a new look; commit harder to one identity or
+   drop it.
