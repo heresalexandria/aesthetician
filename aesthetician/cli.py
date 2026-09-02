@@ -148,6 +148,15 @@ def info(preset_id: str) -> None:
     p = get_preset(preset_id)
     console.print(f"\n[bold]{p.name}[/bold]  [dim]{p.id} · {p.family} · {p.era}[/dim]")
     console.print(p.desc + "\n")
+    from .taxonomy import facets_for
+
+    facets = ", ".join(f"{k}: {'/'.join(v)}" for k, v in facets_for(p).items() if v)
+    if p.tags:
+        console.print(f"[dim]tags:[/dim] {', '.join(p.tags)}")
+    if p.keywords:
+        console.print(f"[dim]keywords:[/dim] {', '.join(p.keywords)}")
+    if facets:
+        console.print(f"[dim]facets:[/dim] {facets}\n")
     if p.variants:
         t = Table(title="Variants", show_lines=False)
         t.add_column("id", style="bold")

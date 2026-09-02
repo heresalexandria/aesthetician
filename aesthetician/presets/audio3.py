@@ -211,7 +211,7 @@ register_preset(Preset(
     family="audio",
     era="1957",
     desc="A mono magnetic film dubber: broad response, controlled head saturation, slight sprocket-linked flutter and a projection-booth floor well below the program.",
-    tagline="Broad mag track, sprocket flutter, booth floor",
+    tagline="Broad mag track, sprocket flutter, booth",
     tags=("audio-only", "50s", "film", "magnetic"),
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -334,7 +334,7 @@ register_preset(Preset(
     family="audio",
     era="1970",
     desc="A mono pilot-tone field reel: directional microphone presence, firm limiter action, fine 7.5 ips hiss and restrained transport flutter under the location air.",
-    tagline="Shotgun presence, firm limiter, fine reel hiss",
+    tagline="Shotgun presence, firm limiter, reel hiss",
     tags=("audio-only", "70s", "location", "reel"),
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.75,

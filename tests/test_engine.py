@@ -2110,6 +2110,69 @@ def test_layer_picture_and_sound_switches():
         assert "disabled" in str(err)
 
 
+def test_taxonomy_finds_what_people_type():
+    """Search mirrors the app: every word lands, synonyms count less than the
+    typed word, decades expand, and the artifact-named presets are reachable
+    by the genre words their names leave out."""
+    from aesthetician.engine.presets import all_presets
+    from aesthetician.taxonomy import expand_query, search, tokens
+
+    ps = all_presets()
+    assert tokens("Black & White 80's sci-fi") == ["bw", "80s", "scifi"]
+    groups = expand_query("80s noir")
+    assert {a for a, _ in groups[0][0]} >= {"80s", "1980s", "eighties"}
+    assert groups[0][1] is True and groups[1][1] is False
+    assert all(f == 1.0 for a, f in groups[0][0])
+    assert groups[1][0][0] == ("noir", 1.0) and all(f < 1.0 for _, f in groups[1][0][1:])
+
+    def ids(q):
+        return [p.id for _, p in search(ps.values(), q)]
+
+    assert ids("film noir")[0] == "noir-1947"
+    assert ids("80s adventure") == ids("eighties adventure") == ids("1980s adventure")
+    assert "tokyo-spectacle-1962" in ids("kaiju")
+    assert "adventure-answer-print-1985" in ids("80s adventure movie")
+    assert "security-vcr-1994" in ids("security camera")
+    assert not ids("80s tv kaiju zebra"), "a word nothing has must empty the list"
+    for pid in ids("black and white 1940s"):
+        p = ps[pid]
+        assert p.family == "audio" or str(p.era).startswith("194"), pid
+
+
+def test_taxonomy_places_every_preset():
+    """The facet dropdowns must be able to reach every picture preset."""
+    from aesthetician.collections import all_collections
+    from aesthetician.engine.presets import all_presets
+    from aesthetician.presets._keywords import KEYWORDS
+    from aesthetician.taxonomy import FACET_BY_ID, facets_for, is_audio_only
+
+    ps = all_presets()
+    for pid, p in ps.items():
+        f = facets_for(p)
+        for fid, vals in f.items():
+            known = {v.id for v in FACET_BY_ID[fid].values}
+            assert set(vals) <= known, (pid, fid, set(vals) - known)
+        if p.family in ("adjust", "captions"):
+            continue
+        assert f["medium"], f"{pid} lands in no medium"
+        if not is_audio_only(p):
+            assert f["genre"], f"{pid} lands in no genre"
+            assert f["color"], f"{pid} has no color"
+        assert len(p.keywords) >= 3, f"{pid} has {len(p.keywords)} keywords; the search needs its vocabulary"
+    assert set(KEYWORDS) <= set(ps), sorted(set(KEYWORDS) - set(ps))
+    assert facets_for(ps["noir-1947"])["color"] == ["bw"]
+    assert "videotape" in facets_for(ps["vhs-1985-sp"])["medium"]
+    assert "kaiju" in facets_for(ps["tokyo-spectacle-1962"])["genre"]
+    for c in all_collections():
+        assert c.presets, c.id
+        for pid in c.presets:
+            assert pid in ps, (c.id, pid)
+        for r in c.recipes:
+            assert len(r.layers) >= 2, (c.id, r.id)
+            for pid in r.layers:
+                assert pid in ps, (c.id, r.id, pid)
+
+
 if __name__ == "__main__":
     # Several tests synthesise their fixtures with ffmpeg and probe them with
     # ffprobe. Say so up front: without this it surfaces as a FileNotFoundError

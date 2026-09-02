@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from . import __version__
+from .collections import collections_schema
 from .engine.graph import all_effects
 from .engine.presets import all_presets
+from .taxonomy import facets_for, taxonomy_schema
 
 
 def effect_schema() -> dict[str, Any]:
@@ -52,6 +54,8 @@ def preset_schema() -> dict[str, Any]:
             "desc": p.desc,
             "tagline": p.tagline,
             "tags": list(p.tags),
+            "keywords": list(p.keywords),
+            "facets": facets_for(p),
             "proc_height": p.proc_height,
             "upscale": p.upscale,
             "video": [[eid, params] for eid, params in p.video],
@@ -65,4 +69,10 @@ def preset_schema() -> dict[str, Any]:
 
 
 def full_schema() -> dict[str, Any]:
-    return {"version": __version__, "effects": effect_schema(), "presets": preset_schema()}
+    return {
+        "version": __version__,
+        "effects": effect_schema(),
+        "presets": preset_schema(),
+        "taxonomy": taxonomy_schema(),
+        "collections": collections_schema(),
+    }
