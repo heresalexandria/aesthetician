@@ -68,7 +68,7 @@ register_preset(Preset(
         ("dust", {"density": 0.9, "size": 1.3, "hairs": 0.6}),
         ("scratches", {"count": 4, "transient_rate": 1.2}),
         ("vignette", {"amount": 0.45}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 180.0, "high_hz": 4800.0}),
@@ -100,7 +100,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.12}),
         ("dust", {"density": 0.5}),
         ("vignette", {"amount": 0.3}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7000.0}),

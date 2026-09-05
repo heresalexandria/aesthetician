@@ -225,6 +225,9 @@ function cacheKey(req) {
   // engine's output changes across releases (the BT.709 color fix did), so the
   // version is part of the identity.
   h.update(app.getVersion());
+  // Source geometry and aperture defaults also changed in development builds
+  // that still carry the previous release version. Never reuse those previews.
+  h.update('source-geometry-v1');
   let stat = null;
   try { stat = fs.statSync(req.input); } catch (_) {}
   h.update(String(stat ? stat.mtimeMs : 0));
@@ -352,7 +355,7 @@ async function runSmoke() {
 }
 
 /* `npx electron . --shot out.png [--shot-file clip.mp4] [--shot-preset id]
-    [--shot-js steps.js]`
+    [--shot-js steps.js] [--shot-size 1120x700]`
    Boots the app, optionally opens a clip and applies a preset, waits for its
    preview to finish rendering, runs any extra scripted steps, captures the
    window and exits. Used to keep the README screenshot honest without a hand
@@ -378,6 +381,8 @@ async function runShot() {
       });
     });
     await settle(600);
+    const size = /^(\d+)x(\d+)$/.exec(argValue('--shot-size') || '');
+    if (size) { win.setSize(Number(size[1]), Number(size[2])); await settle(200); }
     if (file) {
       await js(`loadFile(${JSON.stringify(path.resolve(file))})`);
       await settle(400);
@@ -394,6 +399,10 @@ async function runShot() {
       }
     }
     if (jsFile) {
+      // Give interaction checks the same keyboard modality as a real Tab user.
+      win.focus(); win.webContents.focus();
+      win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Tab' });
+      win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Tab' });
       await js(fs.readFileSync(path.resolve(jsFile), 'utf8'));
       await settle(500);
     }

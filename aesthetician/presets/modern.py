@@ -252,7 +252,7 @@ register_preset(Preset(
                    "layers": "color_neg"}),
         ("halation", {"strength": 0.15, "tint": "red_orange", "threshold": 0.78}),
         ("vignette", {"amount": 0.18, "softness": 0.8}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[],
     variants=[
@@ -260,6 +260,6 @@ register_preset(Preset(
                 video={"tone.exposure": -0.15, "balance.shadow_amt": 0.28,
                        "saturation.amount": 0.9}),
         Variant("full-frame", "Full Frame", "The same grade without the letterbox costume.",
-                video={"framing.aspect": "none"}),
+                video={"framing.aspect": "source"}),
     ],
 ))

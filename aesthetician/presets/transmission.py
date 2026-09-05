@@ -22,7 +22,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.5, "twitter": 0.35}),
         ("crt", {"scan_strength": 0.3, "bloom": 0.5, "curvature": 0.22, "vignette_crt": 0.45,
                  "glass_glow": 0.2}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.12}),
+        ("framing", {"aspect": "source", "corner_radius": 0.12}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 180.0, "high_hz": 4500.0}),
@@ -143,7 +143,7 @@ register_preset(Preset(
         ("microwave_hit", {"rate": 2.0, "strength": 0.85}),
         ("interlace", {"combing": 0.5}),
         ("crt", {"bloom": 0.3, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.07}),
+        ("framing", {"aspect": "source", "corner_radius": 0.07}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 5000.0}),
@@ -184,7 +184,7 @@ register_preset(Preset(
                        "impulse_noise": 8.0}),
         ("interlace", {"combing": 0.5, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.2, "bloom": 0.45, "curvature": 0.15, "vignette_crt": 0.35}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.09}),
+        ("framing", {"aspect": "source", "corner_radius": 0.09}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -44.0}),

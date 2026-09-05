@@ -15,11 +15,11 @@ class Framing(Effect):
     kind = "frame"
     desc = "Fit the image into an era aspect ratio inside the canvas (letterbox/pillarbox or crop), with CRT-style rounded corners and overscan."
     PARAMS = (
-        Param("aspect", "Target Aspect", "enum", "none",
-              choices=("none", "4:3", "16:9", "1.37", "1.85", "2.35", "1:1", "9:16"),
-              desc="Aspect of the framed content."),
+        Param("aspect", "Target Aspect", "enum", "source",
+              choices=("source", "none", "4:3", "16:9", "1.37", "1.85", "2.35", "1:1", "9:16"),
+              desc="Match source video by default. Choose a ratio to frame inside the source canvas; output dimensions stay the same."),
         Param("mode", "Fit Mode", "enum", "box",
-              choices=("box", "crop"), desc="box = matte bars, crop = center-cut."),
+              choices=("box", "crop"), desc="box = fit the entire image inside the aperture; crop = fill the aperture with a center-cut. Neither stretches the picture."),
         Param("zoom", "Overscan Zoom", "float", 0.0, 0.0, 0.25, desc="CRT overscan: pushes edges out of frame."),
         Param("corner_radius", "Corner Rounding", "float", 0.0, 0.0, 0.25, desc="CRT tube corner mask."),
         Param("edge_soft", "Edge Softness", "float", 0.004, 0.0, 0.05, desc="Feather of the mask edge."),
@@ -39,11 +39,11 @@ class Framing(Effect):
         canvas_a = W / H
         if a >= canvas_a:  # content wider than canvas → bars top/bottom
             w = W
-            h = int(round(W / a))
+            h = max(1, int(round(W / a)))
             return 0, (H - h) // 2, w, h
         else:
             h = H
-            w = int(round(H * a))
+            w = max(1, int(round(H * a)))
             return (W - w) // 2, 0, w, h
 
     def process(self, frame: np.ndarray, ctx: Context) -> np.ndarray:
@@ -54,35 +54,27 @@ class Framing(Effect):
         if (x0, y0, w, h) == (0, 0, W, H) and zoom == 1.0 and self.v["corner_radius"] <= 0:
             return frame
 
-        if self.v["mode"] == "crop" and self.v["aspect"] != "none":
-            # center-crop source to target aspect, scaled to fill canvas.
-            # Overscan zoom pre-shrinks the window first - the dial was simply
-            # never read on this branch, which made it a dead knob in crop mode.
-            src = frame
-            if zoom > 1.0:
-                zw, zh = int(W / zoom), int(H / zoom)
-                src = frame[(H - zh) // 2 : (H - zh) // 2 + zh, (W - zw) // 2 : (W - zw) // 2 + zw]
-            sh, sw = src.shape[:2]
-            a = self._ASPECTS[self.v["aspect"]]
-            src_a = sw / sh
-            if a > src_a:
-                ch = int(round(sw / a))
-                crop = src[(sh - ch) // 2 : (sh - ch) // 2 + ch]
+        src = frame
+        if zoom > 1.0:
+            zw, zh = max(1, int(W / zoom)), max(1, int(H / zoom))
+            src = frame[(H - zh) // 2 : (H - zh) // 2 + zh, (W - zw) // 2 : (W - zw) // 2 + zw]
+        sh, sw = src.shape[:2]
+        if self.v["mode"] == "crop":
+            if sw / sh > w / h:
+                cw = max(1, round(sh * w / h))
+                src = src[:, (sw - cw) // 2 : (sw - cw) // 2 + cw]
             else:
-                cw = int(round(sh * a))
-                crop = src[:, (sw - cw) // 2 : (sw - cw) // 2 + cw]
-            content = cv2.resize(crop, (W, H), interpolation=cv2.INTER_AREA)
-            x0, y0, w, h = 0, 0, W, H
-        else:
-            src = frame
-            if zoom > 1.0:
-                zw, zh = int(W / zoom), int(H / zoom)
-                src = frame[(H - zh) // 2 : (H - zh) // 2 + zh, (W - zw) // 2 : (W - zw) // 2 + zw]
+                ch = max(1, round(sw * h / w))
+                src = src[(sh - ch) // 2 : (sh - ch) // 2 + ch]
             content = cv2.resize(src, (w, h), interpolation=cv2.INTER_AREA)
+        else:
+            scale = min(w / sw, h / sh)
+            fw, fh = max(1, round(sw * scale)), max(1, round(sh * scale))
+            content = np.full((h, w, 3), self.v["matte_gray"], np.float32)
+            ox, oy = (w - fw) // 2, (h - fh) // 2
+            content[oy:oy + fh, ox:ox + fw] = cv2.resize(src, (fw, fh), interpolation=cv2.INTER_AREA)
 
         canvas = np.full_like(frame, self.v["matte_gray"], dtype=np.float32)
-        if zoom > 1.0 and (x0, y0, w, h) != (0, 0, W, H):
-            pass  # zoom applied to content above
         canvas[y0 : y0 + h, x0 : x0 + w] = content
 
         r = self.v["corner_radius"]

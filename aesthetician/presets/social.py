@@ -34,7 +34,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.2, "radius": 0.9}),
         ("codec_era", {"codec": "h264", "kbps": 520, "crf": -1, "res": "480p",
                        "gop": 30, "passes": 1}),
-        ("framing", {"aspect": "1:1", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.6,
@@ -82,7 +82,7 @@ register_preset(Preset(
         ("lcd_screen", {"enabled": False, "grid": 0.1, "scale": 3,
                         "response_smear": 0.15, "moire_cam": 0.2,
                         "backlight_bleed": 0.12}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.6,
@@ -127,7 +127,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.35, "radius": 1.0}),
         ("codec_era", {"codec": "h264", "kbps": 1100, "crf": -1, "res": "native",
                        "gop": 60, "passes": 1}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.4,
@@ -169,7 +169,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.5, "radius": 1.0}),
         ("codec_era", {"codec": "h264", "kbps": 2200, "crf": -1, "res": "native",
                        "gop": 60, "passes": 1}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_agc", {"target_db": -12.0, "max_gain_db": 10.0,
@@ -218,7 +218,7 @@ register_preset(Preset(
                           "freeze_p": 0.22, "kbps": 900, "gop": 250}),
         ("lcd_screen", {"grid": 0.04, "scale": 3, "response_smear": 0.1,
                         "backlight_bleed": 0.1, "viewing_angle": 0.08}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7000.0, "order": 4}),
@@ -266,7 +266,7 @@ register_preset(Preset(
                           "drop_p": 0.05, "freeze_p": 0.3, "kbps": 900, "gop": 120}),
         ("sharpen", {"amount": 0.3, "radius": 1.1}),
         ("interlace", {"combing": 0.3, "twitter": 0.2}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7000.0, "order": 4}),
@@ -310,7 +310,7 @@ register_preset(Preset(
                        "gop": 120, "passes": 1}),
         ("lcd_screen", {"grid": 0.045, "scale": 3, "response_smear": 0.18,
                         "backlight_bleed": 0.14, "viewing_angle": 0.12}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.5,
@@ -355,7 +355,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.38, "radius": 1.1}),
         ("lcd_screen", {"grid": 0.05, "scale": 3, "response_smear": 0.15,
                         "backlight_bleed": 0.1}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_codec_aac", {"kbps": 96, "mono": False}),
@@ -394,7 +394,7 @@ register_preset(Preset(
         ("upload_gen", {"gens": 2, "deband_loss": 0.8, "qscale": 5}),
         ("codec_era", {"codec": "h264", "kbps": 1600, "crf": -1, "res": "native",
                        "gop": 120, "passes": 1}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_codec_aac", {"kbps": 128, "mono": False}),
@@ -438,7 +438,7 @@ register_preset(Preset(
                        "gop": 60, "passes": 1, "denoise_pre": 0.25}),
         ("codec_glitch", {"enabled": False, "codec": "mpeg4", "amount": 0.08,
                           "drop_p": 0.06, "freeze_p": 0.25, "kbps": 900, "gop": 60}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 8000.0, "order": 4}),
@@ -481,7 +481,7 @@ register_preset(Preset(
                        "gop": 250, "passes": 1, "denoise_pre": 0.3}),
         ("codec_glitch", {"codec": "mpeg4", "amount": 0.02, "drop_p": 0.0,
                           "freeze_p": 0.3, "kbps": 900, "gop": 250}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.5,
@@ -530,7 +530,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.35, "radius": 1.0}),
         ("codec_era", {"codec": "h264", "kbps": 1900, "crf": -1, "res": "native",
                        "gop": 60, "passes": 2}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.6,

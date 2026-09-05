@@ -44,9 +44,15 @@ class Param:
                 return value.lower() in ("1", "true", "yes", "on")
             return bool(value)
         if self.kind == "int":
-            return int(np.clip(int(round(float(value))), self.lo, self.hi))
+            number = float(value)
+            if not np.isfinite(number):
+                raise ValueError(f"{self.name} needs a finite number")
+            return int(np.clip(int(round(number)), self.lo, self.hi))
         if self.kind == "float":
-            return float(np.clip(float(value), self.lo, self.hi))
+            number = float(value)
+            if not np.isfinite(number):
+                raise ValueError(f"{self.name} needs a finite number")
+            return float(np.clip(number, self.lo, self.hi))
         if self.kind == "enum":
             v = str(value)
             if v not in self.choices:

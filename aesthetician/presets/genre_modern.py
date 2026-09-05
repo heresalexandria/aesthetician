@@ -44,7 +44,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.28, "chroma_noise": 0.25,
                  "head_switch": 0.5, "dropouts": 1.5, "generation": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12500.0}),
@@ -63,11 +63,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1988", "VHS Rental 1988",
                 "The pan-and-scan rental tape: scope thrown away at the edges, tape noise in the smoke.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("network-premiere-1988", "Network Premiere 1988",
                 "Sunday-night broadcast: composite color, a 4:3 crop and one mono speaker.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7000.0}),
     ],
 ))
@@ -106,7 +106,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.2, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12500.0}),
@@ -124,11 +124,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1989", "VHS Rental 1989",
                 "The tape everybody's cousin owned: softened windows, tape grain in the blue.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.85}),
         Variant("tv-broadcast-1989", "TV Broadcast 1989",
                 "Aired at eight with the sides cut off and the stereo folded to one speaker.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7200.0}),
     ],
 ))
@@ -170,7 +170,7 @@ register_preset(Preset(
                  "tracking_error": 0.05, "generation": 1}),
         ("interlace", {"combing": 0.3, "twitter": 0.18}),
         ("vignette", {"amount": 0.35, "softness": 0.65}),
-        ("framing", {"aspect": "4:3", "mode": "box", "zoom": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "zoom": 0.06}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -193,7 +193,7 @@ register_preset(Preset(
                 "The 1.85 print that played the second half of a summer double bill, before any tape existed.",
                 video={"vhs.enabled": False, "cadence.enabled": False, "interlace.enabled": False,
                        "dust.density": 0.5, "fade.amount": 0.2, "gate_weave.amount": 1.1,
-                       "framing.aspect": "1.85", "framing.mode": "box"},
+                       "framing.aspect": "source", "framing.mode": "box"},
                 audio={"a_video_tape_audio.enabled": False, "a_speaker.enabled": False,
                        "a_bandlimit.high_hz": 8500.0}),
     ],
@@ -230,7 +230,7 @@ register_preset(Preset(
         ("ntsc", {"enabled": False, "strength": 0.4, "luma_bw": 3.6, "chroma_bw": 0.85,
                   "dot_crawl": 0.24, "phase_noise": 1.5, "setup_level": 0.05}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000, "gop": 15}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -245,7 +245,7 @@ register_preset(Preset(
     variants=[
         Variant("cable-tv-1990", "Cable TV 1990",
                 "Running twice a day on basic cable, composite and cropped to the set.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.4, "a_bandlimit.high_hz": 7000.0}),
         Variant("dvd-2001", "DVD 2001",
                 "The bare-bones catalogue disc: MPEG-2 at a modest bitrate, widescreen preserved.",
@@ -287,7 +287,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.28, "chroma_noise": 0.26,
                  "head_switch": 0.5, "dropouts": 1.5, "generation": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 14000.0}),
@@ -304,11 +304,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1990", "VHS Rental 1990",
                 "Scope cropped to the box, sodium highlights smearing into tape noise.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-network-1991", "TV Network 1991",
                 "The broadcast cut: composite color, cropped sides, mono and heavily limited.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7000.0,
                        "a_compressor.ratio": 5.0}),
     ],
@@ -347,7 +347,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.7, "chroma_bw": 0.4,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.28,
                  "head_switch": 0.55, "dropouts": 2.5, "generation": 2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -362,7 +362,7 @@ register_preset(Preset(
     variants=[
         Variant("video-store-vhs", "Video-Store VHS",
                 "The dupe dubbed again onto tape for the fantasy shelf, cropped to the box.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_optical_track.cell_noise": -44.0, "a_bandlimit.high_hz": 6500.0}),
         Variant("premiere-print", "Premiere Print",
                 "The first print off the negative: one generation, clean gate, a drier dubbing stage.",
@@ -405,7 +405,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.7, "chroma_bw": 0.4,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.28,
                  "head_switch": 0.55, "dropouts": 2.2, "generation": 2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -427,7 +427,7 @@ register_preset(Preset(
                        "a_optical_track.cell_noise": -56.0}),
         Variant("vhs-rental", "VHS Rental",
                 "Big box, bigger claims: the thin print dubbed to tape and cropped to the set.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 6200.0}),
     ],
 ))
@@ -466,7 +466,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.7, "chroma_bw": 0.4,
                  "sharpen": 0.45, "luma_noise": 0.3, "chroma_noise": 0.28,
                  "head_switch": 0.6, "dropouts": 2.5, "generation": 2}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -482,11 +482,11 @@ register_preset(Preset(
     variants=[
         Variant("rental-tape", "Rental Tape",
                 "The tape the cover art was really selling, dubbed once and cropped to the box.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 6500.0}),
         Variant("tv-syndication", "TV Syndication",
                 "Sold to a UHF station in a package of twelve, composite and cut for time.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 6000.0, "a_compressor.ratio": 6.5}),
     ],
 ))
@@ -524,7 +524,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.45,
                  "sharpen": 0.4, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 2.0, "generation": 2}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 35.0, "high_hz": 13000.0}),
@@ -543,7 +543,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-family-tape", "VHS Family Tape",
                 "Watched to death by one household: soft gauze gone softer, tracking noise in the haze.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("laserdisc-1990", "LaserDisc 1990",
                 "The letterboxed disc for people with a special-features problem: composite but clean.",
@@ -585,7 +585,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.26,
                  "head_switch": 0.5, "dropouts": 1.8, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 15000.0}),
@@ -603,12 +603,12 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The rental tape where the dark corridors turn to grey noise.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-network-1990", "TV Network 1990",
                 "Broadcast with the blacks lifted so a living room could see anything at all.",
                 video={"ntsc.enabled": True, "tone.lift": 0.06, "tone.exposure": -0.02,
-                       "framing.aspect": "4:3", "framing.mode": "crop"},
+                       "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7000.0}),
     ],
 ))
@@ -644,7 +644,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.28, "chroma_noise": 0.26,
                  "head_switch": 0.5, "dropouts": 2.0, "generation": 2}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -659,7 +659,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The tape that lived behind the curtain: teal gone grey, red smearing sideways.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 7000.0, "a_optical_track.cell_noise": -50.0}),
         Variant("restored-4k", "Restored 4K",
                 "The boutique scan: gate steadied, dirt gone, every practical effect in focus.",
@@ -702,7 +702,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.44,
                  "sharpen": 0.5, "luma_noise": 0.28, "chroma_noise": 0.25,
                  "head_switch": 0.5, "dropouts": 1.5, "generation": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 16000.0}),
@@ -719,11 +719,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1989", "VHS Rental 1989",
                 "Two tapes deep in the new-release wall, cropped and buzzing in the highlights.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-network-1991", "TV Network 1991",
                 "The edited-for-television airing: composite, cropped, mono and dubbed clean.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7000.0,
                        "a_compressor.ratio": 5.0}),
     ],
@@ -764,7 +764,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.26,
                  "head_switch": 0.5, "dropouts": 1.8, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 14000.0}),
@@ -781,11 +781,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "Green jungle turned to grey mush on a tape rented four hundred times.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-network", "TV Network",
                 "The broadcast cut with the language dubbed and the stereo folded down.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7000.0}),
     ],
 ))
@@ -822,7 +822,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.28,
                  "head_switch": 0.55, "dropouts": 2.0, "generation": 2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 15000.0}),
@@ -837,7 +837,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The tape where the smoke turns to noise and the neon smears a frame to the right.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.9, "a_bandlimit.high_hz": 8000.0}),
         Variant("workprint-1982", "Workprint 1982",
                 "The sneak-preview reel: grainier, dirtier, unsteady in the gate, mixed flat in mono.",
@@ -880,7 +880,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.7, "chroma_bw": 0.38,
                  "sharpen": 0.4, "luma_noise": 0.3, "chroma_noise": 0.3,
                  "head_switch": 0.55, "dropouts": 2.2, "generation": 2}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -895,11 +895,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "Gel color running off its edges on tape, exactly as the box art promised.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 7000.0}),
         Variant("cable-tv-1987", "Cable TV 1987",
                 "Late-night on a movie channel, composite chroma buzzing off the reds.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 6800.0, "a_compressor.ratio": 5.5}),
     ],
 ))
@@ -938,7 +938,7 @@ register_preset(Preset(
                  "head_switch": 0.5, "dropouts": 1.6, "generation": 1}),
         ("signal_rf", {"enabled": False, "snow": 0.03, "sparkle": 2.0, "ghost_n": 1,
                        "ghost_px": 12.0, "ghost_alpha": 0.16}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -956,12 +956,12 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The tape that sat in every supermarket rental rack for six years.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.6}),
         Variant("superstation-1994", "Superstation 1994",
                 "Uplinked, downlinked and cropped: a faint ghost and a dusting of snow on the cable feed.",
                 video={"ntsc.enabled": True, "signal_rf.enabled": True,
-                       "framing.aspect": "4:3", "framing.mode": "crop"},
+                       "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.3, "a_bandlimit.high_hz": 6800.0,
                        "a_compressor.ratio": 6.0}),
     ],
@@ -1000,7 +1000,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.44,
                  "sharpen": 0.45, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.4, "generation": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 16000.0}),
@@ -1017,7 +1017,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1993", "VHS Rental 1993",
                 "The tape with the unrated sticker: scope thrown away, silk gone to smear.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("laserdisc-1993", "LaserDisc 1993",
                 "Letterboxed on two sides of a twelve-inch disc, composite but genuinely clean.",
@@ -1058,7 +1058,7 @@ register_preset(Preset(
                  "sharpen": 0.45, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.4, "generation": 1}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 4500, "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -1074,7 +1074,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental-1998", "VHS Rental 1998",
                 "Cropped to the box and rented all summer, with tape hiss under the phone calls.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9,
                        "a_bandlimit.high_hz": 11000.0}),
         Variant("dvd-1999", "DVD 1999",
@@ -1114,7 +1114,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.28, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.6, "generation": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 16000.0}),
@@ -1131,7 +1131,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "Shadow detail the tape cannot hold, which is most of the picture.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("remaster-2010", "Remaster 2010",
                 "The supervised transfer that pulls the contrast back and lets some color return.",
@@ -1175,7 +1175,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.44,
                  "sharpen": 0.45, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.5, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 16000.0}),
@@ -1189,11 +1189,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "Rented on the strength of one screensaver, cropped and softened to grey.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.9, "a_bandlimit.high_hz": 10000.0}),
         Variant("tv-cable-1998", "TV Cable 1998",
                 "Filling an afternoon slot on a basic-cable channel, composite and cropped.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.4, "a_bandlimit.high_hz": 7000.0}),
     ],
 ))
@@ -1232,7 +1232,7 @@ register_preset(Preset(
                  "sharpen": 0.45, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.4, "generation": 1}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000, "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -1249,7 +1249,7 @@ register_preset(Preset(
     variants=[
         Variant("vhs-1998", "VHS 1998",
                 "Sell-through tape: the effects shots are the first thing the carrier gives up.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("dvd-2000", "DVD 2000",
                 "The disc the format was sold on, encoded a little too soft in the wide shots.",
@@ -1292,7 +1292,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.44,
                  "sharpen": 0.45, "luma_noise": 0.26, "chroma_noise": 0.24,
                  "head_switch": 0.5, "dropouts": 1.5, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -1310,11 +1310,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-1994", "VHS 1994",
                 "The sell-through tape with the clamshell case, worn out by one household.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-network-1995", "TV Network 1995",
                 "Network premiere with the sides cropped and the orchestra folded to mono.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 7200.0}),
     ],
 ))
@@ -1352,7 +1352,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.8, "chroma_bw": 0.42,
                  "sharpen": 0.4, "luma_noise": 0.28, "chroma_noise": 0.25,
                  "head_switch": 0.5, "dropouts": 1.6, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 16000.0}),
@@ -1369,11 +1369,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The tape passed around a whole block until the heads had chewed the top line.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.85}),
         Variant("tv-cable-1994", "TV Cable 1994",
                 "Basic-cable airing with the language dubbed and the bass thinned out.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.4, "a_bandlimit.low_hz": 90.0,
                        "a_bandlimit.high_hz": 7000.0}),
     ],
@@ -1411,7 +1411,7 @@ register_preset(Preset(
         ("vignette", {"amount": 0.3, "softness": 0.68}),
         ("codec_era", {"enabled": False, "codec": "mpeg1video", "kbps": 1150,
                        "res": "240p", "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1427,7 +1427,7 @@ register_preset(Preset(
     variants=[
         Variant("vcd-1996", "VCD 1996",
                 "Two discs in a paper sleeve: 352 lines of MPEG-1 and a hard crop to the box.",
-                video={"codec_era.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"codec_era.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 6000.0}),
         Variant("cantonese-print", "Cantonese Print",
                 "The original-language print: production sound, no foley slap, a drier stage.",
@@ -1471,7 +1471,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_bw": 2.9, "chroma_bw": 0.44,
                  "sharpen": 0.4, "luma_noise": 0.24, "chroma_noise": 0.22,
                  "head_switch": 0.5, "dropouts": 1.4, "generation": 1}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 15000.0}),
@@ -1488,11 +1488,11 @@ register_preset(Preset(
     variants=[
         Variant("vhs-rental", "VHS Rental",
                 "The tape from the classics shelf, lace resolved as a soft grey field.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_video_tape_audio.enabled": True, "a_channel_aging.width": 0.9}),
         Variant("tv-pbs-1998", "PBS Broadcast 1998",
                 "Sunday-night public television: composite color, letterbox surrendered to the crop.",
-                video={"ntsc.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop"},
+                video={"ntsc.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 0.5, "a_bandlimit.high_hz": 7500.0}),
     ],
 ))
@@ -1525,7 +1525,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.6, "twitter": 0.3}),
         ("dvnr", {"enabled": False, "strength": 0.3, "wax": 0.3}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 3500, "gop": 15}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "camcorder_1994", "amount": 0.8, "proximity": 0.15,
@@ -1580,7 +1580,7 @@ register_preset(Preset(
         ("print_char", {"acutance": 0.35}),
         ("vignette", {"amount": 0.4, "softness": 0.62}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000, "gop": 15}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -1632,7 +1632,7 @@ register_preset(Preset(
         ("vignette", {"amount": 0.22, "softness": 0.76}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5500, "gop": 15}),
         ("interlace", {"enabled": False, "combing": 0.4, "twitter": 0.2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1649,7 +1649,7 @@ register_preset(Preset(
                 video={"codec_era.enabled": True}),
         Variant("tv-hd-2007", "HD Broadcast 2007",
                 "An early high-definition airing, interlaced and pillar-cropped to 16:9.",
-                video={"interlace.enabled": True, "framing.aspect": "16:9", "framing.mode": "crop"},
+                video={"interlace.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 1.1, "a_compressor.ratio": 4.0}),
     ],
 ))
@@ -1682,7 +1682,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.5}),
         ("vignette", {"amount": 0.28, "softness": 0.72}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5500, "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1699,7 +1699,7 @@ register_preset(Preset(
         Variant("airline-cut", "Airline Cut",
                 "Seatback edition: standard definition, cropped to the box, encoded at a bitrate that gives up on grain.",
                 video={"codec_era.enabled": True, "codec_era.kbps": 1500, "codec_era.res": "480p",
-                       "framing.aspect": "4:3", "framing.mode": "crop"},
+                       "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_bandlimit.high_hz": 12000.0, "a_channel_aging.width": 0.8}),
     ],
 ))
@@ -1733,7 +1733,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.3}),
         ("vignette", {"amount": 0.28, "softness": 0.72}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5500, "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1780,7 +1780,7 @@ register_preset(Preset(
         ("chroma_dv", {"ratio": "4:2:0", "edge_sharpen": 0.3}),
         ("vignette", {"amount": 0.3, "softness": 0.7}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000, "gop": 15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1831,7 +1831,7 @@ register_preset(Preset(
         ("vignette", {"amount": 0.3, "softness": 0.7}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5500, "gop": 15}),
         ("interlace", {"enabled": False, "combing": 0.5, "twitter": 0.25}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1848,7 +1848,7 @@ register_preset(Preset(
                 video={"codec_era.enabled": True}),
         Variant("tv-cable-2005", "TV Cable 2005",
                 "A cable airing at 16:9, interlaced and combed on every pan.",
-                video={"interlace.enabled": True, "framing.aspect": "16:9", "framing.mode": "crop"},
+                video={"interlace.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_channel_aging.width": 1.0, "a_compressor.ratio": 4.5}),
     ],
 ))
@@ -1880,7 +1880,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.3}),
         ("vignette", {"amount": 0.22, "softness": 0.76}),
         ("interlace", {"enabled": False, "combing": 0.4, "twitter": 0.2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -1896,7 +1896,7 @@ register_preset(Preset(
                 video={"grain.amount": 0.22, "print_char.acutance": 0.3}),
         Variant("tv-hd-2010", "HD Broadcast 2010",
                 "A cable airing cropped to 16:9 and interlaced, with the quiet scenes limited up.",
-                video={"interlace.enabled": True, "framing.aspect": "16:9", "framing.mode": "crop"},
+                video={"interlace.enabled": True, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_compressor.ratio": 5.0, "a_compressor.threshold_db": -26.0}),
     ],
 ))
@@ -1926,7 +1926,7 @@ register_preset(Preset(
         ("halation", {"strength": 0.15, "tint": "warm_white", "threshold": 0.82}),
         ("chroma_dv", {"ratio": "4:2:0", "edge_sharpen": 0.6, "dct_blocks": 0.15}),
         ("codec_era", {"codec": "h264", "crf": 26, "gop": 60}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "camcorder_1994", "amount": 0.7, "proximity": 0.1,

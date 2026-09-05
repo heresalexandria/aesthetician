@@ -318,7 +318,7 @@ register_preset(Preset(
         ("vhs", {"mode": "sp", "luma_bw": 1.8, "chroma_bw": 0.3, "luma_noise": 0.32,
                  "chroma_noise": 0.0, "head_switch": 0.0, "flagging": 0.0, "jitter_v": 0.15,
                  "time_base_error": 0.2, "dropouts": 0.8, "sharpen": 0.15}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 250.0, "high_hz": 3800.0}),

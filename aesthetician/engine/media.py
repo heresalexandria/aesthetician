@@ -122,10 +122,11 @@ def probe(path: str) -> MediaInfo:
     fps = float(num) / max(float(den), 1.0)
     duration = fmt_duration or float(v.get("duration") or 0.0)
     n_frames = int(v.get("nb_frames") or 0) or max(int(round(duration * fps)), 1)
+    width, height = display_geometry(v)
     return MediaInfo(
         path=path,
-        width=int(v["width"]),
-        height=int(v["height"]),
+        width=width,
+        height=height,
         fps=fps,
         duration=duration,
         n_frames=n_frames,
@@ -135,6 +136,33 @@ def probe(path: str) -> MediaInfo:
         channels=int(a.get("channels", 2)) if a else 2,
         color_space=v.get("color_space") or "",
     )
+
+
+def display_geometry(video_stream: dict) -> tuple[int, int]:
+    """Upright square-pixel dimensions, matching FFmpeg's automatic rotation.
+
+    Phone footage often stores landscape pixels with a 90-degree display
+    matrix; SD archives can store non-square pixels. Coded width/height alone
+    would squeeze both before an effect even sees the source.
+    """
+    width, height = int(video_stream["width"]), int(video_stream["height"])
+    try:
+        num, den = map(float, (video_stream.get("sample_aspect_ratio") or "1:1").split(":"))
+        if np.isfinite(num) and np.isfinite(den) and num > 0 and den > 0:
+            width = max(1, round(width * num / den))
+    except (ValueError, TypeError):
+        pass
+    rotation = video_stream.get("tags", {}).get("rotate", 0)
+    for data in video_stream.get("side_data_list", []):
+        if "rotation" in data:
+            rotation = data["rotation"]
+            break
+    try:
+        if round(float(rotation) / 90) % 2:
+            width, height = height, width
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return width, height
 
 
 def read_frames(
@@ -348,7 +376,7 @@ def extract_intermediate(in_path: str, out_path: str, width: int, height: int, f
     _run(
         [
             FFMPEG, "-v", "error", "-nostdin", "-y", "-i", in_path,
-            "-vf", f"scale={width}:{height}:flags=lanczos,fps={fps:.6f}",
+            "-vf", f"scale={width}:{height}:flags=lanczos,setsar=1,fps={fps:.6f}",
             "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv444p",
             *BT709_TAGS, "-an",
             out_path,

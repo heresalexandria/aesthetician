@@ -22,7 +22,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.25}),
         ("dust", {"density": 0.4}),
         ("vignette", {"amount": 0.4, "softness": 0.7}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.10, "mode": "box"}),
+        ("framing", {"aspect": "source", "corner_radius": 0.10, "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 120.0, "high_hz": 5500.0}),
@@ -56,7 +56,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.22, "bloom": 0.45, "curvature": 0.1, "misconvergence": 0.0}),
         ("signal_rf", {"snow": 0.08}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.09}),
+        ("framing", {"aspect": "source", "corner_radius": 0.09}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 8000.0}),
@@ -86,7 +86,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.55, "twitter": 0.35}),
         ("crt", {"scan_strength": 0.2, "bloom": 0.5, "curvature": 0.12, "misconvergence": 0.6}),
         ("signal_rf", {"snow": 0.12, "ghost_px": 10.0, "ghost_alpha": 0.12}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.09}),
+        ("framing", {"aspect": "source", "corner_radius": 0.09}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -42.0}),
@@ -154,7 +154,7 @@ register_preset(Preset(
                  "head_switch": 0.5, "time_base_error": 0.35, "sharpen": 0.6}),
         ("interlace", {"combing": 0.55}),
         ("crt", {"bloom": 0.35, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.06}),
+        ("framing", {"aspect": "source", "corner_radius": 0.06}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 10000.0}),
@@ -245,7 +245,7 @@ register_preset(Preset(
                        "impulse_noise": 0.5}),
         ("interlace", {"combing": 0.5, "twitter": 0.4}),
         ("crt", {"scan_strength": 0.3, "bloom": 0.5, "curvature": 0.2, "vignette_crt": 0.4}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.12}),
+        ("framing", {"aspect": "source", "corner_radius": 0.12}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),

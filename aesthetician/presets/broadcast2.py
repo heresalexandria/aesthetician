@@ -36,7 +36,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.18, "twitter": 0.1}),
         ("crt", {"scan_strength": 0.04, "bloom": 0.18, "glass_glow": 0.08}),
         ("vignette", {"amount": 0.2, "softness": 0.75}),
-        ("framing", {"aspect": "4:3", "mode": "box", "edge_soft": 0.006}),
+        ("framing", {"aspect": "source", "mode": "box", "edge_soft": 0.006}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7600.0}),
@@ -84,7 +84,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.18, "bloom": 0.5, "curvature": 0.14, "misconvergence": 0.9,
                  "vignette_crt": 0.25}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.09}),
+        ("framing", {"aspect": "source", "corner_radius": 0.09}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -44.0}),
@@ -196,7 +196,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.5, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.2, "bloom": 0.35, "curvature": 0.16, "retrace_lines": 0.3,
                  "vignette_crt": 0.35}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.1}),
+        ("framing", {"aspect": "source", "corner_radius": 0.1}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 5000.0}),
@@ -233,7 +233,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.5}),
         ("crt", {"scan_strength": 0.15, "bloom": 0.4, "curvature": 0.12, "vignette_crt": 0.3,
                  "glass_glow": 0.15}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -46.0}),
@@ -309,7 +309,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.5, "twitter": 0.35}),
         ("crt", {"scan_strength": 0.22, "bloom": 0.45, "curvature": 0.16, "vignette_crt": 0.35,
                  "glare": 0.25, "glare_pos": "tr"}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.1}),
+        ("framing", {"aspect": "source", "corner_radius": 0.1}),
     ],
     audio=[
         ("a_tv_sound", {"buzz_db": -38.0}),
@@ -384,7 +384,7 @@ register_preset(Preset(
                  "sharpen": 0.4}),
         ("interlace", {"combing": 0.5}),
         ("crt", {"bloom": 0.35, "scan_strength": 0.12, "curvature": 0.1}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7500.0}),
@@ -496,7 +496,7 @@ register_preset(Preset(
                          "drift": 0.5}),
         ("interlace", {"combing": 0.5, "twitter": 0.35}),
         ("crt", {"scan_strength": 0.25, "bloom": 0.45, "curvature": 0.18, "vignette_crt": 0.4}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.1}),
+        ("framing", {"aspect": "source", "corner_radius": 0.1}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5500.0}),

@@ -6,10 +6,10 @@ cd app && npm start
 
 ## Finding a look: search, filters, the guide, favorites
 
-The browse pane is built for a library of hundreds of presets
+The browse pane is built for a library of 1,000 presets
 (`docs/finding-presets.md` has the full story):
 
-- **Search** understands what you type: every word has to land in the
+- **Search** has its own full-width row. Every word has to land in the
   preset's name, tagline, keywords, tags, facets, description or variants;
   a word matches a whole word or the start of one; `80s`, `1980s` and
   `eighties` are the same; `black and white` is `bw`; `monster movie` also
@@ -17,6 +17,8 @@ The browse pane is built for a library of hundreds of presets
   with the family named on each row. Press **/** (or **⌘F**) to jump to the
   box from anywhere. A search that finds nothing offers a few asks the library
   answers well.
+- The count below the filters shows matching aesthetics. **Clear filters**
+  resets the search and narrowing choices; **Escape** in search clears its text.
 - **Family chips** under the search box narrow the list to one or more
   families; click a chip again to release it, or **All** to reset.
 - The **era dropdown** narrows to a single decade, and combines with the
@@ -372,10 +374,24 @@ the value this preset uses, the effect's own default when it differs, whether it
 follows the **Intensity** or **Texture** master dial, and the `--set` path to
 reach the same control from the CLI.
 
+Every numeric control has a field beside its label as well as a full-width
+slider below. Click the number and type a value; **Enter**, **Tab**, or clicking
+elsewhere applies it. **Escape** restores the previous value. Values outside
+the allowed range clamp to the nearest bound; empty or invalid entries keep
+the previous value. Float fields retain at least three decimal places of
+precision, including small noise levels and large frequency ranges. Keyboard
+arrows adjust the focused field or slider. This also works on the Intensity
+and Texture master values.
+
+Settings that depend on another mode are dimmed with an explanation. For
+example, H.264's bitrate becomes active when CRF is set to −1, and tint amount
+becomes active after choosing a tint. These settings retain their values while
+inactive. Effect headers and filter chips are keyboard-focusable buttons.
+
 The two master dials sit above the effect stack:
 
-- **Intensity** - everything the preset does to picture and sound: damage,
-  warping, glow, colour treatment.
+- **Intensity** - the scalable treatment parameters, including damage,
+  warping and glow. Each control's tooltip says whether it follows this dial.
 - **Texture** - grain, tape noise, RF snow, dust and speckle only. Drag to **0**
   for a perfectly clean version of the look. Decay *content* (mould, water
   staining, nitrate) is deliberately left alone.
@@ -383,7 +399,15 @@ The two master dials sit above the effect stack:
 Any override you make is highlighted, and the **↺** beside it restores the
 preset's value. While any overrides exist, a strip above the effect stack
 counts them and offers **Reset all**; effects carrying a tweak show a dot on
-their header.
+their header. Resetting values keeps expanded effect cards open.
+
+**Target Aspect** defaults to **Match source**, using the video's upright
+display dimensions. Portrait footage stays portrait; archival non-square
+pixels are converted to square pixels without squeezing the picture. An
+explicit ratio creates an aperture inside that canvas: **box** fits the whole
+picture inside it, and **crop** fills it with a center-cut. Output dimensions
+remain the source canvas dimensions. Existing explicit saved overrides remain
+available; choose Match source to release one.
 
 Every effect card carries a checkbox in its header that switches that one
 effect off in place, and the **PICTURE** and **SOUND** section headers carry a

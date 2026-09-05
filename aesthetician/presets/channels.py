@@ -155,7 +155,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.35, 0.5, combing=0.5, twitter=0.26, scan=0.13,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -207,7 +207,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.25, 0.3, combing=0.5, twitter=0.18, scan=0.1,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.05, "imbalance_db": 0.2, "crosstalk_db": -44.0,
@@ -257,7 +257,7 @@ register_preset(Preset(
         ("interlace", {"field_order": "tff", "combing": 0.4, "twitter": 0.18}),
         ("lcd_screen", {"grid": 0.08, "scale": 3, "response_smear": 0.25,
                         "backlight_bleed": 0.12, "viewing_angle": 0.1}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.12, "imbalance_db": 0.1, "crosstalk_db": -52.0,
@@ -313,7 +313,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.4, 0.7, combing=0.55, twitter=0.28, scan=0.14,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -364,7 +364,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.3, 0.35, combing=0.5, twitter=0.2, scan=0.11,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.05, "imbalance_db": 0.3, "crosstalk_db": -42.0,
@@ -412,7 +412,7 @@ register_preset(Preset(
         ("crt", {"bloom": 0.26, "scan_strength": 0.06, "misconvergence": 0.12}),
         ("lcd_screen", {"enabled": False, "grid": 0.03, "scale": 3,
                         "response_smear": 0.1, "backlight_bleed": 0.08}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -18.0, "ratio": 4.0, "attack_ms": 5.0,
@@ -431,7 +431,7 @@ register_preset(Preset(
                 video={"codec_era.kbps": 8000, "codec_era.res": "native",
                        "codec_era.field_mode": "progressive", "interlace.enabled": False,
                        "crt.enabled": False, "lcd_screen.enabled": True,
-                       "framing.aspect": "16:9"},
+                       "framing.aspect": "source"},
                 audio={"a_codec_aac.kbps": 160}),
     ],
 ))
@@ -464,7 +464,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.35, 0.5, combing=0.5, twitter=0.24, scan=0.13,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "lavalier_1972", "amount": 0.5,
@@ -519,7 +519,7 @@ register_preset(Preset(
         ("crt", {"bloom": 0.2, "scan_strength": 0.08, "misconvergence": 0.2}),
         ("lcd_screen", {"enabled": False, "grid": 0.04, "scale": 3,
                         "response_smear": 0.12, "backlight_bleed": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "lavalier_1972", "amount": 0.3,
@@ -539,7 +539,7 @@ register_preset(Preset(
                 "The widescreen HD feed on a flat panel: more bitrate, no tube, no bars.",
                 video={"codec_era.kbps": 8000, "codec_era.res": "native",
                        "crt.enabled": False, "lcd_screen.enabled": True,
-                       "framing.aspect": "16:9"},
+                       "framing.aspect": "source"},
                 audio={"a_codec_aac.kbps": 192}),
     ],
 ))
@@ -576,7 +576,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.4, 0.5, combing=0.55, twitter=0.28, scan=0.14, beam_bloom=0.3,
                   curvature=0.12, vignette_crt=0.22),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -632,7 +632,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.28, 0.3, combing=0.5, twitter=0.2, scan=0.1,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.4,
@@ -688,7 +688,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.35, 0.5, combing=0.5, twitter=0.24, scan=0.13,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box", "zoom": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "zoom": 0.06}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -742,7 +742,7 @@ register_preset(Preset(
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 4000,
                        "res": "480p", "gop": 15, "field_mode": "interlaced_tff"}),
         *_crt_set(0.22, 0.22, combing=0.45, twitter=0.16, scan=0.09),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.2, "imbalance_db": 0.1, "crosstalk_db": -50.0,
@@ -754,7 +754,7 @@ register_preset(Preset(
     variants=[
         Variant("pan-and-scan-feed", "Pan-and-Scan Feed",
                 "The 4:3 version of the same movie for the subscribers who complained about the bars.",
-                video={"framing.aspect": "4:3", "framing.zoom": 0.1}),
+                video={"framing.aspect": "source", "framing.zoom": 0.1}),
         Variant("digital-cable-2000", "Digital Cable Tier",
                 "Three years later through an MPEG-2 encoder, with the grain fighting the bitrate.",
                 video={"codec_era.enabled": True, "ntsc.strength": 0.2,
@@ -794,7 +794,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.38, 0.6, combing=0.55, twitter=0.26, scan=0.14, beam_bloom=0.3,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.4,
@@ -846,7 +846,7 @@ register_preset(Preset(
         ("crt", {"bloom": 0.2, "scan_strength": 0.08, "misconvergence": 0.2}),
         ("lcd_screen", {"enabled": False, "grid": 0.04, "scale": 3,
                         "response_smear": 0.12, "backlight_bleed": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_room", {"size": 2.0, "decay_s": 0.9, "damp": 0.45, "predelay_ms": 18.0,
@@ -862,7 +862,7 @@ register_preset(Preset(
                 video={"codec_era.kbps": 8000, "codec_era.res": "native",
                        "codec_era.field_mode": "progressive", "interlace.enabled": False,
                        "crt.enabled": False, "lcd_screen.enabled": True,
-                       "framing.aspect": "16:9"},
+                       "framing.aspect": "source"},
                 audio={"a_codec_aac.kbps": 192}),
         Variant("analog-cable", "Analog Cable Tier",
                 "The same game one tier down: composite chroma and crawl on the score bug.",
@@ -901,7 +901,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.4, 0.5, combing=0.5, twitter=0.3, scan=0.14,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -952,7 +952,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.42, 0.55, combing=0.55, twitter=0.28, scan=0.15, beam_bloom=0.35,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "broadcast_dynamic_1955", "amount": 0.5,
@@ -1010,7 +1010,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.35, 0.45, combing=0.5, twitter=0.24, scan=0.12,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "lavalier_1972", "amount": 0.5,
@@ -1068,7 +1068,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.4, 0.55, combing=0.55, twitter=0.26, scan=0.14,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box", "zoom": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "zoom": 0.06}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1122,7 +1122,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.3, 0.4, combing=0.5, twitter=0.2, scan=0.11,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box", "zoom": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "zoom": 0.06}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.1, "imbalance_db": 0.25, "crosstalk_db": -44.0,
@@ -1175,7 +1175,7 @@ register_preset(Preset(
         ("deinterlace_artifact", {"mode": "weave_comb", "amount": 0.2}),
         ("rear_projection_tv", {"convergence": 0.22, "hotspot": 0.3,
                                 "screen_louvre": 0.22}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.25, "imbalance_db": 0.1, "crosstalk_db": -54.0,
@@ -1188,7 +1188,7 @@ register_preset(Preset(
     variants=[
         Variant("sd-simulcast-4x3", "SD Simulcast",
                 "The 4:3 analog channel carrying the same episode, cut in from the sides.",
-                video={"framing.aspect": "4:3", "framing.zoom": 0.1,
+                video={"framing.aspect": "source", "framing.zoom": 0.1,
                        "ntsc.enabled": True, "sharpen.amount": 0.2},
                 audio={"a_tv_sound.buzz_db": -54.0,
                        "a_speaker.device": "tv_mono_1985", "a_speaker.strength": 0.45}),
@@ -1226,7 +1226,7 @@ register_preset(Preset(
         ("signal_rf", {"snow": 0.05, "sparkle": 2.0, "ghost_n": 0}),
         *_crt_set(0.5, 0.35, combing=0.6, twitter=0.4, scan=0.16, beam_bloom=0.4,
                   glass_glow=0.2, curvature=0.14, vignette_crt=0.26),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.06}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1277,7 +1277,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.35, 0.5, combing=0.55, twitter=0.26, scan=0.13,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1324,7 +1324,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.3, 0.4, combing=0.5, twitter=0.22, scan=0.11,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1373,7 +1373,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.25, 0.25, combing=0.45, twitter=0.16, scan=0.09,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.1, "imbalance_db": 0.15, "crosstalk_db": -50.0,
@@ -1422,7 +1422,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.4, 0.55, combing=0.55, twitter=0.28, scan=0.14,
                   curvature=0.12, vignette_crt=0.22),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1470,7 +1470,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.32, 0.45, combing=0.5, twitter=0.24, scan=0.12,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1517,7 +1517,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.45, 0.7, combing=0.55, twitter=0.3, scan=0.15, beam_bloom=0.35,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1565,7 +1565,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.35, 0.5, combing=0.55, twitter=0.24, scan=0.13,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1613,7 +1613,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.4, 0.6, combing=0.55, twitter=0.26, scan=0.14,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1667,7 +1667,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.35, 0.45, combing=0.5, twitter=0.24, scan=0.12,
                   curvature=0.12, vignette_crt=0.22),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1716,7 +1716,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.38, 0.5, combing=0.5, twitter=0.26, scan=0.13,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.05, "imbalance_db": 0.2, "crosstalk_db": -42.0,
@@ -1767,7 +1767,7 @@ register_preset(Preset(
                  "flagging": 0.1, "jitter_v": 0.12, "generation": 1}),
         *_crt_set(0.3, 0.35, combing=0.5, twitter=0.22, scan=0.11,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_video_tape_audio", {"format": "vhs_hifi", "tracking": 0.12,
@@ -1821,7 +1821,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.4, 0.6, combing=0.55, twitter=0.28, scan=0.14,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1876,7 +1876,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.42, 0.7, combing=0.55, twitter=0.3, scan=0.15,
                   curvature=0.06, vignette_crt=0.14),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1926,7 +1926,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.38, 0.5, combing=0.55, twitter=0.26, scan=0.13,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -1976,7 +1976,7 @@ register_preset(Preset(
                          dropouts=0.35, tbe=0.14, sharpen=0.25),
         *_crt_set(0.4, 0.55, combing=0.55, twitter=0.28, scan=0.14,
                   curvature=0.12, vignette_crt=0.22),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -2023,7 +2023,7 @@ register_preset(Preset(
         *_broadcast_tape(0.14, 0.16),
         *_crt_set(0.35, 0.5, combing=0.55, twitter=0.26, scan=0.13,
                   curvature=0.09, vignette_crt=0.18),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -2071,7 +2071,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.3, 0.35, combing=0.5, twitter=0.2, scan=0.11,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_channel_aging", {"width": 1.05, "imbalance_db": 0.2, "crosstalk_db": -46.0,
@@ -2125,7 +2125,7 @@ register_preset(Preset(
                        "hum_speed": 0.1}),
         *_crt_set(0.35, 0.5, combing=0.5, twitter=0.28, scan=0.13,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.6,
@@ -2181,7 +2181,7 @@ register_preset(Preset(
                        "ghost_alpha": 0.2, "hum_bar": 0.25, "hum_speed": 0.08}),
         *_crt_set(0.4, 0.6, combing=0.5, twitter=0.3, scan=0.15,
                   curvature=0.06, vignette_crt=0.24),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.05}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.05}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -2235,7 +2235,7 @@ register_preset(Preset(
                          dropouts=0.1, tbe=0.06, sharpen=0.35),
         *_crt_set(0.35, 0.5, combing=0.5, twitter=0.4, scan=0.13,
                   curvature=0.03, vignette_crt=0.08),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -2284,7 +2284,7 @@ register_preset(Preset(
         ("crt", {"bloom": 0.16, "scan_strength": 0.1, "misconvergence": 0.3, "glass_glow": 0.06}),
         ("lcd_screen", {"enabled": False, "grid": 0.04, "scale": 3,
                         "response_smear": 0.12, "backlight_bleed": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -20.0, "ratio": 3.0, "attack_ms": 8.0,
@@ -2303,7 +2303,7 @@ register_preset(Preset(
                 video={"codec_era.kbps": 8000, "codec_era.res": "native",
                        "codec_era.field_mode": "progressive", "interlace.enabled": False,
                        "crt.enabled": False, "lcd_screen.enabled": True,
-                       "framing.aspect": "16:9"},
+                       "framing.aspect": "source"},
                 audio={"a_codec_aac.kbps": 160}),
     ],
 ))

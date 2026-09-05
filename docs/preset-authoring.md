@@ -18,6 +18,10 @@ register_preset(Preset(
 - Get the full effect/param registry: `.venv/bin/aesthetician effects --json | python3 -m json.tool`
   (or read the effect source). NEVER guess a param name - validation will catch you.
 - Repeated effect in one chain → second instance is addressed `eid#2`.
+- Source aspect is the default for every recipe and variant. For `framing`,
+  omit `aspect` or write `"source"`; do not bake a historical aperture into a
+  new preset. The user may explicitly select another ratio. `pixel_aspect`
+  describes the medium's pixel shape and is a separate texture decision.
 - `keywords=(...)`: 6-12 lower-case words or hyphenated phrases that a person types when
   they want this look and the name does not say ("kaiju", "giant-monster", "godzilla" for a
   preset named after its print). Genre and mood first, then format aliases, then at most two

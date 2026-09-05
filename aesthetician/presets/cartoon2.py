@@ -31,7 +31,7 @@ register_preset(Preset(
         ("dust", {"density": 0.85, "hairs": 0.5}),
         ("scratches", {"count": 3, "transient_rate": 1.0}),
         ("vignette", {"amount": 0.4}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -74,7 +74,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.1}),
         ("dust", {"density": 0.3}),
         ("vignette", {"amount": 0.25}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 9000.0}),
@@ -381,7 +381,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 1.4}),
         ("flicker", {"amount": 0.2, "character": "projector"}),
         ("dust", {"density": 0.6}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -422,7 +422,7 @@ register_preset(Preset(
         ("ntsc", {"strength": 0.55, "phase_noise": 1.8}),
         ("interlace", {"combing": 0.45}),
         ("crt", {"bloom": 0.35}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 9000.0}),
@@ -464,7 +464,7 @@ register_preset(Preset(
         ("dust", {"density": 0.5}),
         ("scratches", {"count": 1, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.35}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 8000.0}),

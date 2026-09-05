@@ -70,15 +70,16 @@
         <div class="search-row">
           <div class="search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="preset-search" type="text" placeholder="Search aesthetics…" spellcheck="false"/>
+            <input id="preset-search" type="search" aria-label="Search aesthetics" placeholder="Search aesthetics…" spellcheck="false"/>
           </div>
-          <select id="era-filter" title="Filter by decade"><option value="">Any era</option></select>
-          <select id="sort-by" title="Order the library"></select>
+          <select id="era-filter" aria-label="Filter by decade" title="Filter by decade"><option value="">Any era</option></select>
+          <select id="sort-by" aria-label="Sort aesthetics" title="Order the library"></select>
         </div>
         <div id="family-chips"></div>
         <!-- Facet dropdowns: medium, genre, region, condition, color. Built from
              the engine's taxonomy, so the app never has to know the vocabulary. -->
         <div id="facet-row"></div>
+        <div class="library-status"><span id="result-count" role="status" aria-live="polite"></span><button id="clear-filters" class="link-btn hidden">Clear filters</button></div>
       </div>
       <div id="preset-list"></div>
     </aside>
@@ -127,12 +128,13 @@
           <span>Captions</span><span id="cap-count" class="hidden"></span>
         </button>
         <div id="scrub-wrap">
-          <span class="dim" id="scrub-label">preview at</span>
+          <label for="timecode" class="dim" id="scrub-label">preview at</label>
           <input id="timecode" type="text" spellcheck="false" title="Jump to a time - seconds (7.5) or minutes:seconds (1:07.5)"/>
           <span class="grow"></span>
         </div>
+        <div class="preview-settings">
         <div class="pc-group" title="Length of the rendered preview window">
-          <select id="preview-len">
+          <select id="preview-len" aria-label="Preview duration">
             <option value="2">2s</option>
             <option value="3" selected>3s</option>
             <option value="5">5s</option>
@@ -140,7 +142,7 @@
           </select>
         </div>
         <div class="pc-group" title="Preview render resolution - lower is faster, exports are always full quality">
-          <select id="preview-scale">
+          <select id="preview-scale" aria-label="Preview resolution">
             <option value="0.25">25%</option>
             <option value="0.5" selected>50%</option>
             <option value="0.75">75%</option>
@@ -148,9 +150,10 @@
           </select>
         </div>
         <label class="switch" title="Re-render the preview automatically after every change">
-          <input type="checkbox" id="auto-preview" checked/><span class="knob"></span><span class="sw-label">auto</span>
+          <input type="checkbox" id="auto-preview" aria-label="Automatic preview" checked/><span class="knob"></span><span class="sw-label">auto</span>
         </label>
         <button id="btn-render" class="accent" title="Render the preview now. Only needed with auto off - with auto on every change re-renders by itself.">Preview</button>
+        </div>
       </div>
       <div id="export-bar">
         <div id="export-status" class="dim">Ready.</div>
@@ -195,12 +198,12 @@
       </div>
       <div id="variant-row"></div>
       <div class="master-row">
-        <label title="Overall strength of damage, warping, glow and color treatment">Intensity <span id="intensity-val">1.00</span></label>
-        <input id="intensity" class="range-fill" type="range" min="0" max="2" step="0.05" value="1"/>
-        <label title="Grain, tape noise, snow, dust and speckle only. 0 renders the look perfectly clean.">Texture <span id="texture-val">0.25</span></label>
-        <input id="texture" class="range-fill" type="range" min="0" max="2" step="0.05" value="0.25"/>
+        <label for="intensity-val" title="Overall strength of damage, warping, glow and color treatment">Intensity <input id="intensity-val" type="number" min="0" max="2" step="0.001" value="1.00"/></label>
+        <input id="intensity" aria-label="Intensity slider" class="range-fill" type="range" min="0" max="2" step="0.001" value="1"/>
+        <label for="texture-val" title="Grain, tape noise, snow, dust and speckle only. 0 renders the look perfectly clean.">Texture <input id="texture-val" type="number" min="0" max="2" step="0.001" value="0.25"/></label>
+        <input id="texture" aria-label="Texture slider" class="range-fill" type="range" min="0" max="2" step="0.001" value="0.25"/>
         <div class="seed-row">
-          <label>Seed</label>
+          <label for="seed">Seed</label>
           <input id="seed" type="number" min="1" max="999999" value="1"/>
           <button id="btn-dice" class="icon-btn" title="New random seed">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.6" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.4" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="8.6" cy="15.4" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.15" fill="currentColor" stroke="none"/></svg>

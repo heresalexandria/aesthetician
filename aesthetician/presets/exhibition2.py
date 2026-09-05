@@ -28,7 +28,7 @@ register_preset(Preset(
                        "ghost_alpha": 0.15, "impulse_noise": 1.0}),
         ("crt", {"scan_strength": 0.3, "bloom": 0.4, "curvature": 0.02,
                  "glass_glow": 0.15, "vignette_crt": 0.2}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.06}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.06}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 250.0, "high_hz": 6000.0}),
@@ -71,7 +71,7 @@ register_preset(Preset(
         ("lcd_screen", {"grid": 0.3, "scale": 2, "response_smear": 0.7,
                         "backlight_bleed": 0.3, "viewing_angle": 0.4,
                         "subpixel": "none"}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.05}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.05}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 300.0, "high_hz": 6000.0}),
@@ -118,7 +118,7 @@ register_preset(Preset(
         ("crt", {"phosphor_mask": "grille", "mask_scale": 1.0, "mask_strength": 0.16,
                  "scan_strength": 0.18, "bloom": 0.3, "beam_bloom": 0.2,
                  "glass_glow": 0.08, "curvature": 0.01, "misconvergence": 0.3}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.02}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.02}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 13000.0}),
@@ -166,7 +166,7 @@ register_preset(Preset(
                  "mask_strength": 0.18, "curvature": 0.12, "glare": 0.35,
                  "glare_pos": "tr", "misconvergence": 1.2, "bloom": 0.4,
                  "beam_bloom": 0.35, "vignette_crt": 0.25, "deflection_pin": 0.3}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.08}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.08}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 8000.0}),
@@ -211,7 +211,7 @@ register_preset(Preset(
         ("interlace", {"field_order": "tff", "combing": 0.5, "twitter": 0.25}),
         ("crt", {"scan_strength": 0.25, "bloom": 0.4, "curvature": 0.09, "glare": 0.2,
                  "glare_pos": "tc", "glass_glow": 0.18, "vignette_crt": 0.3}),
-        ("framing", {"aspect": "4:3", "mode": "box", "zoom": 0.1}),
+        ("framing", {"aspect": "source", "mode": "box", "zoom": 0.1}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 7000.0}),
@@ -256,7 +256,7 @@ register_preset(Preset(
                    "stock": "fine_35", "layers": "mono", "shadow_boost": 0.95}),
         ("lcd_screen", {"grid": 0.12, "scale": 4, "response_smear": 0.05,
                         "backlight_bleed": 0.05, "subpixel": "none"}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 16000.0}),
@@ -298,7 +298,7 @@ register_preset(Preset(
         ("lcd_screen", {"grid": 0.12, "scale": 3, "response_smear": 0.5,
                         "backlight_bleed": 0.35, "viewing_angle": 0.2,
                         "subpixel": "none"}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 15000.0}),
@@ -340,7 +340,7 @@ register_preset(Preset(
                     "keystone_v": 0.0, "shake_event": 0.0}),
         ("projection", {"shutter_flicker": 0.1, "keystone": 0.03, "ambient_lift": 0.06,
                         "screen_gain_falloff": 0.3}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 16000.0}),
@@ -383,7 +383,7 @@ register_preset(Preset(
                         "backlight_bleed": 0.0, "subpixel": "none"}),
         ("crt", {"phosphor_mask": "dots", "mask_scale": 3.0, "mask_strength": 0.13,
                  "scan_strength": 0.0, "bloom": 0.12, "beam_bloom": 0.2}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 8000.0}),
@@ -424,7 +424,7 @@ register_preset(Preset(
                         "moire_cam": 0.45}),
         ("sharpen", {"amount": 0.3, "radius": 1.0}),
         ("codec_era", {"enabled": False, "codec": "h264", "crf": 26, "gop": 60}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 14000.0}),
@@ -469,7 +469,7 @@ register_preset(Preset(
                  "mask_strength": 0.3, "bloom": 0.45, "beam_bloom": 0.3,
                  "glass_glow": 0.15, "curvature": 0.06, "glare": 0.3,
                  "glare_pos": "tc"}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.03}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.03}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 8000.0}),
@@ -510,7 +510,7 @@ register_preset(Preset(
         ("lcd_screen", {"grid": 0.35, "scale": 5, "response_smear": 0.75,
                         "backlight_bleed": 0.0, "viewing_angle": 0.3,
                         "subpixel": "none"}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.03}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.03}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 300.0, "high_hz": 4000.0}),
@@ -558,7 +558,7 @@ register_preset(Preset(
         ("plate", {"pack": "paper_textures", "opacity": 0.14, "blend": "multiply",
                    "cycle": "hold"}),
         ("vignette", {"amount": 0.6, "radius": 0.6, "softness": 0.4, "roundness": 1.0}),
-        ("framing", {"aspect": "1.37", "mode": "box", "corner_radius": 0.03}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.03}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 4000.0}),
@@ -600,7 +600,7 @@ register_preset(Preset(
         ("lcd_screen", {"grid": 0.5, "scale": 3, "response_smear": 0.05,
                         "backlight_bleed": 0.0, "subpixel": "none"}),
         ("vignette", {"amount": 0.35, "radius": 0.8, "softness": 0.5}),
-        ("framing", {"aspect": "1:1", "mode": "box", "corner_radius": 0.25}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.25}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 16000.0}),

@@ -38,7 +38,7 @@ register_preset(Preset(
         ("crt", {"phosphor_mask": "grille", "mask_scale": 1.0, "mask_strength": 0.14,
                  "scan_strength": 0.12, "bloom": 0.35, "bloom_radius": 12.0,
                  "curvature": 0.03, "glass_glow": 0.15}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 15000.0}),
@@ -92,7 +92,7 @@ register_preset(Preset(
         ("chroma_dv", {"ratio": "4:2:0", "edge_sharpen": 0.4, "dct_blocks": 0.06}),
         ("sharpen", {"amount": 0.2, "radius": 1.0}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 3000, "gop": 15}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -18.0, "ratio": 3.0, "attack_ms": 5.0,
@@ -134,7 +134,7 @@ register_preset(Preset(
                       "threshold": 0.66}),
         ("sharpen", {"amount": 0.2, "radius": 1.0}),
         ("codec_era", {"codec": "h264", "crf": 20, "gop": 60}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -20.0, "ratio": 2.5, "attack_ms": 8.0,
@@ -178,7 +178,7 @@ register_preset(Preset(
                       "threshold": 0.66}),
         ("upload_gen", {"gens": 3, "deband_loss": 0.6, "qscale": 8}),
         ("codec_era", {"codec": "h264", "res": "240p", "kbps": 240, "crf": -1, "gop": 60}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 6000.0}),
@@ -228,7 +228,7 @@ register_preset(Preset(
                         "splice_bump": 0.0}),
         ("codec_era", {"enabled": False, "codec": "h264", "kbps": 2000, "crf": -1,
                        "gop": 60}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -22.0, "ratio": 2.0, "attack_ms": 12.0,
@@ -241,11 +241,11 @@ register_preset(Preset(
                 "The same grade with the gauge faked all the way down: coarse reversal grain, an unsteady gate, a boxier frame.",
                 video={"grain.amount": 0.45, "grain.size": 2.4, "grain.stock": "super8",
                        "grain.layers": "reversal", "gate_weave.enabled": True,
-                       "light_leak.amount": 0.22, "framing.aspect": "4:3"},
+                       "light_leak.amount": 0.22, "framing.aspect": "source"},
                 audio={"a_channel_aging.width": 0.6}),
         Variant("instagram-square", "Square Upload",
                 "Cropped to a square and squeezed through a two-megabit upload before anybody sees it.",
-                video={"framing.aspect": "1:1", "codec_era.enabled": True},
+                video={"framing.aspect": "source", "codec_era.enabled": True},
                 audio={"a_compressor.ratio": 3.0}),
     ],
 ))
@@ -276,7 +276,7 @@ register_preset(Preset(
         ("halation", {"strength": 0.3, "tint": "orange", "radius": 0.07,
                       "threshold": 0.74}),
         ("vignette", {"amount": 0.3, "softness": 0.72, "radius": 0.88}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -22.0, "ratio": 2.0, "attack_ms": 15.0,
@@ -326,7 +326,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.3, "twitter": 0.2}),
         ("crt", {"bloom": 0.25, "scan_strength": 0.1, "glass_glow": 0.12,
                  "curvature": 0.02}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 11000.0}),
@@ -383,7 +383,7 @@ register_preset(Preset(
                  "dropouts": 1.0, "sharpen": 0.35, "head_switch": 0.4,
                  "time_base_error": 0.3}),
         ("interlace", {"enabled": False, "combing": 0.4, "twitter": 0.25}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -433,7 +433,7 @@ register_preset(Preset(
         ("fade", {"enabled": False, "amount": 0.2, "profile": "neutral",
                   "bloom_whites": 0.15}),
         ("vignette", {"amount": 0.4, "softness": 0.6, "radius": 0.82}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -449,7 +449,7 @@ register_preset(Preset(
                        "vignette.amount": 0.45}),
         Variant("polaroid-scan", "Polaroid Scan",
                 "Squared off and faded like an instant print that lived in a wallet.",
-                video={"fade.enabled": True, "framing.aspect": "1:1",
+                video={"fade.enabled": True, "framing.aspect": "source",
                        "balance.warmth": 0.1, "tone.exposure": -0.1}),
     ],
 ))
@@ -477,7 +477,7 @@ register_preset(Preset(
         ("grain", {"amount": 0.2, "size": 1.0, "chroma_grain": 0.05, "stock": "fine_35",
                    "layers": "color_neg"}),
         ("fade", {"amount": 0.15, "profile": "neutral", "bloom_whites": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -20.0, "ratio": 2.0, "attack_ms": 10.0,
@@ -520,7 +520,7 @@ register_preset(Preset(
         ("light_leak", {"amount": 0.15, "hue": "red", "frequency": 1.0, "constant": 0.08}),
         ("fade", {"amount": 0.05, "profile": "neutral", "bloom_whites": 0.1}),
         ("vignette", {"amount": 0.6, "radius": 0.7, "softness": 0.6}),
-        ("framing", {"aspect": "1:1", "mode": "box", "matte_gray": 0.05}),
+        ("framing", {"aspect": "source", "mode": "box", "matte_gray": 0.05}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 9000.0}),
@@ -562,7 +562,7 @@ register_preset(Preset(
         ("upload_gen", {"gens": 5, "deband_loss": 0.85, "qscale": 13}),
         ("sharpen", {"amount": 0.4, "radius": 1.2}),
         ("codec_era", {"codec": "h264", "res": "240p", "kbps": 250, "crf": -1, "gop": 60}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 8, "sr_hz": 11025.0, "mix": 1.0}),
@@ -602,7 +602,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 2.0, "radius": 1.5}),
         ("upload_gen", {"gens": 5, "deband_loss": 1.0, "qscale": 20}),
         ("codec_era", {"codec": "mjpeg", "qscale": 25, "res": "240p"}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_distortion", {"type": "hard", "drive": 12.0, "tone": 0.5}),
@@ -650,7 +650,7 @@ register_preset(Preset(
         ("lcd_screen", {"grid": 0.18, "scale": 3, "subpixel": "none",
                         "response_smear": 0.28, "backlight_bleed": 0.18,
                         "viewing_angle": 0.12, "moire_cam": 0.0}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 10, "sr_hz": 32000.0, "mix": 1.0}),

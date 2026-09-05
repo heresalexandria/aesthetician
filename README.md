@@ -20,9 +20,9 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 
 | | |
 |---|---|
-| **789 presets** | 22 families: audio-only (104), film (103), world cinema (81), broadcast (79), genre by decade (66), digital (47), cartoon (45), VHS and pro tape (42), TV channels by era (42), modern (22), exhibition and displays (21), stylized (21), print (18), stocks and processes (18), transmission (16), captions (14), social and phone (12), arthouse (10), archive (9), decay (8), western (7), adjust (4) |
+| **1000 presets** | 22 families: film (163), audio-only (114), broadcast (99), world cinema (91), digital (67), genre by decade (66), cartoon (55), VHS and pro tape (52), arthouse (50), modern (43), TV channels by era (42), stylized (31), exhibition and displays (21), print (18), stocks and processes (18), transmission (16), captions (14), social and phone (12), archive (9), decay (8), western (7), adjust (4) |
 | **1406 variants** | alternate states of each look: clean transfers, worn prints, fifth-generation dubs, storm reception, terminal decay |
-| **114 effects, 692 parameters** | every one exposed and documented, in the app and from the CLI |
+| **115 effects, 699 parameters** | every one exposed and documented, in the app and from the CLI |
 | **84 overlay plates, 10 ambience beds** | AI-generated dust, leaks, burns, mould, water staining, CRT glare; synthesized projector, VCR and room tones |
 
 ## Features
@@ -30,7 +30,8 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Drag and drop video *or* audio.** Drop a WAV, MP3 or FLAC and the picture controls step aside, leaving only the sound chain.
 - **Session tabs.** Open as many clips as you like, each with its own aesthetic and knob positions. Try one clip several ways side by side; switching back is instant.
 - **Live previews through the real engine.** What you see is what exports. Hold **A/B** to flash the untreated original.
-- **Source-preserving historical treatments.** Capture, stock, carrier and playback can span the 1890s through the 2010s without inventing cuts, cropping or rearranging the picture, adding graphics or replacing the supplied program audio.
+- **211 additional aesthetics, from 1894 to 2026.** Photographic archives, small-gauge film, art cinema, video installations, early digital carriers and contemporary Hollywood finishing. [Coverage and verification](docs/expanded-atlas.md).
+- **Framing follows your source.** Aspect controls default to the source video's upright display ratio, including phone rotation and archival non-square pixels. Choose an aperture when you want one; fit and crop preserve picture proportions.
 - **Thumbnails and taglines.** Every row in the browse list previews that treatment (hover to see it move) with a one-line summary of its artifacts.
 - **Search, filters and favorites.** Family chips and an era dropdown narrow the full library; star the keepers and they float to the top, across launches.
 - **Audition the catalog with ↑ / ↓.** Step through the list you filtered down to and every stop renders, so you can run a whole family past the player without touching the mouse.
@@ -40,6 +41,7 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Preview, tuned to your patience.** Pick the preview's length (2 to 8 s) and resolution (25 to 100%); exports always render full quality. Pause the loop when it gets distracting.
 - **Keyboard-friendly.** ⌘O open, ⌘E export, ↑/↓ through the list, Space play/pause, hold B for the original, / to search.
 - **Hover tooltips on every knob.** What the parameter physically models, its range, and the `--set` path to reach it from the CLI.
+- **Type precise values.** Every numeric knob has an editable field: Enter or Tab applies, Escape cancels, and reset restores the preset. Inactive settings explain which mode enables them.
 - **Two master dials.** **Intensity** for damage, warping and glow; **Texture** for grain and noise alone, so a look can go completely clean without losing its colour and character.
 - **Deterministic.** Same seed, same render, every time. Roll the dice for a different take on the same aesthetic.
 - **A preview cache you control.** Size and file count in the footer, with Clear and Reveal.

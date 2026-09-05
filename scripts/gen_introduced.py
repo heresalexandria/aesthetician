@@ -87,7 +87,7 @@ def main() -> int:
             break
 
     for new, old in alias_of.items():
-        if new not in introduced and old in introduced:
+        if old in introduced and (new not in introduced or introduced[old][0] < introduced[new][0]):
             introduced[new] = introduced[old]
             seen.add(new)
     for old in alias_of.values():

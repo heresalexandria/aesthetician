@@ -39,7 +39,7 @@ register_preset(Preset(
         ("scratches", {"count": 5, "transient_rate": 2.0}),
         ("frame_damage", {"splice_skip_rate": 3.0, "blotch_rate": 6.0}),
         ("vignette", {"amount": 0.5, "softness": 0.55}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -76,7 +76,7 @@ register_preset(Preset(
         ("dust", {"density": 0.4}),
         ("scratches", {"count": 1, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.35, "softness": 0.6}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_optical(hi=7200.0, cell=-52.0, ratio=3.5),
     variants=[
@@ -111,7 +111,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 2.0}),
         ("vignette", {"amount": 0.4, "softness": 0.6}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_optical(hi=6200.0, cell=-46.0, rolloff="classroom_16mm", ratio=4.5),
     variants=[
@@ -145,7 +145,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.9}),
         ("dust", {"density": 0.35}),
         ("vignette", {"amount": 0.35, "roundness": 0.6}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9500.0}),
@@ -184,7 +184,7 @@ register_preset(Preset(
         ("dust", {"density": 0.5, "hairs": 0.3}),
         ("scratches", {"count": 2, "transient_rate": 0.8}),
         ("vignette", {"amount": 0.35, "softness": 0.55}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 8000.0}),
@@ -259,7 +259,7 @@ register_preset(Preset(
         ("grain", {"amount": 0.18, "size": 1.2, "chroma_grain": 0.08, "stock": "fine_35"}),
         ("halation", {"strength": 0.12, "tint": "warm_white"}),
         ("vignette", {"amount": 0.25, "softness": 0.7}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     # A modern grade leaves the mix alone: stack an audio preset if the sound
     # should age too.
