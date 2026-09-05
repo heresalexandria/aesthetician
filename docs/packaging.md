@@ -14,6 +14,13 @@ python3 scripts/package/build.py --target mac
 python3 scripts/package/build.py --target win
 ```
 
+Builds that include assets require complete thumbnail coverage. Fetch the
+pinned bundle into an empty asset directory with
+`python3 scripts/release/asset_bundle.py fetch`, or generate local assets and
+run `python3 scripts/release/asset_bundle.py verify`. Use `--no-assets` explicitly
+for a development build with procedural overlays and placeholder thumbnails.
+The packager checks coverage again after staging the files into the app.
+
 Prerequisites: Python 3 on the build machine, `npm install` already run in
 `app/`, and network access for the first build (it downloads a Python runtime and
 ffmpeg). `rsync` is used for staging when it is there and a slower Python copy

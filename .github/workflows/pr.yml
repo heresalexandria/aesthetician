@@ -57,6 +57,14 @@ jobs:
       - name: Engine unit tests
         run: python tests/test_engine.py
 
+      - name: Asset bundle validation tests
+        run: python tests/test_asset_bundle.py
+
+      - name: Verify published thumbnail coverage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/release/asset_bundle.py fetch --repo "${{ github.repository }}"
+
       - name: Updater unit tests
         run: node tests/test_updater.js
 

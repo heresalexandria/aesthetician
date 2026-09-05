@@ -54,6 +54,9 @@ _mirror = mirror
 
 def stage(target: Target, runtime: Path, ffmpeg_dir: Path, with_assets: bool) -> dict:
     """Populate app/build-resources/ for exactly one target."""
+    if with_assets:
+        from scripts.release.asset_bundle import verify_assets
+        verify_assets(ASSETS_DIR)
     log(f"stage   {target.key} -> {STAGE_DIR.relative_to(REPO_ROOT)}")
     STAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -67,14 +70,9 @@ def stage(target: Target, runtime: Path, ffmpeg_dir: Path, with_assets: bool) ->
     if with_assets:
         for sub in ASSET_SUBDIRS:
             src = ASSETS_DIR / sub
-            # Asset packs are gitignored media; a fresh clone may not have them.
-            # The engine has procedural fallbacks, so missing packs are not fatal.
-            if src.is_dir() and any(src.iterdir()):
-                _mirror(src, assets_dst / sub, hardlink=True)
-                included.append(f"{sub} ({human(size_of(src))})")
-            else:
-                (assets_dst / sub).mkdir(parents=True, exist_ok=True)
-                log(f"        assets/{sub} missing - bundling empty dir")
+            _mirror(src, assets_dst / sub, hardlink=True)
+            included.append(f"{sub} ({human(size_of(src))})")
+        verify_assets(assets_dst)
     else:
         for sub in ASSET_SUBDIRS:
             (assets_dst / sub).mkdir(parents=True, exist_ok=True)
