@@ -99,10 +99,11 @@ proof for every knob combination or every input: conditional controls need an
 appropriate signal, some artifacts are temporal, and short smoke renders do not
 substitute for reviewing a full-length export.
 
-Thumbnails and review media are generated local assets excluded from Git. A
-release build should generate/include the thumbnail pack through the existing
-asset workflow. This change does not publish a release or replace the installed
-application.
+Thumbnails and review media are generated assets excluded from Git. The
+[assets-v5 bundle](https://github.com/heresalexandria/aesthetician/releases/tag/assets-v5)
+now includes all 1,000 posters and 886 animated previews, including the 211 new
+presets and 392 refreshed framing previews. PR and release checks require the
+pinned bundle to cover the complete catalog; see [releases.md](releases.md).
 
 ### Reproduce the automated checks
 

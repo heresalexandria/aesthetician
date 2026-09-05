@@ -29,9 +29,6 @@ concurrency:
   group: build-check-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  ASSETS_TAG: ${{ vars.ASSETS_RELEASE_TAG || 'assets-v1' }}
-
 jobs:
   plan:
     runs-on: ubuntu-latest
@@ -88,16 +85,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p assets
-          if gh release download "$ASSETS_TAG" --repo "${{ github.repository }}" \
-               --pattern 'aesthetician-assets.tar.gz' --dir . ; then
-            tar -xzf aesthetician-assets.tar.gz -C assets
-            rm -f aesthetician-assets.tar.gz
-            echo "WITH_ASSETS=1" >> "$GITHUB_ENV"
-          else
-            echo "::warning::no asset bundle on '$ASSETS_TAG' - building with --no-assets"
-            echo "ASSET_FLAG=--no-assets" >> "$GITHUB_ENV"
-          fi
+          python scripts/release/asset_bundle.py fetch --repo "${{ github.repository }}"
+          echo "WITH_ASSETS=1" >> "$GITHUB_ENV"
 
       - name: Install the app's dev dependencies
         working-directory: app
@@ -110,7 +99,10 @@ jobs:
           # Belt to the braces in scripts/package/common.py: the runners' console
           # codepage is cp1252 and these scripts print box drawing and arrows.
           PYTHONUTF8: '1'
-        run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
+        run: |
+          ASSET_FLAG=""
+          if [ "${WITH_ASSETS:-0}" != "1" ]; then ASSET_FLAG=--no-assets; fi
+          python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
 
       - name: What came out
         shell: bash

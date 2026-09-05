@@ -90,25 +90,49 @@ either drop the rule or add `github-actions[bot]` to its bypass list.
 **3. Create the labels.** Actions → **Create release labels** → *Run workflow*.
 It is safe to re-run.
 
-**4. Publish the asset bundle.** `assets/` is 210 MB of generated media and is
-gitignored, so a runner has none of it. Build the bundle and attach it to a
-release that exists only to hold it:
+**4. Publish the asset bundle.** Generated assets are gitignored, so runners
+fetch the exact tag and SHA-256 recorded in
+[`scripts/release/asset_bundle.json`](../scripts/release/asset_bundle.json).
+PR validation, release and build-check workflows use that pin. The old
+`ASSETS_RELEASE_TAG` repository variable is no longer consulted, so a stale
+setting cannot silently select an earlier thumbnail catalog.
+
+The current bundle is **assets-v5**, containing **1,000 poster thumbnails and
+886 animated previews**, plus the overlay plates and 10 audio beds. It includes
+the 211 added aesthetics and refreshed thumbnails for 392 older framing recipes.
+
+Before publishing a new bundle:
 
 ```bash
+.venv/bin/python scripts/make_thumbs.py
+# Use --force / --only when existing recipes changed, not just for new IDs.
+.venv/bin/python scripts/release/asset_bundle.py verify
 python3 scripts/release/pack_assets.py
 ```
 
-Then create a release tagged `assets-v1` (any commit, mark it a pre-release so it
-never shows as Latest) and attach `dist/aesthetician-assets.tar.gz`. Every build
-downloads it from there.
+Upload `dist/aesthetician-assets.tar.gz` to a **new** `assets-vN` release, mark
+it as a pre-release and not Latest, and update the pin with that tag and the
+printed SHA-256. Keep existing bundles immutable. Include the pin change in a
+`patch` PR so merging cuts a new desktop release with the complete thumbnails.
+Do not bump the app version manually; the release workflow owns that.
 
-Skipping this step does not break the release: the build logs a warning, passes
-`--no-assets`, and ships procedural overlays with placeholder preset thumbnails
-instead. It is a visibly lesser build, so do the upload.
+Verify the published bytes in isolation before opening the PR:
 
-To refresh the packs later, re-run `pack_assets.py`, attach the new tarball to a
-release tagged `assets-v2`, and set the repository variable
-`ASSETS_RELEASE_TAG` to `assets-v2`.
+```bash
+python3 scripts/release/asset_bundle.py fetch --assets /tmp/aesthetician-assets-check
+```
+
+The destination must be empty. Fetch checks the checksum before extraction,
+rejects nonportable links, and requires a poster for every registered preset
+plus an animation for every picture entry. The source registry is read with
+AST parsing so this runs before the build installs the Python engine. Unit
+tests compare that parser against the real registry.
+
+Missing downloads, stale manifests, missing image files and checksum mismatches
+**fail the release**. There is no automatic fallback to a thumbnail-free build.
+An intentional development build can still use `--no-assets`, or turn assets
+off in the Build check workflow. The bundle packer follows shared asset links
+and stores regular files so worktree paths never escape into the archive.
 
 ## Targets, and which of them can fail
 

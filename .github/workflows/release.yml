@@ -28,11 +28,6 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-env:
-  # Release that carries assets/ (see scripts/release/pack_assets.py). Override
-  # per-repo with an ASSETS_RELEASE_TAG variable.
-  ASSETS_TAG: ${{ vars.ASSETS_RELEASE_TAG || 'assets-v1' }}
-
 jobs:
   prepare:
     name: bump the version
@@ -135,20 +130,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # assets/ is gitignored media that lives on its own release. Without
-          # it the build still works, it just falls back to procedural overlays
-          # and placeholder preset thumbnails.
-          mkdir -p assets
-          if gh release download "$ASSETS_TAG" --repo "${{ github.repository }}" \
-               --pattern 'aesthetician-assets.tar.gz' --dir . ; then
-            tar -xzf aesthetician-assets.tar.gz -C assets
-            rm -f aesthetician-assets.tar.gz
-            echo "ASSET_FLAG=" >> "$GITHUB_ENV"
-            du -sh assets/* || true
-          else
-            echo "::warning::no asset bundle on release '$ASSETS_TAG' - building with --no-assets. See docs/releases.md."
-            echo "ASSET_FLAG=--no-assets" >> "$GITHUB_ENV"
-          fi
+          python scripts/release/asset_bundle.py fetch --repo "${{ github.repository }}"
 
       - name: Install the app's dev dependencies
         working-directory: app
@@ -161,7 +143,7 @@ jobs:
           # The Windows runner's console is cp1252 and these scripts print box
           # drawing; scripts/package/common.py handles it, this is the braces.
           PYTHONUTF8: '1'
-        run: python scripts/package/build.py --target ${{ matrix.target }} $ASSET_FLAG
+        run: python scripts/package/build.py --target ${{ matrix.target }}
 
       - name: Smoke test the packaged app
         shell: bash
