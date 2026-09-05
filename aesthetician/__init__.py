@@ -1,3 +1,3 @@
 """Aesthetician - premium archival-media aesthetic engine."""
 
-__version__ = "0.28.0"
+__version__ = "0.29.0"
