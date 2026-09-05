@@ -35,7 +35,7 @@ register_preset(Preset(
         ("halation", {"strength": 0.22, "tint": "red_orange", "radius": 0.05}),
         ("telecine_scan", {"pin_stability": "pin_registered", "hop_px": 0.5}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000, "gop": 15}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.45,
@@ -48,7 +48,7 @@ register_preset(Preset(
     variants=[
         Variant("hd-remaster-16x9", "HD Remaster",
                 "The later rescan opened to widescreen, with the grain regraded a shade finer.",
-                video={"framing.aspect": "16:9", "framing.mode": "crop",
+                video={"framing.aspect": "source", "framing.mode": "crop",
                        "grain.amount": 0.4}),
         Variant("dvd-2004", "Season Box Set",
                 "The 2004 disc: MPEG-2 at five megabits on a short GOP, softening the grain into mosquito noise.",
@@ -84,7 +84,7 @@ register_preset(Preset(
         ("vhs", {"enabled": False, "mode": "sp", "luma_noise": 0.24, "chroma_noise": 0.24,
                  "dropouts": 1.5, "sharpen": 0.4, "head_switch": 0.5,
                  "time_base_error": 0.3, "tracking_error": 0.12}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -22.0, "ratio": 2.5, "attack_ms": 12.0,
@@ -96,7 +96,7 @@ register_preset(Preset(
     variants=[
         Variant("hd-remaster", "HD Remaster",
                 "Rescanned and opened to widescreen for the streaming catalog, grain and warmth intact.",
-                video={"framing.aspect": "16:9", "framing.mode": "crop"}),
+                video={"framing.aspect": "source", "framing.mode": "crop"}),
         Variant("vhs-screener", "Awards Screener",
                 "The tape that went out to voters: an SP dub with head-switch noise across the bottom.",
                 video={"vhs.enabled": True},
@@ -130,7 +130,7 @@ register_preset(Preset(
                       "threshold": 0.68}),
         ("vignette", {"amount": 0.2, "softness": 0.8, "radius": 0.95}),
         ("interlace", {"enabled": False, "combing": 0.4, "twitter": 0.25}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -22.0, "ratio": 2.5, "attack_ms": 10.0,
@@ -144,7 +144,7 @@ register_preset(Preset(
                 video={"grain.amount": 0.22, "grain.chroma_grain": 0.1}),
         Variant("sd-broadcast-2007", "SD Simulcast",
                 "The standard-definition feed of the same episode, cropped to 4:3 and interlaced.",
-                video={"interlace.enabled": True, "framing.aspect": "4:3",
+                video={"interlace.enabled": True, "framing.aspect": "source",
                        "framing.mode": "crop"}),
     ],
 ))
@@ -174,7 +174,7 @@ register_preset(Preset(
                    "layers": "color_neg"}),
         ("halation", {"strength": 0.25, "tint": "orange", "radius": 0.06}),
         ("sharpen", {"amount": 0.15, "radius": 1.0}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -20.0, "ratio": 2.5, "attack_ms": 8.0,
@@ -230,7 +230,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.45, "twitter": 0.25}),
         ("crt", {"bloom": 0.28, "scan_strength": 0.1, "glass_glow": 0.12,
                  "curvature": 0.02}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -22.0, "ratio": 2.5, "attack_ms": 10.0,
@@ -277,7 +277,7 @@ register_preset(Preset(
         ("ntsc", {"enabled": False, "strength": 0.4, "luma_bw": 4.0, "chroma_bw": 1.0,
                   "phase_noise": 1.2, "dot_crawl": 0.2}),
         ("interlace", {"combing": 0.35, "twitter": 0.22}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.5,
@@ -290,7 +290,7 @@ register_preset(Preset(
     variants=[
         Variant("sd-4x3-2005", "SD Simulcast",
                 "The standard-definition feed: cropped to 4:3 and put back through the composite chain.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop",
+                video={"framing.aspect": "source", "framing.mode": "crop",
                        "ntsc.enabled": True}),
         Variant("bluray-remaster", "Progressive Remaster",
                 "The later progressive master: fields gone, edge sharpening backed off, tubes steady.",
@@ -328,7 +328,7 @@ register_preset(Preset(
                  "time_base_error": 0.35}),
         ("interlace", {"enabled": False, "combing": 0.45, "twitter": 0.3}),
         ("vignette", {"amount": 0.25, "roundness": 0.55, "softness": 0.7, "radius": 0.9}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -18.0, "ratio": 4.0, "attack_ms": 5.0,
@@ -340,7 +340,7 @@ register_preset(Preset(
         Variant("vhs-insert", "Tape Insert",
                 "The cutaway that pretends to be a home tape: SP noise, fields back on, boxed to 4:3.",
                 video={"vhs.enabled": True, "interlace.enabled": True,
-                       "framing.aspect": "4:3"},
+                       "framing.aspect": "source"},
                 audio={"a_codec_aac.kbps": 96}),
         Variant("daylight-cut", "Daylight Cut",
                 "The rooftop half of the same promo: less blue in the blacks and the neon turned down.",
@@ -373,7 +373,7 @@ register_preset(Preset(
                       "threshold": 0.62}),
         ("sharpen", {"amount": 0.45, "radius": 1.1}),
         ("codec_era", {"codec": "h264", "crf": 22, "gop": 60}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_compressor", {"threshold_db": -20.0, "ratio": 3.0, "attack_ms": 8.0,

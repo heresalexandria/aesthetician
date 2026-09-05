@@ -45,7 +45,7 @@ register_preset(Preset(
         ("tone", {"contrast": 1.06}),
         ("chroma_dv", {"ratio": "4:2:0", "edge_sharpen": 1.0}),
         ("codec_era", {"codec": "mpeg4", "kbps": 300, "res": "240p", "gop": 90}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_codec_mp3", {"kbps": 96, "mono": False}),
@@ -258,7 +258,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.6, "hz": 1.4, "rotation": 0.03, "splice_bump": 0.0}),
         ("chroma_dv", {"ratio": "4:2:0", "edge_sharpen": 0.4}),
         ("codec_era", {"codec": "mpeg4", "kbps": 1400, "res": "480p", "gop": 60}),
-        ("framing", {"aspect": "9:16", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),

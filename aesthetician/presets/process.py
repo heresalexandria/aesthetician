@@ -34,7 +34,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.05, "profile": "neutral"}),
         ("gate_weave", {"amount": 1.0, "splice_bump": 0.6}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -81,7 +81,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.08, "profile": "neutral"}),
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.5}),
         ("dust", {"density": 0.2, "hairs": 0.12}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -130,7 +130,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.5}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
         ("vignette", {"amount": 0.2, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -176,7 +176,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.08, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.9, "splice_bump": 0.5}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -225,7 +225,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.0, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.9, "splice_bump": 0.6}),
         ("dust", {"density": 0.3, "hairs": 0.18}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -272,7 +272,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.0, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 1.0, "splice_bump": 0.7}),
         ("dust", {"density": 0.3, "hairs": 0.2}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -317,7 +317,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.28, "profile": "eastman_pink", "bloom_whites": 0.22}),
         ("gate_weave", {"amount": 0.7, "splice_bump": 0.4}),
         ("dust", {"density": 0.25, "hairs": 0.14}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -363,7 +363,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.0, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.5, "splice_bump": 0.3}),
         ("dust", {"density": 0.15, "hairs": 0.08}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 10000.0}),
@@ -407,7 +407,7 @@ register_preset(Preset(
         ("print_char", {"acutance": 0.2, "contrast_buildup": 1}),
         ("gate_weave", {"amount": 0.55, "splice_bump": 0.3}),
         ("dust", {"density": 0.15, "hairs": 0.08}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -451,7 +451,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.0, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.55, "splice_bump": 0.3}),
         ("dust", {"density": 0.15, "hairs": 0.08}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -497,7 +497,7 @@ register_preset(Preset(
         ("dust", {"density": 0.1, "hairs": 0.05}),
         ("dvnr", {"enabled": False, "strength": 0.2, "wax": 0.2}),
         ("sharpen", {"enabled": False, "amount": 0.25, "radius": 1.0}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -537,7 +537,7 @@ register_preset(Preset(
                    "stock": "fine_35", "layers": "color_neg"}),
         ("halation", {"strength": 0.22, "tint": "warm_white", "threshold": 0.8}),
         ("gate_weave", {"amount": 0.3, "splice_bump": 0.15}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0}),
@@ -579,7 +579,7 @@ register_preset(Preset(
         ("halation", {"strength": 0.2, "tint": "warm_white", "threshold": 0.8}),
         ("print_char", {"acutance": 0.3, "contrast_buildup": 1, "dmax_breath": 0.06}),
         ("gate_weave", {"amount": 0.35, "splice_bump": 0.2}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),
@@ -623,7 +623,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.1, "profile": "neutral"}),
         ("gate_weave", {"amount": 0.6, "splice_bump": 0.35}),
         ("dust", {"density": 0.2, "hairs": 0.12}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 9500.0}),
@@ -668,7 +668,7 @@ register_preset(Preset(
         ("halation", {"strength": 0.15, "tint": "neutral", "threshold": 0.7}),
         ("gate_weave", {"amount": 0.7, "splice_bump": 0.4}),
         ("dust", {"density": 0.2, "hairs": 0.12}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -718,7 +718,7 @@ register_preset(Preset(
         ("scratches", {"count": 2, "transient_rate": 1.2}),
         ("dust", {"density": 0.4, "hairs": 0.3}),
         ("vignette", {"amount": 0.35, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -769,7 +769,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 1.4, "splice_bump": 1.0}),
         ("dust", {"density": 0.3, "hairs": 0.2}),
         ("vignette", {"amount": 0.22, "softness": 0.6}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 6000.0}),
@@ -815,7 +815,7 @@ register_preset(Preset(
         ("print_char", {"contrast_buildup": 1, "acutance": 0.12, "dmax_breath": 0.1}),
         ("gate_weave", {"amount": 0.5, "splice_bump": 0.3}),
         ("dust", {"density": 0.15, "hairs": 0.08}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 18000.0}),

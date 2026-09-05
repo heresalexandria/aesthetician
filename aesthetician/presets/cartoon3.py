@@ -44,7 +44,7 @@ register_preset(Preset(
         ("cadence", {"pattern": "silent_irregular", "speed": "silent_16fps_in_24",
                      "field_blend": 0.3}),
         ("vignette", {"amount": 0.4, "softness": 0.75}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5000.0}),
@@ -99,7 +99,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.08, "color_flicker": 0.05}),
         ("dust", {"density": 0.12, "hairs": 0.15}),
         ("vignette", {"amount": 0.25, "softness": 0.7}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 8000.0}),
@@ -150,7 +150,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.6}),
         ("flicker", {"amount": 0.1}),
         ("dust", {"density": 0.2, "hairs": 0.2}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7500.0}),
@@ -209,7 +209,7 @@ register_preset(Preset(
         ("ntsc", {"enabled": False, "strength": 0.7, "luma_bw": 3.2, "chroma_bw": 0.7,
                   "phase_noise": 2.6, "dot_crawl": 0.3}),
         ("crt", {"enabled": False, "bloom": 0.34, "scan_strength": 0.12}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 120.0, "high_hz": 5000.0}),
@@ -265,7 +265,7 @@ register_preset(Preset(
         ("mono", {"enabled": False, "amount": 1.0, "response": "modern"}),
         ("interlace", {"combing": 0.5, "twitter": 0.24}),
         ("crt", {"bloom": 0.3, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 6500.0}),
@@ -323,7 +323,7 @@ register_preset(Preset(
                  "dropouts": 1.4, "sharpen": 0.55}),
         ("interlace", {"combing": 0.5, "twitter": 0.22}),
         ("crt", {"bloom": 0.38, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -378,7 +378,7 @@ register_preset(Preset(
                  "dropouts": 2.0, "sharpen": 0.5}),
         ("interlace", {"combing": 0.5, "twitter": 0.24}),
         ("crt", {"bloom": 0.4, "misconvergence": 0.5, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -430,7 +430,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.9}),
         ("flicker", {"amount": 0.08}),
         ("vignette", {"amount": 0.3, "softness": 0.7}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 8000.0}),
@@ -482,7 +482,7 @@ register_preset(Preset(
         ("fade", {"enabled": False, "amount": 0.25, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.7}),
         ("dust", {"density": 0.12, "hairs": 0.15}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -536,7 +536,7 @@ register_preset(Preset(
                  "tracking_error": 0.2, "sharpen": 0.5}),
         ("interlace", {"combing": 0.5, "twitter": 0.22}),
         ("crt", {"bloom": 0.35, "misconvergence": 0.45, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 10000.0}),
@@ -587,7 +587,7 @@ register_preset(Preset(
                  "time_base_error": 0.35, "dropouts": 1.0, "sharpen": 0.6}),
         ("interlace", {"combing": 0.5, "twitter": 0.2}),
         ("crt", {"bloom": 0.3, "misconvergence": 0.35, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 11000.0}),
@@ -642,7 +642,7 @@ register_preset(Preset(
                        "res": "native"}),
         ("interlace", {"combing": 0.5, "twitter": 0.2}),
         ("crt", {"bloom": 0.3, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 12000.0}),
@@ -697,7 +697,7 @@ register_preset(Preset(
                  "time_base_error": 0.4, "dropouts": 1.2, "sharpen": 0.55}),
         ("interlace", {"combing": 0.5, "twitter": 0.22}),
         ("crt", {"bloom": 0.32, "misconvergence": 0.4, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 11000.0}),
@@ -753,7 +753,7 @@ register_preset(Preset(
                  "sharpen": 0.55}),
         ("interlace", {"combing": 0.5, "twitter": 0.22}),
         ("crt", {"bloom": 0.32, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 10000.0}),
@@ -810,7 +810,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.5, "twitter": 0.2}),
         ("crt", {"bloom": 0.3, "glass_glow": 0.15, "vignette_crt": 0.22,
                  "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 12000.0}),
@@ -852,7 +852,7 @@ register_preset(Preset(
         ("codec_era", {"codec": "mpeg2video", "kbps": 6000, "gop": 15, "res": "native",
                        "field_mode": "progressive"}),
         ("interlace", {"enabled": False, "combing": 0.45, "twitter": 0.2}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 25.0, "high_hz": 18000.0}),
@@ -866,7 +866,7 @@ register_preset(Preset(
                        "interlace.enabled": True}),
         Variant("hd-remaster-2012", "HD Remaster",
                 "Reframed and re-encoded for the streaming era: wide, and far too clean.",
-                video={"codec_era.kbps": 8000, "framing.aspect": "16:9"}),
+                video={"codec_era.kbps": 8000, "framing.aspect": "source"}),
     ],
 ))
 
@@ -892,7 +892,7 @@ register_preset(Preset(
         ("codec_era", {"codec": "flv1", "kbps": 350, "res": "240p", "gop": 90, "passes": 1}),
         ("lcd_screen", {"grid": 0.16, "scale": 4, "response_smear": 0.3,
                         "backlight_bleed": 0.15, "viewing_angle": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 11000.0}),
@@ -939,7 +939,7 @@ register_preset(Preset(
                  "time_base_error": 0.4, "dropouts": 1.2, "sharpen": 0.6}),
         ("interlace", {"combing": 0.5, "twitter": 0.35}),
         ("crt", {"bloom": 0.32, "misconvergence": 0.4, "scan_strength": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 11000.0}),
@@ -980,7 +980,7 @@ register_preset(Preset(
         ("cadence", {"pattern": "twos", "field_blend": 0.0}),
         ("codec_era", {"codec": "mjpeg", "qscale": 15, "res": "240p", "gop": 1}),
         ("crt", {"bloom": 0.26, "scan_strength": 0.15, "curvature": 0.03}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 9000.0}),
@@ -1021,7 +1021,7 @@ register_preset(Preset(
         ("cadence", {"pattern": "twos", "field_blend": 0.0}),
         ("codec_era", {"codec": "mjpeg", "qscale": 10, "res": "144p", "gop": 1}),
         ("crt", {"bloom": 0.3, "scan_strength": 0.2, "curvature": 0.03}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 5000.0}),
@@ -1062,7 +1062,7 @@ register_preset(Preset(
         ("codec_era", {"codec": "mpeg2video", "kbps": 3500, "gop": 15, "res": "480p",
                        "field_mode": "progressive"}),
         ("interlace", {"enabled": False, "combing": 0.45, "twitter": 0.22}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 16000.0}),
@@ -1103,7 +1103,7 @@ register_preset(Preset(
         ("saturation", {"amount": 1.1, "vibrance": 0.08}),
         ("sharpen", {"amount": 0.15, "radius": 0.9}),
         ("codec_era", {"codec": "h264", "crf": 22, "gop": 120, "res": "native"}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 17000.0}),

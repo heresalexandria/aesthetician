@@ -493,7 +493,7 @@ def _plain_video(src: str, dst: str, w: int, h: int, fps: float, t0: float, dura
     if t0 > 0:
         cmd += ["-ss", f"{t0:.6f}"]
     cmd += ["-i", src, "-t", f"{duration:.6f}",
-            "-vf", f"scale={w}:{h}:flags=lanczos:in_color_matrix={src_matrix}:out_color_matrix=bt709:out_range=tv,fps={fps:.6f}",
+            "-vf", f"scale={w}:{h}:flags=lanczos:in_color_matrix={src_matrix}:out_color_matrix=bt709:out_range=tv,setsar=1,fps={fps:.6f}",
             "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
             "-pix_fmt", "yuv420p", *media.BT709_TAGS, "-an", dst]
     media._run(cmd)

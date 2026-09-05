@@ -36,7 +36,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.06, "character": "projector", "spatial": 0.12}),
         ("dust", {"density": 0.15, "hairs": 0.08}),
         ("vignette", {"amount": 0.2, "softness": 0.75}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 7000.0}),
@@ -93,7 +93,7 @@ register_preset(Preset(
         ("scratches", {"count": 2, "strength": 0.45, "transient_rate": 1.0}),
         ("frame_damage", {"splice_skip_rate": 0.5, "slip_rate": 0.4, "blotch_rate": 1.0}),
         ("vignette", {"amount": 0.34, "softness": 0.65}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "carbon_1925", "amount": 0.32,
@@ -154,7 +154,7 @@ register_preset(Preset(
         ("scratches", {"count": 2, "strength": 0.5, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 1.0, "slip_rate": 0.6, "blotch_rate": 1.5}),
         ("vignette", {"amount": 0.35, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 120.0, "high_hz": 4800.0}),
@@ -211,7 +211,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35, "hairs": 0.25}),
         ("frame_damage", {"splice_skip_rate": 1.2, "slip_rate": 0.5, "blotch_rate": 1.0}),
         ("vignette", {"amount": 0.3, "softness": 0.68}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "ribbon_1938", "amount": 0.45,
@@ -230,7 +230,7 @@ register_preset(Preset(
                 "The station package: 16 mm reduction, blocked whites, a neutral fade and a 4:3 crop.",
                 video={"print_char.contrast_buildup": 3, "fade.amount": 0.18,
                        "grain.amount": 0.52, "grain.stock": "print_dupe",
-                       "dust.density": 0.5, "framing.aspect": "4:3", "framing.mode": "crop"},
+                       "dust.density": 0.5, "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_optical_track.high_hz": 4800.0, "a_optical_track.cell_noise": -40.0}),
         Variant("premiere-print", "Premiere Print",
                 "Opening night off the first answer print: less footage boil, steadier density, no splices.",
@@ -270,7 +270,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.09, "character": "projector"}),
         ("dust", {"density": 0.28, "hairs": 0.15}),
         ("vignette", {"amount": 0.26, "softness": 0.7}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 6500.0}),
@@ -286,14 +286,14 @@ register_preset(Preset(
     variants=[
         Variant("widescreen-reissue-1956", "Widescreen Reissue",
                 "Re-racked for the new wide screens: 1.85 hard matte and a punchier printer light.",
-                video={"framing.aspect": "1.85", "framing.mode": "crop",
+                video={"framing.aspect": "source", "framing.mode": "crop",
                        "tone.contrast": 1.16, "tone.lift": 0.04, "grain.amount": 0.4}),
         Variant("late-show-1971", "Late Show Print",
                 "The one-thirty-in-the-morning slot: worn 16 mm dupe, faded whites and set buzz under it.",
                 video={"fade.amount": 0.2, "print_char.contrast_buildup": 3,
                        "dust.density": 0.5, "grain.amount": 0.48,
                        "grain.stock": "print_dupe",
-                       "framing.aspect": "4:3", "framing.mode": "crop"},
+                       "framing.aspect": "source", "framing.mode": "crop"},
                 audio={"a_tv_sound.buzz_db": -52.0, "a_tv_sound.hum_db": -58.0,
                        "a_bandlimit.high_hz": 5000.0}),
     ],
@@ -332,7 +332,7 @@ register_preset(Preset(
         ("scratches", {"count": 2, "strength": 0.5, "transient_rate": 1.2,
                        "emulsion_side": 0.3}),
         ("vignette", {"amount": 0.34, "softness": 0.6}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 6000.0}),
@@ -351,7 +351,7 @@ register_preset(Preset(
                        "gate_weave.splice_bump": 2.6, "print_char.contrast_buildup": 2}),
         Variant("late-show-tv", "Late Show TV Crop",
                 "Panned to 4:3 for the horror host: softer, grainier, halation printed flat.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop",
+                video={"framing.aspect": "source", "framing.mode": "crop",
                        "optics.soft_focus": 0.24, "grain.amount": 0.5,
                        "grain.stock": "print_dupe", "halation.strength": 0.24},
                 audio={"a_bandlimit.high_hz": 4800.0}),
@@ -388,7 +388,7 @@ register_preset(Preset(
         ("dust", {"density": 0.3, "hairs": 0.18}),
         ("scratches", {"count": 1, "strength": 0.4, "transient_rate": 0.8}),
         ("vignette", {"amount": 0.2, "softness": 0.75}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 110.0, "high_hz": 6200.0}),
@@ -410,7 +410,7 @@ register_preset(Preset(
                 "Three generations down for a syndication package: blocked skies, 4:3 crop, dupe grain.",
                 video={"print_char.contrast_buildup": 3, "fade.amount": 0.2,
                        "grain.stock": "print_dupe", "grain.amount": 0.5,
-                       "framing.aspect": "4:3", "framing.mode": "crop"}),
+                       "framing.aspect": "source", "framing.mode": "crop"}),
     ],
 ))
 
@@ -444,7 +444,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.07, "character": "projector"}),
         ("dust", {"density": 0.12, "hairs": 0.08}),
         ("vignette", {"amount": 0.24, "softness": 0.75}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -463,7 +463,7 @@ register_preset(Preset(
                        "grain.amount": 0.36, "dust.density": 0.35}),
         Variant("scope-remaster", "Scope Remaster",
                 "The wide-gauge remaster: 2.35 crop, dye back to full strength, grain tightened.",
-                video={"framing.aspect": "2.35", "framing.mode": "crop", "fade.amount": 0.0,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.0,
                        "grain.amount": 0.24, "dust.density": 0.05, "halation.strength": 0.32}),
     ],
 ))
@@ -498,7 +498,7 @@ register_preset(Preset(
         ("dust", {"density": 0.3, "hairs": 0.2}),
         ("scratches", {"count": 1, "strength": 0.4, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.4, "softness": 0.6}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7000.0}),
@@ -513,7 +513,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-print", "Television Print",
                 "Cropped to 4:3 for a station package, with a decade of printer buildup on it.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.16,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.16,
                        "print_char.contrast_buildup": 3, "grain.amount": 0.55},
                 audio={"a_bandlimit.high_hz": 5200.0}),
         Variant("restored-negative", "Restored Negative",
@@ -557,7 +557,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35, "hairs": 0.2}),
         ("scratches", {"count": 1, "strength": 0.4, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.26, "softness": 0.68, "roundness": 0.65}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7500.0}),
@@ -571,7 +571,7 @@ register_preset(Preset(
     variants=[
         Variant("us-tv-dub-1972", "US TV Dub",
                 "The American television version: 4:3 crop, pink dye, and voices recorded in a big dubbing stage.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.3,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.3,
                        "print_char.contrast_buildup": 3, "grain.amount": 0.48},
                 audio={"a_bandlimit.low_hz": 120.0, "a_bandlimit.high_hz": 5500.0,
                        "a_room.size": 2.2, "a_room.mix": 0.22,
@@ -613,7 +613,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 1.0, "splice_bump": 1.0}),
         ("dust", {"density": 0.35, "hairs": 0.2}),
         ("vignette", {"amount": 0.28, "softness": 0.65, "roundness": 0.6}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 90.0, "high_hz": 7000.0}),
@@ -627,7 +627,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-pan-scan-1975", "TV Pan-and-Scan",
                 "Scanned flat for television a decade later: 4:3, pink dye and another printer generation.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.25,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.25,
                        "print_char.contrast_buildup": 3, "grain.amount": 0.54},
                 audio={"a_bandlimit.high_hz": 5200.0}),
         Variant("premiere-print", "Premiere Print",
@@ -670,7 +670,7 @@ register_preset(Preset(
         ("ntsc", {"enabled": False, "strength": 0.32, "luma_bw": 3.6, "chroma_bw": 0.8,
                   "phase_noise": 1.6, "dot_crawl": 0.16, "rainbow": 0.16}),
         ("vignette", {"amount": 0.22, "softness": 0.75, "roundness": 0.6}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 11000.0}),
@@ -687,7 +687,7 @@ register_preset(Preset(
                        "gate_weave.amount": 1.3, "print_char.contrast_buildup": 2}),
         Variant("tv-broadcast-1972", "TV Broadcast",
                 "The network premiere: 4:3, composite bandwidth on the color and a squashed track.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.15,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.15,
                        "ntsc.enabled": True},
                 audio={"a_bandlimit.high_hz": 6500.0, "a_compressor.ratio": 5.0}),
     ],
@@ -723,7 +723,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.1, "character": "projector"}),
         ("dust", {"density": 0.3, "hairs": 0.2}),
         ("vignette", {"amount": 0.22, "softness": 0.7, "roundness": 0.6}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 7500.0}),
@@ -737,7 +737,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-late-show-1978", "Late Show TV Print",
                 "Fourteen years in a station vault: pink, grainy, cropped to the middle of the frame.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.3,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.3,
                        "grain.amount": 0.48, "grain.stock": "print_dupe",
                        "print_char.contrast_buildup": 3},
                 audio={"a_bandlimit.high_hz": 5200.0}),
@@ -780,7 +780,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35, "hairs": 0.2}),
         ("scratches", {"count": 1, "strength": 0.4, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.44, "softness": 0.58}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 7000.0}),
@@ -835,7 +835,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.1, "character": "projector", "color_flicker": 0.15}),
         ("dust", {"density": 0.2, "hairs": 0.12}),
         ("vignette", {"amount": 0.2, "softness": 0.75}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 10000.0}),
@@ -849,13 +849,13 @@ register_preset(Preset(
     variants=[
         Variant("tv-print-1974", "TV Print",
                 "Folded to mono and cropped for television, with the printer buildup that came with it.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.2,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.2,
                        "grain.amount": 0.44, "print_char.contrast_buildup": 3},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 6800.0}),
         Variant("roadshow-blowup", "Roadshow 70 mm Blowup",
                 "Blown up for the roadshow houses: tighter grain, tamed fringing, a wider spread.",
                 video={"grain.amount": 0.26, "optics.chromatic_aberration": 0.6,
-                       "framing.aspect": "2.35", "framing.mode": "crop", "dust.density": 0.08},
+                       "framing.aspect": "source", "framing.mode": "crop", "dust.density": 0.08},
                 audio={"a_channel_aging.width": 1.4}),
     ],
 ))
@@ -890,7 +890,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.7}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
         ("vignette", {"amount": 0.26, "softness": 0.7, "roundness": 0.55}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -905,7 +905,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-network-1976", "Network TV Print",
                 "The two-night network showing: mono, 4:3, and the dye further gone.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.3,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.3,
                        "grain.amount": 0.4, "print_char.contrast_buildup": 2},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 6500.0}),
         Variant("blowup-70mm", "70 mm Blowup",
@@ -943,7 +943,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.4, "splice_bump": 0.3}),
         ("dust", {"density": 0.06, "hairs": 0.04}),
         ("vignette", {"amount": 0.16, "softness": 0.8, "roundness": 0.5}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 14000.0}),
@@ -963,7 +963,7 @@ register_preset(Preset(
                 audio={"a_channel_aging.width": 1.0, "a_bandlimit.high_hz": 11000.0}),
         Variant("tv-special-1979", "TV Special Broadcast",
                 "The Sunday-night network airing: mono, 4:3, set buzz behind the overture.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.2,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.2,
                        "grain.amount": 0.3},
                 audio={"a_channel_aging.width": 0.0, "a_tv_sound.buzz_db": -54.0,
                        "a_tv_sound.hum_db": -60.0, "a_bandlimit.high_hz": 6800.0}),
@@ -1001,7 +1001,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35, "hairs": 0.2}),
         ("scratches", {"count": 1, "strength": 0.45, "transient_rate": 0.8}),
         ("vignette", {"amount": 0.24, "softness": 0.7}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 7800.0}),
@@ -1020,7 +1020,7 @@ register_preset(Preset(
                 audio={"a_optical_track.cell_noise": -40.0, "a_bandlimit.high_hz": 5200.0}),
         Variant("tv-movie-print", "TV Movie Print",
                 "The network cut: 4:3, thicker blacks, less fade than the road prints ever kept.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.12,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.12,
                        "print_char.contrast_buildup": 2, "grain.amount": 0.5}),
     ],
 ))
@@ -1056,7 +1056,7 @@ register_preset(Preset(
         ("dust", {"density": 0.3, "hairs": 0.18}),
         ("scratches", {"count": 1, "strength": 0.45, "transient_rate": 0.7}),
         ("vignette", {"amount": 0.3, "softness": 0.65}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 9000.0}),
@@ -1113,7 +1113,7 @@ register_preset(Preset(
         ("signal_rf", {"enabled": False, "snow": 0.08, "sparkle": 2.0, "ghost_n": 1,
                        "ghost_px": 10.0, "ghost_alpha": 0.2}),
         ("vignette", {"amount": 0.34, "softness": 0.6}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5500.0}),
@@ -1134,7 +1134,7 @@ register_preset(Preset(
                 audio={"a_room.mix": 0.12, "a_optical_track.cell_noise": -47.0}),
         Variant("uhf-tv-print-1981", "UHF TV Print",
                 "Sunday afternoon on channel forty-four: 4:3, a ghost off the antenna, blacks gone entirely.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop",
+                video={"framing.aspect": "source", "framing.mode": "crop",
                        "print_char.contrast_buildup": 4, "signal_rf.enabled": True,
                        "fade.amount": 0.45},
                 audio={"a_bandlimit.high_hz": 4200.0, "a_compressor.ratio": 8.0}),
@@ -1173,7 +1173,7 @@ register_preset(Preset(
         ("dust", {"density": 0.4, "hairs": 0.25}),
         ("scratches", {"count": 2, "strength": 0.5, "transient_rate": 1.2}),
         ("vignette", {"amount": 0.3, "softness": 0.6}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.6, "proximity": 0.1,
@@ -1229,7 +1229,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.9, "splice_bump": 1.0}),
         ("dust", {"density": 0.3, "hairs": 0.18}),
         ("vignette", {"amount": 0.38, "softness": 0.62}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 7500.0}),
@@ -1243,7 +1243,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-edit-print", "TV Edit Print",
                 "The television cut: 4:3, another printer generation, the dye almost entirely magenta.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.35,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.35,
                        "print_char.contrast_buildup": 2, "grain.amount": 0.55},
                 audio={"a_bandlimit.high_hz": 5800.0}),
         Variant("restored", "Restored Scan",
@@ -1286,7 +1286,7 @@ register_preset(Preset(
         ("dust", {"density": 0.12, "hairs": 0.08}),
         ("scratches", {"count": 0, "strength": 0.4, "transient_rate": 0.3}),
         ("vignette", {"amount": 0.2, "softness": 0.75, "roundness": 0.55}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 12000.0}),
@@ -1340,7 +1340,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.7, "splice_bump": 0.6}),
         ("dust", {"density": 0.18, "hairs": 0.1}),
         ("vignette", {"amount": 0.3, "softness": 0.65}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 35.0, "high_hz": 13000.0}),
@@ -1354,7 +1354,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-version-1981", "TV Version",
                 "The broadcast cut: mono, 4:3, and a limiter riding the dance numbers flat.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.2,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.2,
                        "grain.amount": 0.46},
                 audio={"a_channel_aging.width": 0.0, "a_bandlimit.high_hz": 6500.0,
                        "a_compressor.ratio": 6.0}),
@@ -1394,7 +1394,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.8}),
         ("dust", {"density": 0.3, "hairs": 0.18}),
         ("vignette", {"amount": 0.22, "softness": 0.72}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 60.0, "high_hz": 9000.0}),
@@ -1447,7 +1447,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.8}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
         ("vignette", {"amount": 0.28, "softness": 0.68}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 70.0, "high_hz": 8000.0}),
@@ -1461,7 +1461,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-broadcast-1980", "TV Broadcast Print",
                 "The network showing: 4:3, another printer generation, the room pulled in tight.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.2,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.2,
                        "print_char.contrast_buildup": 2, "grain.amount": 0.54},
                 audio={"a_room.mix": 0.1, "a_bandlimit.high_hz": 6200.0}),
         Variant("restored-4k", "4K Restoration",
@@ -1503,7 +1503,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.1, "character": "projector"}),
         ("dust", {"density": 0.35, "hairs": 0.22}),
         ("vignette", {"amount": 0.26, "softness": 0.68}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.5, "proximity": 0.08,
@@ -1562,7 +1562,7 @@ register_preset(Preset(
         ("dust", {"density": 0.25, "hairs": 0.18}),
         ("ntsc", {"enabled": False, "strength": 0.5, "luma_bw": 3.4, "chroma_bw": 0.8,
                   "phase_noise": 1.8, "dot_crawl": 0.2, "rainbow": 0.18}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.5, "proximity": 0.1,
@@ -1625,7 +1625,7 @@ register_preset(Preset(
                  "head_switch": 0.7, "dropouts": 2.0, "time_base_error": 0.35,
                  "generation": 2}),
         ("vignette", {"amount": 0.3, "softness": 0.65}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 120.0, "high_hz": 6500.0}),
@@ -1639,7 +1639,7 @@ register_preset(Preset(
     variants=[
         Variant("video-store-vhs-1986", "Video Store VHS",
                 "The rental tape a decade later: full-frame, tape noise over the dye, tracking on the move.",
-                video={"vhs.enabled": True, "framing.aspect": "4:3", "framing.mode": "crop",
+                video={"vhs.enabled": True, "framing.aspect": "source", "framing.mode": "crop",
                        "fade.amount": 0.2},
                 audio={"a_bandlimit.high_hz": 5000.0, "a_room.mix": 0.2}),
         Variant("premiere-print", "Premiere Print",
@@ -1679,7 +1679,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.4, "splice_bump": 0.3}),
         ("dust", {"density": 0.08, "hairs": 0.05}),
         ("vignette", {"amount": 0.16, "softness": 0.8}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 40.0, "high_hz": 11000.0}),
@@ -1692,12 +1692,12 @@ register_preset(Preset(
     variants=[
         Variant("tv-network-1979", "Network TV Print",
                 "The heavily cut network airing: 4:3, printer buildup, and a limiter under the quiet scenes.",
-                video={"framing.aspect": "4:3", "framing.mode": "crop", "fade.amount": 0.15,
+                video={"framing.aspect": "source", "framing.mode": "crop", "fade.amount": 0.15,
                        "print_char.contrast_buildup": 2, "grain.amount": 0.42},
                 audio={"a_bandlimit.high_hz": 6500.0, "a_compressor.ratio": 5.0}),
         Variant("blowup-70mm", "70 mm Blowup",
                 "The large-gauge engagement: grain gone, frame opened out, highlights held.",
-                video={"grain.amount": 0.24, "framing.aspect": "2.35", "framing.mode": "crop",
+                video={"grain.amount": 0.24, "framing.aspect": "source", "framing.mode": "crop",
                        "dust.density": 0.04, "halation.strength": 0.24}),
     ],
 ))
@@ -1732,7 +1732,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "strength": 0.55, "transient_rate": 3.0}),
         ("frame_damage", {"splice_skip_rate": 2.5, "slip_rate": 1.5, "blotch_rate": 2.0}),
         ("vignette", {"amount": 0.4, "softness": 0.55}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 140.0, "high_hz": 4600.0}),
@@ -1748,7 +1748,7 @@ register_preset(Preset(
         Variant("television-package-1955", "Television Package",
                 "Sold to television in a job lot: one more dupe generation, faded, cropped to the tube.",
                 video={"print_char.contrast_buildup": 4, "fade.amount": 0.2,
-                       "framing.aspect": "4:3", "framing.mode": "crop", "grain.amount": 0.55},
+                       "framing.aspect": "source", "framing.mode": "crop", "grain.amount": 0.55},
                 audio={"a_bandlimit.high_hz": 4000.0}),
         Variant("archive-restoration", "Archive Restoration",
                 "Reassembled from two surviving chapters: damage repaired, contrast rebuilt, dirt gone.",
@@ -1788,7 +1788,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.08, "character": "projector"}),
         ("dust", {"density": 0.3, "hairs": 0.18}),
         ("vignette", {"amount": 0.28, "softness": 0.68}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 7500.0}),

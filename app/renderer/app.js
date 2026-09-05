@@ -292,6 +292,7 @@ const videoB = $('video-b'); // original
   // wait on and no placeholder to flash. Painting it last used to leave the chip
   // empty for the ~2 s that checkEnv and schema spend spawning Python.
   setVersionChip();
+  wireCreatorCredit();
   const env = await window.aesth.checkEnv();
   if (!env.ok) {
     const w = $('env-warning');
@@ -386,10 +387,10 @@ function activateSession(id) {
   $('timecode').value = fmtTimecode(sess.previewT);
   $('seed').value = sess.seed;
   $('intensity').value = sess.intensity;
-  $('intensity-val').textContent = sess.intensity.toFixed(2);
+  $('intensity-val').value = sess.intensity;
   paintRange($('intensity'));
   $('texture').value = sess.texture;
-  $('texture-val').textContent = sess.texture.toFixed(2);
+  $('texture-val').value = sess.texture;
   paintRange($('texture'));
 
   // Splitting picture from sound is meaningless when there is no picture.
@@ -800,10 +801,10 @@ function applyCustom(cid, opts = {}) {
    push its values back into them by hand. */
 function syncMasterDials() {
   $('intensity').value = state.intensity;
-  $('intensity-val').textContent = state.intensity.toFixed(2);
+  $('intensity-val').value = state.intensity;
   paintRange($('intensity'));
   $('texture').value = state.texture;
-  $('texture-val').textContent = state.texture.toFixed(2);
+  $('texture-val').value = state.texture;
   paintRange($('texture'));
   $('seed').value = state.seed;
 }
@@ -1661,6 +1662,21 @@ async function updateButtonClicked() {
   if (U.latest && U.latest.available && U.latest.installable) await downloadUpdate();
 }
 
+function wireCreatorCredit() {
+  const link = $('creator-credit');
+  const open = async (event) => {
+    if (event.type === 'auxclick' && event.button !== 1) return;
+    event.preventDefault();
+    try {
+      if (!await window.aesth.openExternal(link.href)) throw new Error('Link unavailable');
+    } catch (_) {
+      flash('Could not open your browser', { sub: 'Visit https://heresalexandria.com/', kind: 'error' });
+    }
+  };
+  link.addEventListener('click', open);
+  link.addEventListener('auxclick', open);
+}
+
 function wireUpdates() {
   $('btn-version').addEventListener('click', () => openAbout());
   $('btn-update').addEventListener('click', updateButtonClicked);
@@ -1949,6 +1965,7 @@ function buildFacetRow() {
     sel.className = 'facet' + (current ? ' active' : '');
     sel.dataset.facet = facet.id;
     sel.title = facet.hint || facet.label;
+    sel.setAttribute('aria-label', `Filter by ${facet.label.toLowerCase()}`);
     const any = document.createElement('option');
     any.value = '';
     any.textContent = `Any ${facet.label.toLowerCase()}`;
@@ -2129,9 +2146,10 @@ function buildFilterBar() {
   const presets = Object.values(G.schema.presets);
 
   const chips = $('family-chips');
+  const focusedChip = chips.contains(document.activeElement) ? document.activeElement.textContent : null;
   chips.innerHTML = '';
   if (collections().length) {
-    const guide = document.createElement('span');
+    const guide = document.createElement('button');
     guide.className = 'chip guide-chip' + (G.guideOpen ? ' sel' : '');
     guide.textContent = '✦ Guide';
     guide.title = 'Starting points: “make it look like…” collections and ready-made stacks';
@@ -2145,7 +2163,7 @@ function buildFilterBar() {
   /* The facet row is worth its height when you are narrowing and worth
      folding away when you are scrolling; a live facet keeps it open. */
   const facetsLive = Object.values(G.filterFacets || {}).some(Boolean);
-  const refine = document.createElement('span');
+  const refine = document.createElement('button');
   refine.className = 'chip refine-chip' + (facetsLive ? ' sel' : G.refineOpen ? ' open' : '');
   refine.textContent = facetsLive ? '⌕ Refine ●' : '⌕ Refine';
   refine.title = 'Narrow by medium, genre, region, condition and color';
@@ -2157,7 +2175,7 @@ function buildFilterBar() {
   };
   chips.appendChild(refine);
   if (G.favs.size) {
-    const star = document.createElement('span');
+    const star = document.createElement('button');
     star.className = 'chip star-chip' + (G.favOnly ? ' sel' : '');
     star.textContent = `★ ${G.favs.size}`;
     star.title = 'Show favorites only';
@@ -2169,7 +2187,7 @@ function buildFilterBar() {
     chips.appendChild(star);
   }
   if (G.customs.length) {
-    const cc = document.createElement('span');
+    const cc = document.createElement('button');
     cc.className = 'chip custom-chip' + (G.customOnly ? ' sel' : '');
     cc.textContent = `✎ ${G.customs.length}`;
     cc.title = 'Show my custom aesthetics only';
@@ -2181,7 +2199,7 @@ function buildFilterBar() {
     chips.appendChild(cc);
   }
   if (G.stacks.length) {
-    const sc = document.createElement('span');
+    const sc = document.createElement('button');
     sc.className = 'chip stack-chip' + (G.stackOnly ? ' sel' : '');
     sc.textContent = `▤ ${G.stacks.length}`;
     sc.title = 'Show my saved stacks only';
@@ -2192,7 +2210,7 @@ function buildFilterBar() {
     };
     chips.appendChild(sc);
   }
-  const all = document.createElement('span');
+  const all = document.createElement('button');
   all.className = 'chip' + (G.filterFamilies.size || G.audioOnly || G.favOnly || G.customOnly || G.stackOnly || G.guideOpen ? '' : ' sel');
   all.textContent = 'All';
   all.onclick = () => {
@@ -2207,7 +2225,7 @@ function buildFilterBar() {
   chips.appendChild(all);
 
   const audioCount = presets.filter(isAudioOnly).length;
-  const audio = document.createElement('span');
+  const audio = document.createElement('button');
   audio.className = 'chip audio-chip' + (G.audioOnly ? ' sel' : '');
   audio.textContent = `♪ Audio ${audioCount}`;
   audio.title = 'Show presets that treat audio and leave the picture untouched';
@@ -2228,7 +2246,7 @@ function buildFilterBar() {
     .sort((a, b) => famRank(a) - famRank(b));
   for (const f of fams) {
     const n = presets.filter((p) => p.family === f).length;
-    const c = document.createElement('span');
+    const c = document.createElement('button');
     c.className = 'chip' + (G.filterFamilies.has(f) ? ' sel' : '');
     c.textContent = f;
     c.title = `${n} preset${n === 1 ? '' : 's'}`;
@@ -2255,6 +2273,12 @@ function buildFilterBar() {
     era.appendChild(o);
   }
   era.classList.toggle('active', !!current);
+  for (const chip of chips.children) {
+    chip.setAttribute('aria-pressed', String(chip.classList.contains('sel')));
+    chip.setAttribute('aria-label', chip.title ? `${chip.textContent}: ${chip.title}` : chip.textContent);
+  }
+  refine.setAttribute('aria-expanded', String(G.refineOpen || facetsLive));
+  if (focusedChip) [...chips.children].find((chip) => chip.textContent === focusedChip)?.focus({ preventScroll: true });
 
   $('preset-search').placeholder = G.guideOpen
     ? 'Search the guide…'
@@ -2611,6 +2635,10 @@ function buildPresetList() {
   const tierOf = (p) => (q ? searchTier(p, groups) : 'direct');
   const scoreOf = (p) => (q ? searchScore(p, groups, tierOf(p) || 'related') : 1);
   const matches = (p) => passesFilters(p) && tierOf(p) !== null;
+  $('result-count').textContent = G.guideOpen ? 'Curated starting points'
+    : G.stackOnly ? 'My saved stacks' : G.customOnly ? 'My custom aesthetics'
+    : `${presets.filter(matches).length} of ${presets.length} aesthetics`;
+  $('clear-filters').classList.toggle('hidden', !anyFilterActive());
 
   /* ↑/↓ walk this: the ids the eye can actually see, top to bottom. A favorite
      is rendered twice (its row at the top, and again inside its family) but is
@@ -3311,15 +3339,17 @@ function buildParamPane() {
   const vrow = $('variant-row');
   vrow.innerHTML = '';
   if (p.variants.length) {
-    const base = document.createElement('span');
+    const base = document.createElement('button');
     base.className = 'variant-pill' + (state.variant === null ? ' sel' : '');
     base.textContent = 'standard';
+    base.setAttribute('aria-pressed', String(state.variant === null));
     base.onclick = () => { state.variant = null; buildParamPane(); schedulePreview(); };
     vrow.appendChild(base);
     for (const v of p.variants) {
-      const pill = document.createElement('span');
+      const pill = document.createElement('button');
       pill.className = 'variant-pill' + (state.variant === v.id ? ' sel' : '');
       pill.textContent = v.name;
+      pill.setAttribute('aria-pressed', String(state.variant === v.id));
       pill.title = v.desc;
       pill.onclick = () => { state.variant = v.id; buildParamPane(); schedulePreview(); };
       vrow.appendChild(pill);
@@ -3420,6 +3450,8 @@ function syncOverrideRow() {
   syncPresetSub();
 }
 
+const openEffectCards = new Map();
+
 function effectCard({ eid, key, params }, variantOv) {
   const eff = G.schema.effects[eid];
   const card = document.createElement('div');
@@ -3428,13 +3460,19 @@ function effectCard({ eid, key, params }, variantOv) {
      counters - open on sight. Their text is the first thing anyone wants to
      change, and it was previously two clicks deep in a collapsed card. */
   const hasText = eff.params.some((p) => p.kind === 'str');
-  if (hasText) card.classList.add('open');
+  const openKey = `${activeLayer(state).lid}:${key}`;
+  const isOpen = openEffectCards.get(openKey) ?? hasText;
+  if (isOpen) card.classList.add('open');
   const head = document.createElement('div');
   head.className = 'effect-head';
+  const disclosure = document.createElement('button');
+  disclosure.className = 'effect-disclosure';
+  disclosure.setAttribute('aria-expanded', String(isOpen));
   const tweaked = Object.keys(state.sets).some((s) => s.startsWith(`${key}.`));
-  head.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`
+  disclosure.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`
     + (hasText ? '<span class="e-text" title="Burns text into the picture - editable below">Aa</span>' : '')
     + (tweaked ? '<span class="e-tweaks" title="Has manual tweaks"></span>' : '');
+  head.appendChild(disclosure);
 
   /* Every effect carries an `enabled` flag, and it belongs in the header rather
      than buried in the parameter list: it is the one control that decides
@@ -3449,6 +3487,7 @@ function effectCard({ eid, key, params }, variantOv) {
   const power = document.createElement('input');
   power.type = 'checkbox';
   power.className = 'e-power';
+  power.setAttribute('aria-label', `Enable ${eff.label}`);
   power.checked = !!isOn;
   power.title = isOn ? `Switch ${eff.label} off for this layer` : `Switch ${eff.label} back on`;
   power.onclick = (e) => e.stopPropagation();      // the header row toggles open
@@ -3468,7 +3507,13 @@ function effectCard({ eid, key, params }, variantOv) {
             eff.kind === 'filepass' ? 'real codec pass' : eff.kind],
     path: `${key}.<param>`,
   }));
-  head.onclick = () => card.classList.toggle('open');
+  const toggleOpen = () => {
+    card.classList.toggle('open');
+    const open = card.classList.contains('open');
+    disclosure.setAttribute('aria-expanded', String(open));
+    openEffectCards.set(openKey, open);
+  };
+  disclosure.onclick = toggleOpen;
   card.appendChild(head);
   const body = document.createElement('div');
   body.className = 'effect-body';
@@ -3489,7 +3534,41 @@ function effectCard({ eid, key, params }, variantOv) {
     body.appendChild(paramRow(path, prm, baseVal, curVal));
   }
   card.appendChild(body);
+  const refreshDependencies = () => {
+    const values = Object.fromEntries(eff.params.map((p) => [p.name,
+      state.sets[`${key}.${p.name}`] ?? variantOv[`${key}.${p.name}`] ?? params[p.name] ?? p.default]));
+    for (const row of body.querySelectorAll('.prow')) {
+      const reason = inactiveParamReason(eid, row.dataset.param, values);
+      row.classList.toggle('inactive', !!reason);
+      row.querySelectorAll('input, select').forEach((input) => { input.disabled = !!reason; });
+      let note = row.querySelector('.dependency-note');
+      if (reason && !note) {
+        note = document.createElement('small'); note.className = 'dependency-note'; row.appendChild(note);
+      }
+      if (note) { note.textContent = reason; note.hidden = !reason; }
+    }
+  };
+  card.addEventListener('param-commit', refreshDependencies);
+  refreshDependencies();
   return card;
+}
+
+function inactiveParamReason(eid, name, v) {
+  if (eid === 'codec_era') {
+    if (name === 'crf' && v.codec !== 'h264') return 'Choose H.264 to use CRF.';
+    if (name === 'qscale' && v.codec === 'h264') return 'H.264 uses CRF or bitrate.';
+    if (name === 'kbps' && v.codec === 'h264' && v.crf >= 0) return 'Set CRF to −1 to use bitrate.';
+    if (name === 'kbps' && v.codec !== 'h264' && v.qscale > 0) return 'Set Quantizer to 0 to use bitrate.';
+    if (name === 'field_mode' && !['mpeg2video', 'mpeg4'].includes(v.codec)) return 'Interlaced mode needs MPEG-2 or MPEG-4.';
+    if (name === 'gop' && v.codec === 'mjpeg') return 'MJPEG encodes each frame independently.';
+  }
+  if (eid === 'cinema_finish' && name === 'radius' && v.local_contrast === 0) return 'Adjust Local Contrast to use this radius.';
+  if (eid === 'balance' && name === 'shadow_amt' && v.shadow_tint === 'none') return 'Choose a Shadow Tint first.';
+  if (eid === 'balance' && name === 'high_amt' && v.high_tint === 'none') return 'Choose a Highlight Tint first.';
+  if (eid === 'stock' && name === 'strength' && v.profile === 'none') return 'Choose a stock profile first.';
+  if (eid === 'framing' && name === 'edge_soft' && v.corner_radius === 0) return 'Add Corner Rounding to soften its edge.';
+  if (eid === 'framing' && name === 'matte_gray' && ['source', 'none'].includes(v.aspect) && v.corner_radius === 0) return 'Choose a framing ratio or rounded corners to show the matte.';
+  return '';
 }
 
 function paramRow(path, prm, baseVal, curVal) {
@@ -3497,7 +3576,9 @@ function paramRow(path, prm, baseVal, curVal) {
   // Free text and date pickers need more width than a 92px label leaves them,
   // so those rows put the label on its own line and give the field the pane.
   row.className = 'prow' + (prm.kind === 'str' ? ' stacked' : '')
+    + (['float', 'int'].includes(prm.kind) ? ' numeric' : '')
     + (path in state.sets ? ' overridden' : '');
+  row.dataset.param = prm.name;
   const label = document.createElement('label');
   label.textContent = prm.label;
   row.appendChild(label);
@@ -3506,7 +3587,7 @@ function paramRow(path, prm, baseVal, curVal) {
   /* Numbers are pinned to the precision the row prints before they are stored,
      so what a row says is what the engine is handed. Everything else goes
      through untouched. */
-  const norm = (v) => (prm.kind === 'float' || prm.kind === 'int') ? quantize(v, prm) : v;
+  const norm = (v) => (prm.kind === 'float' || prm.kind === 'int') ? numericValue(v, prm, baseVal) : v;
 
   const commit = (rawVal) => {
     const val = norm(rawVal);
@@ -3515,6 +3596,7 @@ function paramRow(path, prm, baseVal, curVal) {
     if (val === norm(baseVal) || String(val) === String(baseVal)) delete state.sets[path];
     else state.sets[path] = val;
     row.classList.toggle('overridden', path in state.sets);
+    row.dispatchEvent(new CustomEvent('param-commit', { bubbles: true }));
     syncOverrideRow();
     schedulePreview();
   };
@@ -3527,10 +3609,26 @@ function paramRow(path, prm, baseVal, curVal) {
     slider.step = sliderStep(prm);
     slider.value = curVal;
     paintRange(slider);
-    const val = document.createElement('span');
+    slider.setAttribute('aria-label', `${prm.label} slider`);
+    const valueWrap = document.createElement('div');
+    valueWrap.className = 'number-value';
+    const val = document.createElement('input');
+    val.type = 'number';
     val.className = 'pval';
+    val.min = prm.lo; val.max = prm.hi; val.step = sliderStep(prm);
+    val.id = `param-${path}`;
+    label.htmlFor = val.id;
+    valueWrap.appendChild(val);
+    if (prm.unit) {
+      const unit = document.createElement('span');
+      unit.className = 'punit'; unit.textContent = prm.unit;
+      valueWrap.appendChild(unit);
+      val.setAttribute('aria-label', `${prm.label} (${prm.unit})`);
+    }
     const paint = (v) => {
-      val.textContent = fmtVal(v, prm);
+      val.value = quantize(v, prm);
+      slider.value = v;
+      slider.setAttribute('aria-valuetext', fmtVal(v, prm));
       // The one thing the thumb cannot show: on a wide range a live value can
       // park against the same end stop as a dead one.
       row.classList.toggle('at-min', quantize(v, prm) <= prm.lo);
@@ -3538,7 +3636,9 @@ function paramRow(path, prm, baseVal, curVal) {
     };
     paint(curVal);
     slider.oninput = () => paint(parseFloat(slider.value));
-    slider.onchange = () => commit(parseFloat(slider.value));
+    slider.onchange = () => { const v = norm(slider.value); paint(v); commit(v); };
+    bindNumericEntry(val, prm, () => path in state.sets ? state.sets[path] : baseVal,
+      (v) => { paint(v); commit(v); });
     /* The grid is finer than a keypress wants to move - it has to be, to hold
        the numbers presets actually author - so the arrows keep their own nudge
        of a 200th of the range, which is the travel they always had. */
@@ -3554,7 +3654,7 @@ function paramRow(path, prm, baseVal, curVal) {
       commit(next);
     });
     row.appendChild(slider);
-    row.appendChild(val);
+    row.appendChild(valueWrap);
   } else if (prm.kind === 'bool') {
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -3566,7 +3666,9 @@ function paramRow(path, prm, baseVal, curVal) {
     const sel = document.createElement('select');
     for (const c of prm.choices) {
       const o = document.createElement('option');
-      o.value = c; o.textContent = c.replaceAll('_', ' ');
+      o.value = c; o.textContent = path.endsWith('.aspect') && ['source', 'none'].includes(c)
+        ? (c === 'source' ? `Match source${state.file?.width ? ` (${state.file.width}×${state.file.height})` : ' video'}`
+          : 'Full canvas (legacy)') : c.replaceAll('_', ' ');
       if (c === curVal) o.selected = true;
       sel.appendChild(o);
     }
@@ -3592,6 +3694,10 @@ function paramRow(path, prm, baseVal, curVal) {
     row.appendChild(inp);
   }
 
+  // Every control has a real label, including selects, checkboxes and text.
+  const primary = row.querySelector('input:not([type="range"]), select');
+  if (primary) { primary.id = `param-${path}`; label.htmlFor = primary.id; }
+
   const dkind = placeableKindFor(path);
   if (dkind) {
     const open = document.createElement('button');
@@ -3605,6 +3711,7 @@ function paramRow(path, prm, baseVal, curVal) {
   reset.className = 'reset-mini';
   reset.textContent = '↺';
   reset.title = 'Reset to preset value';
+  reset.setAttribute('aria-label', `Reset ${prm.label} to preset value`);
   reset.onclick = () => { delete state.sets[path]; buildParamPane(); schedulePreview(); };
   row.appendChild(reset);
   return row;
@@ -3624,10 +3731,28 @@ function paramRow(path, prm, baseVal, curVal) {
    and holds them to it. */
 function valueDecimals(prm, v) {
   if (prm.kind === 'int') return 0;
-  // Ranges this narrow (setup level, black crush, keystone) are all detail; two
-  // decimals would flatten most of the travel to the same printed number.
-  if (Math.abs(prm.hi - prm.lo) < 0.5) return 3;
-  return Math.abs(v) >= 100 ? 0 : 2;
+  return Math.max(3, String(prm.step || '').split('.')[1]?.length || 0);
+}
+
+// Blank/invalid edits cancel; valid values clamp before reaching the engine.
+function numericValue(raw, prm, fallback) {
+  if (String(raw).trim() === '' || !Number.isFinite(Number(raw))) return fallback;
+  return Math.min(prm.hi, Math.max(prm.lo, quantize(Number(raw), prm)));
+}
+
+function bindNumericEntry(input, prm, current, commit) {
+  const accept = () => {
+    const v = numericValue(input.value, prm, current());
+    input.value = v;
+    if (v !== current()) commit(v);
+  };
+  input.onchange = accept;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); accept(); input.blur(); }
+    if (e.key === 'Escape') {
+      e.preventDefault(); e.stopPropagation(); input.value = current(); input.blur();
+    }
+  };
 }
 
 /* One grid for every float, fine enough for the most precise number anyone
@@ -5361,6 +5486,12 @@ function wireShortcuts() {
       toggleHistoryPanel(false);
       return;
     }
+    if (meta && e.code === 'KeyF' && G.activeId) {
+      e.preventDefault(); $('preset-search').focus(); $('preset-search').select(); return;
+    }
+    if (e.code === 'Escape' && e.target === $('preset-search')) {
+      e.preventDefault(); $('preset-search').value = ''; buildFacetRow(); buildPresetList(); return;
+    }
     /* ↑/↓ run the preset list. They work from the search box too - type a few
        letters, then walk the hits without reaching for the mouse - but not from
        a slider or dropdown, where the arrows already mean something. */
@@ -5414,6 +5545,7 @@ function wireShortcuts() {
 // ── controls ────────────────────────────────────────────────────────
 function wireControls() {
   document.querySelectorAll('input.range-fill').forEach(paintRange);
+  $('clear-filters').addEventListener('click', clearFilters);
   $('preset-search').addEventListener('input', () => { buildFacetRow(); buildPresetList(); });
   $('era-filter').addEventListener('change', (e) => {
     G.filterEra = e.target.value;
@@ -5430,8 +5562,8 @@ function wireControls() {
   /* Type a time, land on it: seconds or minutes:seconds, Enter commits. The
      strip is the pointer's timeline; this is the keyboard's. */
   $('timecode').addEventListener('keydown', (e) => {
-    e.stopPropagation();
     if (e.code !== 'Enter') return;
+    e.stopPropagation();
     const t = parseTimecode($('timecode').value);
     if (t != null) seekPreview(t);
     else $('timecode').value = fmtTimecode(state.previewT);
@@ -5546,23 +5678,26 @@ function wireControls() {
 
   $('intensity').addEventListener('input', (e) => {
     state.intensity = parseFloat(e.target.value);
-    $('intensity-val').textContent = state.intensity.toFixed(2);
+    $('intensity-val').value = state.intensity;
     paintRange(e.target);
   });
   $('intensity').addEventListener('change', () => { syncPresetSub(); schedulePreview(); });
 
   $('texture').addEventListener('input', (e) => {
     state.texture = parseFloat(e.target.value);
-    $('texture-val').textContent = state.texture.toFixed(2);
+    $('texture-val').value = state.texture;
     paintRange(e.target);
   });
   $('texture').addEventListener('change', () => { syncPresetSub(); schedulePreview(); });
 
+  for (const key of ['intensity', 'texture']) {
+    bindNumericEntry($(key + '-val'), { kind: 'float', lo: 0, hi: 2 }, () => state[key], (v) => {
+      state[key] = v; syncMasterDials(); syncPresetSub(); schedulePreview();
+    });
+  }
   $('seed').value = state.seed;
-  $('seed').addEventListener('change', (e) => {
-    state.seed = parseInt(e.target.value || '1', 10);
-    syncPresetSub();
-    schedulePreview();
+  bindNumericEntry($('seed'), { kind: 'int', lo: 1, hi: 999999 }, () => state.seed, (v) => {
+    state.seed = v; syncPresetSub(); schedulePreview();
   });
   $('btn-dice').addEventListener('click', () => {
     state.seed = 1 + Math.floor(Math.random() * 999998);
@@ -5760,8 +5895,8 @@ function wireControls() {
 
   attachTip($('intensity').previousElementSibling, () => ({
     title: 'Intensity',
-    desc: 'Master strength for everything the preset does to the picture and sound - damage, warping, glow, colour treatment. 0 leaves the clip almost untouched, 2 doubles the authored amounts.',
-    facts: ['range 0 – 2', 'applies to the whole chain'],
+    desc: 'Scales the parameters marked Intensity, including damage, warping and glow. Each control’s tooltip says whether it follows this dial. Fixed color and format settings keep their values at 0.',
+    facts: ['range 0 – 2', 'marked parameters across picture and sound'],
   }));
   attachTip($('texture').previousElementSibling, () => ({
     title: 'Texture',

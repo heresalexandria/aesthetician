@@ -57,7 +57,7 @@ sandbox.window.localStorage = sandbox.localStorage;
 
 const SRC = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'app.js'), 'utf8');
 const R = vm.runInNewContext(
-  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, NOISE_HINT, splitScriptToCues, parseSrt,
+  `${SRC}\n;({ sliderStep, quantize, fmtVal, valueDecimals, numericValue, bindNumericEntry, inactiveParamReason, NOISE_HINT, splitScriptToCues, parseSrt,
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
        automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters,
        searchTokens, eraTokens, expandQuery, searchScore, searchTier, sortPresets, SORT_OPTIONS,
@@ -527,7 +527,40 @@ function test_collections_name_real_presets() {
   }
 }
 
+function test_manual_numeric_edits_validate_and_cancel() {
+  const prm = { kind: 'float', lo: -2, hi: 2 };
+  for (const [raw, want] of [['1.237', 1.237], ['-1.375', -1.375], ['9', 2], ['-9', -2],
+    ['', .5], ['bad', .5], ['Infinity', .5], ['1e-2', .01]]) {
+    assert.strictEqual(R.numericValue(raw, prm, .5), want, raw);
+  }
+  let current = .5, commits = 0;
+  const input = { value: '', blur() { this.onchange(); } };
+  R.bindNumericEntry(input, prm, () => current, v => { current = v; commits++; });
+  const press = key => input.onkeydown({ key, preventDefault() {}, stopPropagation() {} });
+  input.value = '1.375'; press('Enter');
+  assert.strictEqual(current, 1.375); assert.strictEqual(commits, 1);
+  input.value = '-.5'; press('Escape');
+  assert.strictEqual(current, 1.375); assert.strictEqual(commits, 1);
+  input.value = ''; input.onchange();
+  assert.strictEqual(current, 1.375); assert.strictEqual(commits, 1);
+  assert.strictEqual(R.numericValue('9.5', { kind: 'int', lo: 1, hi: 8 }, 1), 8);
+}
+
+function test_mode_dependencies_explain_inactive_controls() {
+  const reason = R.inactiveParamReason;
+  assert.ok(reason('codec_era', 'kbps', { codec: 'h264', crf: 20 }));
+  assert.strictEqual(reason('codec_era', 'kbps', { codec: 'h264', crf: -1 }), '');
+  assert.ok(reason('codec_era', 'qscale', { codec: 'h264' }));
+  assert.ok(reason('codec_era', 'kbps', { codec: 'mpeg2video', qscale: 5 }));
+  assert.strictEqual(reason('codec_era', 'kbps', { codec: 'mpeg2video', qscale: 0 }), '');
+  assert.ok(reason('framing', 'edge_soft', { corner_radius: 0 }));
+  assert.strictEqual(reason('framing', 'edge_soft', { corner_radius: .1 }), '');
+  assert.ok(reason('cinema_finish', 'radius', { local_contrast: 0 }));
+}
+
 const tests = [
+  test_manual_numeric_edits_validate_and_cancel,
+  test_mode_dependencies_explain_inactive_controls,
   test_search_tokens_fold_phrases_and_decades,
   test_search_answers_in_two_tiers,
   test_sorting_the_library,

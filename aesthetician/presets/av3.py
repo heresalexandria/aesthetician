@@ -27,7 +27,7 @@ register_preset(Preset(
         ("dust", {"density": 0.65, "hairs": 0.32}),
         ("scratches", {"count": 2, "transient_rate": 0.8}),
         ("vignette", {"amount": 0.38, "softness": 0.58, "roundness": 0.86}),
-        ("framing", {"aspect": "1.37", "mode": "box", "edge_soft": 0.008}),
+        ("framing", {"aspect": "source", "mode": "box", "edge_soft": 0.008}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -75,7 +75,7 @@ register_preset(Preset(
         ("dust", {"density": 0.42, "hairs": 0.18}),
         ("scratches", {"count": 1, "transient_rate": 0.45}),
         ("vignette", {"amount": 0.3, "softness": 0.7}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "ribbon_1938", "amount": 0.5,
@@ -125,7 +125,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.82, "splice_bump": 0.55}),
         ("flicker", {"amount": 0.11, "color_flicker": 0.09}),
         ("dust", {"density": 0.36, "hairs": 0.16}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -173,7 +173,7 @@ register_preset(Preset(
         ("dust", {"density": 0.54, "hairs": 0.25}),
         ("scratches", {"count": 1, "transient_rate": 0.6}),
         ("vignette", {"amount": 0.32, "softness": 0.66}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "crystal_1940", "amount": 0.66,
@@ -218,7 +218,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.46, "splice_bump": 0.32}),
         ("flicker", {"amount": 0.05, "spatial": 0.06}),
         ("dust", {"density": 0.16, "hairs": 0.07}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 0.85}),
@@ -264,7 +264,7 @@ register_preset(Preset(
         ("dust", {"density": 0.12, "hairs": 0.04}),
         ("projection", {"shutter_flicker": 0.04, "keystone": 0.0, "ambient_lift": 0.02,
                         "screen_gain_falloff": 0.12}),
-        ("framing", {"aspect": "2.35", "mode": "box", "edge_soft": 0.003}),
+        ("framing", {"aspect": "source", "mode": "box", "edge_soft": 0.003}),
     ],
     audio=[
         ("a_analog_dub", {"format": "reel_15ips", "generations": 1,
@@ -314,7 +314,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.72, "splice_bump": 0.45}),
         ("flicker", {"amount": 0.07, "color_flicker": 0.05}),
         ("dust", {"density": 0.28, "hairs": 0.12}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -329,7 +329,7 @@ register_preset(Preset(
                 video={"balance.warmth": 0.23, "halation.strength": 0.52, "optics.diffusion": 0.24},
                 audio={"a_room.mix": 0.18, "a_room.decay_s": 0.9}),
         Variant("television-print", "Television Print", "A softer 4:3 element with faded dye, extra dust and reduced optical bandwidth.",
-                video={"framing.aspect": "4:3", "fade.amount": 0.22, "optics.soft_focus": 0.22,
+                video={"framing.aspect": "source", "fade.amount": 0.22, "optics.soft_focus": 0.22,
                        "dust.density": 0.55},
                 audio={"a_optical_track.high_hz": 5800.0, "a_optical_track.cell_noise": -46.0}),
     ],
@@ -362,7 +362,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.12, "profile": "eastman_pink", "bloom_whites": 0.12}),
         ("gate_weave", {"amount": 0.92, "splice_bump": 0.6}),
         ("dust", {"density": 0.34, "hairs": 0.14}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -373,7 +373,7 @@ register_preset(Preset(
     variants=[
         Variant("camera-original", "Camera Original Scan", "The two-perf frame before the anamorphic printer generation, with cleaner dye and tighter grain.",
                 video={"optical_composite.softness": 0.05, "grain.amount": 0.36,
-                       "fade.amount": 0.0, "framing.aspect": "1.85"}),
+                       "fade.amount": 0.0, "framing.aspect": "source"}),
         Variant("drive-in-copy", "Drive-In Copy", "A road-worn scope print with more grain, faded dye and a louder optical cell.",
                 video={"grain.amount": 0.62, "fade.amount": 0.28, "gate_weave.amount": 1.45,
                        "dust.density": 0.72},
@@ -409,7 +409,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.52, "splice_bump": 0.35}),
         ("flicker", {"amount": 0.05, "color_flicker": 0.04}),
         ("dust", {"density": 0.2, "hairs": 0.08}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -458,7 +458,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.16, "profile": "eastman_pink", "bloom_whites": 0.2}),
         ("flicker", {"amount": 0.2, "color_flicker": 0.45, "spatial": 0.28}),
         ("gate_weave", {"amount": 1.0, "splice_bump": 0.7}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_analog_dub", {"format": "reel_75ips", "generations": 3,
@@ -509,7 +509,7 @@ register_preset(Preset(
         ("dust", {"density": 0.28, "hairs": 0.12}),
         ("scratches", {"count": 1, "transient_rate": 0.35}),
         ("vignette", {"amount": 0.28, "softness": 0.72}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_analog_dub", {"format": "reel_15ips", "generations": 2,
@@ -559,7 +559,7 @@ register_preset(Preset(
         ("dust", {"density": 0.3, "hairs": 0.14}),
         ("scratches", {"count": 1, "transient_rate": 0.4}),
         ("vignette", {"amount": 0.42, "softness": 0.68}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),

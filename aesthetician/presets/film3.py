@@ -35,7 +35,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 0.8, "splice_bump": 0.4}),
         ("dust", {"density": 0.25, "hairs": 0.15}),
         ("vignette", {"amount": 0.28, "softness": 0.55}),
-        ("framing", {"aspect": "4:3", "mode": "box", "corner_radius": 0.02}),
+        ("framing", {"aspect": "source", "mode": "box", "corner_radius": 0.02}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 6000.0}),
@@ -86,7 +86,7 @@ register_preset(Preset(
         ("dust", {"density": 0.4, "hairs": 0.3}),
         ("light_leak", {"amount": 0.35, "hue": "warm", "frequency": 0.8, "constant": 0.06}),
         ("vignette", {"amount": 0.4, "softness": 0.6}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 6000.0}),
@@ -135,7 +135,7 @@ register_preset(Preset(
         ("gate_weave", {"amount": 1.2, "splice_bump": 0.8}),
         ("dust", {"density": 0.3, "hairs": 0.2}),
         ("vignette", {"amount": 0.22, "softness": 0.6}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 100.0, "high_hz": 7000.0}),
@@ -186,7 +186,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.0, "profile": "eastman_pink"}),
         ("gate_weave", {"amount": 0.25, "splice_bump": 0.2}),
         ("dust", {"density": 0.12, "hairs": 0.05}),
-        ("framing", {"aspect": "2.35", "mode": "box", "edge_soft": 0.003}),
+        ("framing", {"aspect": "source", "mode": "box", "edge_soft": 0.003}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 30.0, "high_hz": 14000.0}),
@@ -241,7 +241,7 @@ register_preset(Preset(
         ("scratches", {"count": 2, "transient_rate": 1.0}),
         ("dust", {"density": 0.35, "hairs": 0.25}),
         ("vignette", {"amount": 0.28, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
         ("projection", {"shutter_flicker": 0.2, "ambient_lift": 0.2, "keystone": 0.02}),
     ],
     audio=[
@@ -298,7 +298,7 @@ register_preset(Preset(
         ("scratches", {"count": 1, "transient_rate": 0.8}),
         ("dust", {"density": 0.35, "hairs": 0.25}),
         ("vignette", {"amount": 0.3, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
         ("projection", {"shutter_flicker": 0.22, "ambient_lift": 0.22}),
     ],
     audio=[
@@ -353,7 +353,7 @@ register_preset(Preset(
         ("chroma_dv", {"enabled": False, "ratio": "4:1:1", "edge_sharpen": 0.35}),
         ("interlace", {"enabled": False, "combing": 0.5, "twitter": 0.3}),
         ("vignette", {"amount": 0.3, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 80.0, "high_hz": 9000.0}),
@@ -406,7 +406,7 @@ register_preset(Preset(
         ("ntsc", {"enabled": False, "strength": 0.7, "luma_bw": 3.2, "chroma_bw": 0.7,
                   "phase_noise": 2.0, "dot_crawl": 0.3, "rainbow": 0.25}),
         ("vignette", {"amount": 0.25, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
         ("projection", {"shutter_flicker": 0.18, "ambient_lift": 0.15}),
     ],
     audio=[
@@ -460,7 +460,7 @@ register_preset(Preset(
         ("flicker", {"amount": 0.15, "character": "projector"}),
         ("dust", {"density": 0.3, "hairs": 0.2}),
         ("vignette", {"amount": 0.28, "softness": 0.6}),
-        ("framing", {"aspect": "1.37", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
         ("projection", {"shutter_flicker": 0.2, "ambient_lift": 0.18}),
     ],
     audio=[
@@ -516,7 +516,7 @@ register_preset(Preset(
         ("dust", {"density": 0.4, "hairs": 0.3}),
         ("light_leak", {"amount": 0.3, "hue": "warm", "frequency": 0.5, "constant": 0.06}),
         ("vignette", {"amount": 0.4, "softness": 0.6}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 120.0, "high_hz": 5500.0}),

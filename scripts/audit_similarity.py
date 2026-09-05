@@ -107,6 +107,18 @@ def new_ids() -> set[str]:
             continue
         src = open(full).read()
         ids.update(re.findall(r'^\s*id="([a-z0-9\-]+)"', src, flags=re.M))
+    # Editing a default in a legacy module does not make its presets new.
+    # Use the same literal/positional parser as the introduction-date index.
+    from scripts.gen_introduced import _ids_in
+    base_files = subprocess.run(["git", "ls-tree", "-r", "--name-only", "main", "--",
+                                 "aesthetician/presets"], cwd=ROOT, capture_output=True, text=True)
+    for path in base_files.stdout.splitlines():
+        if not path.endswith(".py") or os.path.basename(path).startswith("_"):
+            continue
+        source = subprocess.run(["git", "show", f"main:{path}"], cwd=ROOT,
+                                capture_output=True, text=True)
+        if source.returncode == 0:
+            ids -= _ids_in(source.stdout)
     return ids
 
 

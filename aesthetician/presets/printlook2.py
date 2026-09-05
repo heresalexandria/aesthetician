@@ -378,7 +378,7 @@ register_preset(Preset(
         ("fade", {"amount": 0.16, "profile": "neutral", "bloom_whites": 0.35}),
         ("vignette", {"amount": 0.3, "softness": 0.8, "radius": 0.95}),
         ("paper_texture", {"amount": 0.03, "scale": 0.9}),
-        ("framing", {"aspect": "1:1", "mode": "box", "matte_gray": 0.25,
+        ("framing", {"aspect": "source", "mode": "box", "matte_gray": 0.25,
                      "edge_soft": 0.002}),
     ],
     audio=[
@@ -420,7 +420,7 @@ register_preset(Preset(
                    "stock": "push_process", "layers": "color_neg"}),
         ("fade", {"amount": 0.05, "profile": "neutral", "bloom_whites": 0.2}),
         ("vignette", {"amount": 0.48, "radius": 0.66, "softness": 0.55}),
-        ("framing", {"aspect": "1:1", "mode": "box", "matte_gray": 0.25,
+        ("framing", {"aspect": "source", "mode": "box", "matte_gray": 0.25,
                      "edge_soft": 0.002}),
     ],
     audio=[
@@ -432,7 +432,7 @@ register_preset(Preset(
         Variant("disposable-camera-1998", "Disposable Camera",
                 "The cardboard one from the chemist: grainier, greener, and not square.",
                 video={"grain.enabled": True, "saturation.amount": 1.15,
-                       "balance.warmth": -0.05, "framing.aspect": "1.85"}),
+                       "balance.warmth": -0.05, "framing.aspect": "source"}),
         Variant("flash-failed", "Flash Did Not Fire",
                 "Nine dark squares out of ten, and one of them is somehow the good one.",
                 video={"tone.exposure": -0.5, "vignette.amount": 0.55,

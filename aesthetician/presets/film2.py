@@ -40,7 +40,7 @@ register_preset(Preset(
         ("dust", {"density": 1.0, "size": 1.5, "hairs": 0.7}),
         ("frame_damage", {"splice_skip_rate": 2.5, "blotch_rate": 1.5, "static_flash": 6.0}),
         ("vignette", {"amount": 0.62, "softness": 0.45, "roundness": 0.95}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.02}),
+        ("framing", {"aspect": "source", "corner_radius": 0.02}),
     ],
     audio=_silent_audio(level=-26.0, hum_hz=50),
     variants=[
@@ -75,7 +75,7 @@ register_preset(Preset(
         ("dust", {"density": 0.8, "hairs": 0.4}),
         ("scratches", {"count": 2, "transient_rate": 1.0}),
         ("vignette", {"amount": 0.5, "softness": 0.55}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -117,7 +117,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "transient_rate": 1.2}),
         ("frame_damage", {"splice_skip_rate": 1.5, "blotch_rate": 0.8}),
         ("vignette", {"amount": 0.5, "softness": 0.55}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_silent_audio(level=-28.0, hum_hz=50),
     variants=[
@@ -152,7 +152,7 @@ register_preset(Preset(
         ("dust", {"density": 0.9, "hairs": 0.5}),
         ("scratches", {"count": 2, "transient_rate": 1.0}),
         ("vignette", {"amount": 0.55, "softness": 0.55}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.02}),
+        ("framing", {"aspect": "source", "corner_radius": 0.02}),
     ],
     audio=_silent_audio(machine="proj_8mm", level=-25.0, hum_hz=50, hum_db=-52.0),
     variants=[
@@ -184,7 +184,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 2.0}),
         ("frame_damage", {"splice_skip_rate": 3.0, "slip_rate": 1.0}),
         ("vignette", {"amount": 0.45, "softness": 0.6}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_silent_audio(level=-27.0),
     variants=[
@@ -215,7 +215,7 @@ register_preset(Preset(
         ("scratches", {"count": 4, "transient_rate": 1.5}),
         ("frame_damage", {"splice_skip_rate": 1.5, "blotch_rate": 0.8}),
         ("vignette", {"amount": 0.4}),
-        ("framing", {"aspect": "1.37"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 200.0, "high_hz": 4500.0}),
@@ -255,7 +255,7 @@ register_preset(Preset(
         ("scratches", {"count": 1, "transient_rate": 0.8}),
         ("light_leak", {"constant": 0.06, "frequency": 0.3}),
         ("vignette", {"amount": 0.42, "softness": 0.6}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=_silent_audio(level=-27.0),
     variants=[
@@ -444,7 +444,7 @@ register_preset(Preset(
         ("dust", {"density": 0.3, "hairs": 0.16}),
         ("scratches", {"count": 1, "transient_rate": 0.4}),
         ("vignette", {"amount": 0.3, "softness": 0.7}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 45.0, "high_hz": 12500.0}),
@@ -497,7 +497,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "transient_rate": 2.0}),
         ("light_leak", {"amount": 0.4, "constant": 0.04, "frequency": 1.0}),
         ("vignette", {"amount": 0.38}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 50.0, "high_hz": 13000.0}),
@@ -566,7 +566,7 @@ register_preset(Preset(
         ("scratches", {"count": 3, "transient_rate": 2.0}),
         ("frame_damage", {"splice_skip_rate": 2.0, "slip_rate": 0.5}),
         ("vignette", {"amount": 0.35}),
-        ("framing", {"aspect": "4:3"}),
+        ("framing", {"aspect": "source"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 150.0, "high_hz": 5500.0}),
@@ -603,7 +603,7 @@ register_preset(Preset(
         ("frame_damage", {"splice_skip_rate": 5.0, "slip_rate": 2.0, "blotch_rate": 1.5}),
         ("plate", {"pack": "grime", "opacity": 0.3, "blend": "screen", "cycle": "hold"}),
         ("vignette", {"amount": 0.65, "softness": 0.5, "roundness": 0.85}),
-        ("framing", {"aspect": "4:3", "corner_radius": 0.03}),
+        ("framing", {"aspect": "source", "corner_radius": 0.03}),
     ],
     audio=[
         ("a_gain", {"db": -60.0}),
@@ -641,7 +641,7 @@ register_preset(Preset(
         ("dust", {"density": 0.35, "hairs": 0.25}),
         ("scratches", {"count": 1, "transient_rate": 0.5}),
         ("vignette", {"amount": 0.3}),
-        ("framing", {"aspect": "1.85", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 45.0, "high_hz": 13500.0}),

@@ -31,7 +31,7 @@ register_preset(Preset(
         ("chroma_dv", {"ratio": "4:1:1", "edge_sharpen": 0.3, "dct_blocks": 0.1}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 3500,
                        "res": "480p", "gop": 30, "passes": 1}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.5,
@@ -43,7 +43,7 @@ register_preset(Preset(
     variants=[
         Variant("standard-lens-4x3", "Standard Lens, 4:3",
                 "The anamorphic adapter stayed in the bag, so the frame comes back square.",
-                video={"framing.aspect": "4:3", "chroma_dv.edge_sharpen": 0.4}),
+                video={"framing.aspect": "source", "chroma_dv.edge_sharpen": 0.4}),
         Variant("dvd-festival-screener", "Festival Screener",
                 "Burned to a DVD-R at three in the morning and mailed to twelve programmers.",
                 video={"codec_era.enabled": True, "chroma_dv.dct_blocks": 0.16}),
@@ -77,7 +77,7 @@ register_preset(Preset(
                  "chroma_noise": 0.4, "head_switch": 0.7, "dropouts": 2.5,
                  "time_base_error": 0.28, "flagging": 0.2, "generation": 2}),
         ("interlace", {"combing": 0.4, "twitter": 0.28}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.6,
@@ -126,7 +126,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.2, "radius": 0.9}),
         ("codec_era", {"enabled": False, "codec": "mpeg2video", "kbps": 5000,
                        "res": "480p", "gop": 15, "passes": 2}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0, "order": 4}),
@@ -139,7 +139,7 @@ register_preset(Preset(
                 video={"grain.amount": 0.32, "grain.size": 1.6,
                        "grain.stock": "print_dupe", "grain.layers": "print_from_neg",
                        "grain.roughness": 0.7, "halation.enabled": True,
-                       "framing.aspect": "2.35", "framing.mode": "crop",
+                       "framing.aspect": "source", "framing.mode": "crop",
                        "sharpen.amount": 0.1}),
         Variant("dvd-2002", "DVD Transfer",
                 "Downconverted and squeezed onto a disc, mosquito noise crawling around the titles.",
@@ -170,7 +170,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.3, "radius": 0.8}),
         ("codec_era", {"enabled": False, "codec": "h264", "kbps": 900, "crf": 26,
                        "res": "480p", "gop": 60, "passes": 1}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0, "order": 4}),
@@ -212,7 +212,7 @@ register_preset(Preset(
                    "roughness": 0.95, "stock": "fine_35", "layers": "color_neg"}),
         ("halation", {"strength": 0.1, "threshold": 0.8, "radius": 0.045,
                       "tint": "warm_white"}),
-        ("framing", {"aspect": "2.35", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0, "order": 4}),
@@ -222,7 +222,7 @@ register_preset(Preset(
     variants=[
         Variant("tv-drama-16x9", "TV Drama 16:9",
                 "The same body on a premium cable series, delivered flat to the broadcaster.",
-                video={"framing.aspect": "16:9", "tone.contrast": 1.02,
+                video={"framing.aspect": "source", "tone.contrast": 1.02,
                        "halation.strength": 0.06}),
         Variant("anamorphic-2x", "Anamorphic 2x",
                 "Old scope glass on the front: oval vignette, a ghost off the aperture, flare for days.",
@@ -256,7 +256,7 @@ register_preset(Preset(
                       "tint": "warm_white"}),
         ("telecine_scan", {"pin_stability": "pin_registered", "hop_px": 0.2,
                            "scanner_stripe": 0.15, "frame_edge_crop": 0.0}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.5,
@@ -300,7 +300,7 @@ register_preset(Preset(
         ("sharpen", {"amount": 0.5, "radius": 1.2}),
         ("codec_era", {"codec": "h264", "kbps": 2800, "crf": -1,
                        "res": "native", "gop": 60, "passes": 1}),
-        ("framing", {"aspect": "16:9", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_codec_aac", {"kbps": 128, "mono": False}),
@@ -314,7 +314,7 @@ register_preset(Preset(
                        "sharpen.amount": 0.2, "tone.contrast": 0.95}),
         Variant("square-social-crop", "Square Social Crop",
                 "Cropped to a square and pushed through the app's encoder for the feed.",
-                video={"framing.aspect": "1:1", "codec_era.crf": 28,
+                video={"framing.aspect": "source", "codec_era.crf": 28,
                        "codec_era.res": "480p"},
                 audio={"a_codec_aac.kbps": 64}),
     ],
@@ -343,7 +343,7 @@ register_preset(Preset(
                   "rainbow": 0.8, "dot_crawl": 0.5, "phase_noise": 2.0}),
         ("crt", {"scan_strength": 0.25, "bloom": 0.3, "curvature": 0.05,
                  "glare": 0.15, "glare_pos": "tr"}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 3, "sr_hz": 6000.0, "antialias": False, "mix": 1.0}),
@@ -382,7 +382,7 @@ register_preset(Preset(
                   "dot_crawl": 0.4, "phase_noise": 1.6}),
         ("crt", {"scan_strength": 0.2, "bloom": 0.35, "curvature": 0.05,
                  "misconvergence": 0.5}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 8, "sr_hz": 11025.0, "antialias": False, "mix": 1.0}),
@@ -423,7 +423,7 @@ register_preset(Preset(
                   "rainbow": 0.35, "dot_crawl": 0.3, "phase_noise": 1.2}),
         ("crt", {"scan_strength": 0.22, "bloom": 0.35, "curvature": 0.05,
                  "vignette_crt": 0.15}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 3, "sr_hz": 8000.0, "antialias": False, "mix": 1.0}),
@@ -463,7 +463,7 @@ register_preset(Preset(
                   "rainbow": 0.35, "dot_crawl": 0.35, "phase_noise": 1.5}),
         ("crt", {"scan_strength": 0.22, "bloom": 0.25, "curvature": 0.04,
                  "glare": 0.12, "glare_pos": "tl"}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bitcrush", {"bits": 8, "sr_hz": 11025.0, "antialias": True, "mix": 1.0}),
@@ -504,7 +504,7 @@ register_preset(Preset(
                           "drop_p": 0.0, "freeze_p": 0.3, "kbps": 500, "gop": 120}),
         ("lcd_screen", {"grid": 0.08, "scale": 3, "response_smear": 0.3,
                         "backlight_bleed": 0.12, "viewing_angle": 0.1}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_codec_mp3", {"kbps": "32", "mono": False}),

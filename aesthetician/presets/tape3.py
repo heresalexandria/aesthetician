@@ -36,7 +36,7 @@ register_preset(Preset(
         ("interlace", {"field_order": "tff", "combing": 0.6, "twitter": 0.4}),
         ("crt", {"scan_strength": 0.12, "bloom": 0.45, "curvature": 0.04,
                  "vignette_crt": 0.12}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "broadcast_dynamic_1955", "amount": 0.6,
@@ -90,7 +90,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.6, "twitter": 0.35}),
         ("crt", {"scan_strength": 0.12, "bloom": 0.45, "misconvergence": 0.5,
                  "curvature": 0.04}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -140,7 +140,7 @@ register_preset(Preset(
                  "generation": 1}),
         ("interlace", {"combing": 0.5, "twitter": 0.25}),
         ("crt", {"scan_strength": 0.1, "bloom": 0.25, "misconvergence": 0.3}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_analog_dub", {"format": "reel_15ips", "generations": 1,
@@ -190,7 +190,7 @@ register_preset(Preset(
                  "time_base_error": 0.25, "flagging": 0.2, "generation": 2}),
         ("interlace", {"combing": 0.5, "twitter": 0.28}),
         ("crt", {"scan_strength": 0.09, "bloom": 0.2, "misconvergence": 0.18}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "lavalier_1972", "amount": 0.6,
@@ -242,7 +242,7 @@ register_preset(Preset(
                  "flagging": 0.25, "generation": 2}),
         ("interlace", {"combing": 0.5, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.1, "bloom": 0.24}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0, "order": 4}),
@@ -287,7 +287,7 @@ register_preset(Preset(
                  "head_switch": 0.7, "dropouts": 2.0, "time_base_error": 0.28,
                  "flagging": 0.2, "generation": 2}),
         ("interlace", {"combing": 0.5, "twitter": 0.15}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_bandlimit", {"low_hz": 20.0, "high_hz": 20000.0, "order": 4}),
@@ -298,7 +298,7 @@ register_preset(Preset(
     variants=[
         Variant("anamorphic-16x9", "Anamorphic 16:9",
                 "The late-nineties widescreen delivery, squeezed on tape and unsqueezed on playout.",
-                video={"framing.aspect": "16:9", "sharpen.amount": 0.2}),
+                video={"framing.aspect": "source", "sharpen.amount": 0.2}),
         Variant("vhs-dub", "VHS Screener Dub",
                 "The same master struck to tape for people who do not own a digital deck.",
                 video={"vhs.enabled": True, "chroma_dv.dct_blocks": 0.16,
@@ -333,7 +333,7 @@ register_preset(Preset(
                        "field_mode": "interlaced_tff"}),
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.09, "bloom": 0.18}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "shotgun_1975", "amount": 0.5,
@@ -382,7 +382,7 @@ register_preset(Preset(
         ("timestamp", {"style": "camcorder_orange", "corner": "br",
                        "date_format": "mon_d_yyyy", "start": "1999-07-04 15:22:10",
                        "opacity": 0.9, "glow": 0.5, "flicker": 0.2}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "camcorder_1994", "amount": 0.7,
@@ -434,7 +434,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.12, "bloom": 0.4, "misconvergence": 0.6,
                  "curvature": 0.03}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -484,7 +484,7 @@ register_preset(Preset(
                  "head_beat": 0.2, "interchange": 0.3}),
         ("interlace", {"combing": 0.5, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.11, "bloom": 0.35, "misconvergence": 0.4}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_mono", {"amount": 1.0}),
@@ -544,7 +544,7 @@ register_preset(Preset(
                  "time_base_error": 0.3, "flagging": 0.2, "tracking_error": 0.06}),
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.11, "bloom": 0.35, "misconvergence": 0.45}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "camcorder_1994", "amount": 0.9,
@@ -602,7 +602,7 @@ register_preset(Preset(
         ("interlace", {"combing": 0.55, "twitter": 0.3}),
         ("crt", {"scan_strength": 0.12, "bloom": 0.58, "beam_bloom": 0.5,
                  "glass_glow": 0.25}),
-        ("framing", {"aspect": "4:3", "mode": "box"}),
+        ("framing", {"aspect": "source", "mode": "box"}),
     ],
     audio=[
         ("a_historical_mic", {"profile": "electret_1985", "amount": 0.9,
