@@ -62,10 +62,12 @@ body {
    shows the open file in the Finder. */
 #file-chip {
   display: flex; align-items: center; gap: 6px;
+  min-width: 0;
   font-size: 11px; color: var(--dim); background: var(--bg3);
   border: 1px solid var(--line); padding: 3px 11px; border-radius: 20px;
   -webkit-app-region: no-drag;
 }
+#file-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #file-chip:hover { color: var(--text); border-color: var(--accent-dim); }
 #file-chip:active { background: var(--bg4); }
 #file-chip .fc-ico {
@@ -128,6 +130,13 @@ body {
 }
 
 /* ── version chip + update button ─────────── */
+#creator-credit {
+  flex: 0 0 auto; white-space: nowrap; padding: 4px 0;
+  font-size: 11px; color: var(--dim); text-decoration: none; border-radius: 3px;
+  -webkit-app-region: no-drag;
+}
+#creator-credit:hover, #creator-credit:focus-visible { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+#creator-credit:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #btn-version {
   flex: 0 0 auto;
   padding: 4px 11px 5px; border-radius: 20px;

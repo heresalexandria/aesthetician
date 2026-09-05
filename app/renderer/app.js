@@ -292,6 +292,7 @@ const videoB = $('video-b'); // original
   // wait on and no placeholder to flash. Painting it last used to leave the chip
   // empty for the ~2 s that checkEnv and schema spend spawning Python.
   setVersionChip();
+  wireCreatorCredit();
   const env = await window.aesth.checkEnv();
   if (!env.ok) {
     const w = $('env-warning');
@@ -1659,6 +1660,21 @@ async function updateButtonClicked() {
   // another About check here would race it and paint two competing answers.
   openAbout(false);
   if (U.latest && U.latest.available && U.latest.installable) await downloadUpdate();
+}
+
+function wireCreatorCredit() {
+  const link = $('creator-credit');
+  const open = async (event) => {
+    if (event.type === 'auxclick' && event.button !== 1) return;
+    event.preventDefault();
+    try {
+      if (!await window.aesth.openExternal(link.href)) throw new Error('Link unavailable');
+    } catch (_) {
+      flash('Could not open your browser', { sub: 'Visit https://heresalexandria.com/', kind: 'error' });
+    }
+  };
+  link.addEventListener('click', open);
+  link.addEventListener('auxclick', open);
 }
 
 function wireUpdates() {
