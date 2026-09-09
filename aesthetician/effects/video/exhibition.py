@@ -138,7 +138,8 @@ class ScreenSurface(Effect):
         Param("surface", "Surface", "enum", "matte_white",
               choices=("matte_white", "glass_beaded", "wall_paint", "bedsheet"), group="Surface",
               desc="matte_white is honest; glass_beaded adds a hot center and bead sparkle; wall_paint has "
-                   "roller mottle; bedsheet drapes, weaves and sags."),
+                   "roller mottle; bedsheet drapes, sags and shows its weave as a fine horizontal "
+                   "thread line."),
         Param("hotspot", "Hotspot", "float", 0.35, 0.0, 1.0, iscale=True, group="Surface",
               desc="Directional screen gain: bright center, dimmer edges (beaded screens focus it hardest)."),
         Param("keystone_v", "Keystone", "float", 0.0, -0.2, 0.2, group="Geometry",
@@ -285,7 +286,7 @@ class RearProjectionTV(Effect):
         Param("hotspot", "Fresnel Hotspot", "float", 0.5, 0.0, 1.0, iscale=True, group="RPTV",
               desc="Strong center brightness with steep falloff - the fresnel only aims at one couch."),
         Param("screen_louvre", "Louvres", "float", 0.35, 0.0, 1.0, iscale=True, group="RPTV",
-              desc="Fine vertical lenticular line texture of the projection screen."),
+              desc="Fine vertical lenticular stripes of the projection screen."),
     )
 
     def prepare(self, ctx: Context) -> None:
