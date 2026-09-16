@@ -53,7 +53,8 @@ class Halftone(Effect):
     label = "Halftone Print"
     kind = "frame"
     desc = (
-        "Printed reproduction with real rotated dot screens: single 45° "
+        "Printed reproduction with real rotated dot screens (a regular dot "
+        "lattice that reads as rows of lines at coarse rulings): single 45° "
         "newspaper screen, four-color comic CMYK with genuine rosettes, or a "
         "fine magazine screen - with paper tint, dot gain and CMYK plate "
         "misregistration."
@@ -66,7 +67,9 @@ class Halftone(Effect):
                    "magazine_fine = tighter screen on coated stock."),
         Param("lpi", "Screen Ruling", "float", 45.0, 20.0, 120.0, unit="lpi", group="Screen",
               desc="Relative screen frequency (frame ≈ a 6-inch-tall page). "
-                   "Low = chunky pop-art dots, high = tight magazine rosettes."),
+                   "Low = chunky pop-art dots in visible rows (scanline-like at the coarsest "
+                   "rulings), high = tight magazine rosettes. The screen has no strength "
+                   "knob: switch the effect off to lose it."),
         Param("paper", "Paper & Bleed", "float", 0.35, 0.0, 1.0, group="Paper",
               desc="Paper tint plus ink bleed (dot gain): dots swell and soften "
                    "into the stock the way ink spreads on newsprint."),
@@ -396,7 +399,7 @@ class Microfilm(Effect):
               desc="The projection lamp's glare blob drifting around the screen."),
         Param("scratches_scan", "Transport Scratches", "float", 0.3, 0.0, 1.0, iscale=True,
               group="Reader",
-              desc="Fine horizontal scratches from the reader's rollers, riding "
+              desc="Fine horizontal scratch lines from the reader's rollers, riding "
                    "the film with a faint shimmer."),
         Param("frame_border", "Frame Border", "float", 0.4, 0.0, 1.0, iscale=True,
               group="Film",

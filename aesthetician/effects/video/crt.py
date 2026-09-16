@@ -33,14 +33,18 @@ class Interlace(Effect):
     label = "Interlace"
     kind = "frame"
     desc = ("Field-based rendering: alternate scanlines come from the previous frame, so motion "
-            "combs into mice teeth; optional line twitter on fine horizontal detail.")
+            "combs into mice teeth; optional line twitter on fine horizontal detail. The comb "
+            "reads as scanlines on anything moving; Combing at 0, or the effect switched off, "
+            "gives a progressive picture.")
     PARAMS = (
         Param("field_order", "Field Order", "enum", "tff", choices=("tff", "bff"), group="Fields",
               desc="Which field is newer: top-field-first (most tape formats) or bottom-field-first (DV)."),
         Param("combing", "Combing", "float", 1.0, 0.0, 1.0, group="Fields", iscale=True,
-              desc="How fully the stale field shows through - the serrated edges on anything moving."),
+              desc="How fully the stale field shows through - the serrated scanline edges on anything "
+                   "moving. 0 leaves motion clean."),
         Param("twitter", "Line Twitter", "float", 0.25, 0.0, 1.0, group="Fields", iscale=True,
-              desc="Interlace flicker on sharp horizontal edges: one-line shimmer alternating every frame."),
+              desc="Interlace flicker on sharp horizontal edges: a one-scanline shimmer alternating "
+                   "every frame."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -91,10 +95,12 @@ class CRT(Effect):
             "curvature with dark rounded corners, beam misconvergence and tube-edge vignette.")
     PARAMS = (
         Param("scan_strength", "Scanlines", "float", 0.0, 0.0, 1.0, group="Raster", iscale=True,
-              desc="Darkened gaps between scan rows; strength of the visible line structure."),
+              desc="Darkened gaps between scan rows; strength of the visible line structure. "
+                   "0 removes the scanlines entirely."),
         Param("phosphor_mask", "Phosphor Mask", "enum", "none", choices=("none", "grille", "dots"),
               group="Raster",
-              desc="RGB substructure of the tube face: aperture-grille stripes or shadow-mask dots."),
+              desc="RGB substructure of the tube face: aperture-grille stripes or shadow-mask dots "
+                   "(the dot mask staggers every other row, a fine brick-pattern comb)."),
         Param("mask_scale", "Mask Pitch", "float", 2.0, 1.0, 8.0, unit="px", group="Raster",
               desc="Width of one phosphor stripe; keep small and subtle to avoid moiré."),
         Param("mask_strength", "Mask Strength", "float", 0.25, 0.0, 1.0, group="Raster",

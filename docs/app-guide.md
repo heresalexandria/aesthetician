@@ -75,6 +75,7 @@ holding the key runs the catalog past the player.
 | **Space** | play / pause the preview |
 | **B** (hold) | show the untreated original, like holding A/B |
 | **/** or **⌘F** | focus the preset search |
+| **⌘⇧F** | focus the control search in the parameter pane |
 | **Esc** | close the exports panel |
 
 ## Working with clips: sessions and tabs
@@ -436,6 +437,41 @@ the Layers panel - and the switches ride saved stacks and customs. On the CLI
 the same controls are
 `--set <effect>.enabled=false` per effect, or `"picture": false` /
 `"sound": false` on a layer in `--layers`.
+
+### Finding a control
+
+The pane can run to a hundred rows across a dozen collapsed cards, and what
+you are looking at does not always answer to the name you would guess. The
+line structure you want to switch off might be **CRT Display → Scanlines**, or
+it might be **Interlace → Combing**, whose only mention of scanlines is in its
+tooltip. So the pane has a search of its own, in the box above the effect
+stack (**⌘⇧F** puts the cursor there).
+
+- Type a word and the pane narrows to the controls it lands on, every card it
+  touches held open and the hit lit up in the label. Every word has to land,
+  so `scan` finds **Scanlines** and `crt bloom` narrows to the tube's bloom
+  knobs. A word that lands on an effect's own name opens the whole card. The
+  `--set` path the tooltip prints works as typed: `crt.scan_strength`.
+- Names are always matched: the label, the `--set` name, the group heading and
+  the effect's name. Click **+ descriptions** and the tooltips count too - each
+  control's explanation, its dropdown options and the effect's own summary. A
+  row or card found that way shows the sentence it was found in, with the word
+  marked, so nothing sits there answering to a word it does not display.
+- When a name search finds nothing, the pane says so and offers the description
+  search with a count of what it would turn up, plus **Clear search**.
+- The tooltips name the look-alikes. Horizontal line structure is the classic
+  case: the knob called **Scanlines** lives on CRT Display, but far more
+  presets draw lines from Interlace combing, an LCD pixel grid, NTSC dot
+  crawl, DX venetian bars or a coarse halftone screen, and several of those
+  are on by default. Search `scanline` with descriptions on and each of them
+  turns up, its tooltip saying what it draws and which knob removes it (or
+  that only the effect's power switch does).
+- The query stays put while you switch presets, variants and layers. Type it
+  once, then walk the library with **↑ / ↓** (they work from this box too) and
+  watch which effect carries that control in each aesthetic. In a stack, a
+  count line names the other layers the word lands in; click one to jump
+  there.
+- **Escape** in the box clears it and the stack folds back exactly as it was.
 
 ### On-screen text and dates
 

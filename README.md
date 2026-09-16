@@ -41,6 +41,7 @@ It is not a filter pack. Every aesthetic is a physically-motivated simulation of
 - **Preview, tuned to your patience.** Pick the preview's length (2 to 8 s) and resolution (25 to 100%); exports always render full quality. Pause the loop when it gets distracting.
 - **Keyboard-friendly.** ⌘O open, ⌘E export, ↑/↓ through the list, Space play/pause, hold B for the original, / to search.
 - **Hover tooltips on every knob.** What the parameter physically models, its range, and the `--set` path to reach it from the CLI.
+- **Find any control by name.** A search box above the effect stack narrows the pane to the knobs your words land on, cards held open, hits lit up. Switch on **+ descriptions** to search the tooltips too, for the cases where the thing on screen is not called what you would guess. The query stays as you walk the library with ↑/↓.
 - **Type precise values.** Every numeric knob has an editable field: Enter or Tab applies, Escape cancels, and reset restores the preset. Inactive settings explain which mode enables them.
 - **Two master dials.** **Intensity** for damage, warping and glow; **Texture** for grain and noise alone, so a look can go completely clean without losing its colour and character.
 - **Deterministic.** Same seed, same render, every time. Roll the dice for a different take on the same aesthetic.

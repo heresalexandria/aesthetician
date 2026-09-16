@@ -357,6 +357,11 @@ class FakeElement extends FakeNode {
     return n;
   }
   appendChild(n) {
+    // A fragment empties itself into its new parent, the way the real one does.
+    if (n && n.localName === '#document-fragment') {
+      for (const c of [...n.childNodes]) this.appendChild(c);
+      return n;
+    }
     n = this._adopt(n);
     this.childNodes.push(n);
     n.parentNode = this;
@@ -560,6 +565,7 @@ class FakeDocument extends FakeEventTarget {
   }
   createElement(tag) { return new FakeElement(this, tag); }
   createTextNode(t) { return new FakeText(this, t); }
+  createDocumentFragment() { return new FakeElement(this, '#document-fragment'); }
   createRange() { return { selectNodeContents() {} }; }
   getElementById(id) {
     return this.documentElement._descendants().find((el) => el.getAttribute('id') === id) || null;
