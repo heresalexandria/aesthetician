@@ -926,6 +926,13 @@ input[type="checkbox"] { accent-color: var(--accent); }
   background: var(--accent); box-shadow: 0 0 6px rgba(139,92,246,.8);
 }
 .effect-head .e-text + .e-tweaks { margin-left: 6px; }
+/* "off in this preset": the recipe's own choice, said out loud so a switched-off
+   pass never reads as something the app lost on the way in. */
+.effect-head .e-recipe-off {
+  flex: 0 0 auto; font-size: 9px; letter-spacing: .6px; font-weight: 600;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap;
+}
+.effect-head .e-recipe-off.hidden { display: none; }
 /* The power switch sits hard right, after any badges. It is the one control in
    the card that decides whether the rest of them do anything. */
 .effect-head .e-power { margin-left: auto; flex: 0 0 auto; cursor: pointer; }

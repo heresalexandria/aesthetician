@@ -239,7 +239,11 @@ function newSession(info) {
     previewT: Math.max((info.duration - G.duration) / 2, 0),
     treatedSrc: null,
     originalSrc: null,
-    originalT: null,
+    originalKey: null,   // the window the original was cut for: start, length, scale
+    // What the preview on file is a preview *of* (previewKeyFor). Coming back
+    // to the tab compares it with the spec as it stands now: a match is shown
+    // from cache, anything else is rendered again.
+    previewKey: null,
     // Filmstrip timeline state. The strip is a property of the file alone, so
     // it is fetched once per session; the event plan depends on every render
     // knob, so it is cached by the exact layer spec that asked for it.
@@ -252,6 +256,7 @@ function newSession(info) {
     // rather than per screen, so this is what keeps an older render that lands
     // late from overwriting a newer one behind the user's back.
     previewJob: null,
+    previewJobKey: null, // the spec that render is for, so a returning tab can adopt it
   };
   for (const key of LAYER_FIELDS) {
     Object.defineProperty(sess, key, {
@@ -371,7 +376,14 @@ function activateSession(id) {
   if (!sess) return;
   G.activeId = id;
   state = sess;
-  G.activeJob = null;              // any in-flight preview belongs to the old tab
+  /* Whatever was on its way to the screen belonged to the tab being left: the
+     job whose progress the overlay reported, the overlay itself, and a knob
+     debounce still counting down. That tab keeps its own bookkeeping on its
+     session - `previewJob` and what it is for - so a render that lands after
+     this is still recorded there, and picked up again on return. */
+  G.activeJob = null;
+  clearTimeout(previewTimer);
+  showRenderOverlay(false);
   // The editor was showing the last tab's timeline. Closed before anything is
   // rebuilt, so a pane that wants to open it for *this* tab still can.
   if (damageEditorOpen()) closeDamageEditor();
@@ -407,9 +419,18 @@ function activateSession(id) {
   buildParamPane();
   refreshCaptionLaunch();   // the button's count belongs to this tab
 
-  // Restore this tab's already-rendered preview if it has one; the files live in
-  // the preview cache, so switching back is instant and costs no re-render.
+  /* Put back whatever this tab last rendered - the files live in the preview
+     cache, so that costs nothing - and then ask whether it is still the truth.
+     A preview is a preview of a spec, and the spec can have moved on since: a
+     knob turned and the tab left inside the debounce, or a render that another
+     tab's render killed on its way. The file alone cannot tell those apart
+     from a tab that is simply current, and trusting it used to show a stale
+     clip with no render coming, as if the change had never happened. So the
+     key the preview was rendered from is held against the key the tab would
+     render now, and only a match is left alone. */
   hideStill();   // any stand-in on screen belongs to the tab being left
+  const key = previewKeyFor(sess);
+  const fresh = key !== null && !!sess.treatedSrc && !!sess.originalSrc && sess.previewKey === key;
   if (sess.treatedSrc && sess.originalSrc) {
     $('player-empty').classList.add('hidden');
     setVideo(videoA, sess.treatedSrc);
@@ -421,7 +442,17 @@ function activateSession(id) {
     $('player-empty').textContent = sess.presetId
       ? 'Rendering this clip…'
       : (sess.audioSource ? 'Pick an aesthetic to hear it applied' : 'Pick an aesthetic to render a preview');
-    if (sess.presetId) schedulePreview(true);
+  }
+  if (!fresh) {
+    if (key !== null && sess.previewJob && sess.previewJobKey === key) {
+      // The render this tab needs is already under way: it was started here
+      // and outlived a trip to another tab. Adopt it rather than killing it
+      // and starting the same work over.
+      G.activeJob = sess.previewJob;
+      showRenderOverlay(true, 'rendering preview…', 0);
+    } else if ((sess.layers || []).some((l) => l.presetId)) {
+      schedulePreview(true);   // renders, or says that everything is switched off
+    }
   }
   // The timeline belongs to the tab: repaint its cached strip and plan, and
   // fetch whichever of the two this session never loaded. Not awaited, because
@@ -742,6 +773,10 @@ async function saveCustom() {
     intensity: state.intensity,
     texture: state.texture,
     seed: state.seed,
+    // The section switches are knobs too. Only when off, so customs saved
+    // before the switches existed compare equal to a fresh capture.
+    ...(state.picture === false ? { picture: false } : {}),
+    ...(state.sound === false ? { sound: false } : {}),
     created: Date.now(),
   };
   G.customs.push(custom);
@@ -772,6 +807,8 @@ function layerFromCustom(c) {
     seed: typeof c.seed === 'number' ? c.seed : 1 + Math.floor(Math.random() * 99999),
     intensity: typeof c.intensity === 'number' ? c.intensity : 1,
     texture: typeof c.texture === 'number' ? c.texture : 1,
+    picture: c.picture !== false,
+    sound: c.sound !== false,
   }));
 }
 
@@ -788,6 +825,8 @@ function applyCustom(cid, opts = {}) {
   migrateCues(activeLayer(state));
   state.intensity = typeof c.intensity === 'number' ? c.intensity : 1;
   state.texture = typeof c.texture === 'number' ? c.texture : 1;
+  state.picture = c.picture !== false;
+  state.sound = c.sound !== false;
   if (typeof c.seed === 'number') state.seed = c.seed;
   syncMasterDials();
   syncSelection();
@@ -846,6 +885,8 @@ function customDrifted() {
   const c = state.customId ? customById(state.customId) : null;
   if (!c) return false;
   return (c.variant || null) !== state.variant
+    || (c.picture !== false) !== (state.picture !== false)
+    || (c.sound !== false) !== (state.sound !== false)
     || c.intensity !== state.intensity
     || c.texture !== state.texture
     || c.seed !== state.seed
@@ -2013,7 +2054,9 @@ function applyRecipe(cid, rid, opts = {}) {
   if (!r) return;
   const usable = r.layers.filter((id) => G.schema.presets[id]);
   if (!usable.length) return;
-  state.layers = usable.map((id) => layerFromSaved({ base: id }));
+  // A recipe carries no dials of its own, so its layers start where a fresh
+  // one does; only saves from before the texture dial existed rest at 1.0.
+  state.layers = usable.map((id) => layerFromSaved({ base: id, intensity: 1, texture: DEFAULT_TEXTURE }));
   state.activeLayer = state.layers.length - 1;
   state.stackId = null;
   for (const id of usable) noteRecent(id);
@@ -3055,6 +3098,9 @@ function removeLayer(i) {
     state.activeLayer = 0;
   } else {
     layers.splice(i, 1);
+    // The selection is a layer, not a row number: taking one out from below
+    // it moves it up a row, and the selection has to follow.
+    if (i < state.activeLayer) state.activeLayer -= 1;
     state.activeLayer = Math.min(state.activeLayer, layers.length - 1);
   }
   buildLayersPanel();
@@ -3074,7 +3120,11 @@ function addLayer(pid, opts = {}) {
   if (isCaptionStyle(pid) && captionLayer(state)) { applyCaptionStyle(pid, opts); return; }
   const custom = isCustomId(pid) ? customById(pid) : null;
   if (isCustomId(pid) && !custom) return;   // a row for a custom that just went away
-  state.layers.push(custom ? layerFromCustom(custom) : newLayer({ presetId: pid }));
+  const layer = custom ? layerFromCustom(custom) : newLayer({ presetId: pid });
+  // A tab's one empty slot is where the first pick goes, not something to
+  // stack on top of - the same rule appendStack follows.
+  if (state.layers.length === 1 && !state.layers[0].presetId) state.layers = [layer];
+  else state.layers.push(layer);
   state.activeLayer = state.layers.length - 1;
   state.stackId = null;   // the arrangement has grown past the saved one
   buildLayersPanel();
@@ -3491,14 +3541,26 @@ function effectCard({ eid, key, params }, variantOv) {
   power.checked = !!isOn;
   power.title = isOn ? `Switch ${eff.label} off for this layer` : `Switch ${eff.label} back on`;
   power.onclick = (e) => e.stopPropagation();      // the header row toggles open
+  /* A preset can ship an effect switched off - an optional pass, there to be
+     switched on when the look wants it. Without a word from the card that
+     reads as the app having dropped something on the way in, so the header
+     says whose choice it was. It steps aside the moment the switch is on:
+     from there it is a tweak like any other. */
+  const recipeOff = document.createElement('span');
+  recipeOff.className = 'e-recipe-off';
+  recipeOff.textContent = 'off in this preset';
+  recipeOff.title = `This preset ships ${eff.label} switched off. Switch it on to add the pass.`;
+  recipeOff.classList.toggle('hidden', !(onBase === false && !isOn));
   power.onchange = () => {
     if (power.checked === onBase) delete state.sets[onPath];
     else state.sets[onPath] = power.checked;
     card.classList.toggle('off', !power.checked);
+    recipeOff.classList.toggle('hidden', !(onBase === false && !power.checked));
     power.title = power.checked ? `Switch ${eff.label} off for this layer` : `Switch ${eff.label} back on`;
     syncOverrideRow();
     schedulePreview();
   };
+  head.appendChild(recipeOff);
   head.appendChild(power);
   attachTip(head, () => ({
     title: eff.label,
@@ -3669,7 +3731,10 @@ function paramRow(path, prm, baseVal, curVal) {
       o.value = c; o.textContent = path.endsWith('.aspect') && ['source', 'none'].includes(c)
         ? (c === 'source' ? `Match source${state.file?.width ? ` (${state.file.width}×${state.file.height})` : ' video'}`
           : 'Full canvas (legacy)') : c.replaceAll('_', ' ');
-      if (c === curVal) o.selected = true;
+      // As strings: a preset can author a numeric choice as a number (hum at
+      // 50, MP3 at 128 kbps) and the engine reads it as its string, but a
+      // strict compare picked nothing and the menu showed the first choice.
+      if (String(c) === String(curVal)) o.selected = true;
       sel.appendChild(o);
     }
     sel.onchange = () => commit(sel.value);
@@ -3794,7 +3859,9 @@ function schedulePreview(immediate = false, delayMs = null) {
     if ((state.layers || []).some((l) => l.presetId)) {
       clearTimeout(previewTimer);
       state.previewJob = null;   // a render already in flight is stale on arrival
+      state.previewJobKey = null;
       state.treatedSrc = null;
+      state.previewKey = null;
       hideStill();
       videoA.removeAttribute('src'); videoA.load();
       videoB.removeAttribute('src'); videoB.load();
@@ -3833,6 +3900,46 @@ function layerSpec(sess = state) {
   }));
 }
 
+/* The request a preview is rendered from, and the key that says what it is a
+   preview *of*. The request is what goes over the wire, and what the main
+   process keys its cache on. The key keeps only what changes the picture: the
+   dials of the selected layer ride along in the request for the single-preset
+   CLI path, but `layers` already carries them for every layer, so selecting a
+   different layer must not make a current preview look stale. */
+function previewRequest(sess = state) {
+  return {
+    input: sess.file.path,
+    layers: layerSpec(sess),
+    presetId: sess.presetId,
+    variant: sess.variant,
+    sets: sess.sets,
+    seed: sess.seed,
+    intensity: sess.intensity,
+    texture: sess.texture,
+    start: sess.previewT,
+    duration: G.duration,
+    scale: G.scale,
+    crf: 19,
+    audioSource: sess.audioSource,
+    videoOnly: $('exp-video-only').checked,
+    audioOnly: $('exp-audio-only').checked,
+  };
+}
+
+function previewKey(req) {
+  return JSON.stringify({
+    input: req.input, layers: req.layers, start: req.start, duration: req.duration,
+    scale: req.scale, crf: req.crf, audioSource: req.audioSource,
+    videoOnly: req.videoOnly, audioOnly: req.audioOnly,
+  });
+}
+
+/* null when the tab has nothing to render: no file, or no live layer. */
+function previewKeyFor(sess) {
+  if (!sess.file || !sess.file.path || !liveLayers(sess).length) return null;
+  return previewKey(previewRequest(sess));
+}
+
 /* ── the paused player's first look ──────────────────────────────────
    Frame 0 of the very same render, which the engine can produce for about a
    tenth of the clip's cost because it does one frame of pixel work instead of
@@ -3866,31 +3973,16 @@ async function runPreview() {
   if (!state.file || !liveLayers(state).length) return;
   const sess = state;                    // this render belongs to THIS tab
   const jobId = `job${++G.jobCounter}`;
+  const req = { jobId, ...previewRequest(sess) };
+  const key = previewKey(req);
   G.activeJob = jobId;
   sess.previewJob = jobId;
+  sess.previewJobKey = key;
   hideStill();                           // whatever is up belongs to the last render
   showRenderOverlay(true, 'rendering preview…', 0);
   // The tick plan depends on the same state this render does, so it refreshes
   // alongside - fire and forget, the strip must never delay the preview.
   refreshTimeline();
-  const req = {
-    jobId,
-    input: state.file.path,
-    layers: layerSpec(),
-    presetId: state.presetId,
-    variant: state.variant,
-    sets: state.sets,
-    seed: state.seed,
-    intensity: state.intensity,
-    texture: state.texture,
-    start: state.previewT,
-    duration: G.duration,
-    scale: G.scale,
-    crf: 19,
-    audioSource: state.audioSource,
-    videoOnly: $('exp-video-only').checked,
-    audioOnly: $('exp-audio-only').checked,
-  };
   /* Alongside the clip rather than before it: the still is short enough that
      racing it costs the clip almost nothing, and serialising them would push
      the clip back by the whole still. Whichever lands first paints - and on a
@@ -3904,12 +3996,17 @@ async function runPreview() {
     }).catch(() => { /* the clip is the real answer; a lost still is not worth a message */ });
   }
 
+  // The untreated half of A/B is cut for exactly this window - start, length
+  // and scale - and reused only while all three hold. Matching on the start
+  // alone left a 3 s original under a 5 s treated clip once the length changed.
+  const snipKey = JSON.stringify([req.start, req.duration, req.scale]);
   try {
     const [treated, original] = await Promise.all([
       window.aesth.preview(req),
-      state.originalSrc && state.originalT === state.previewT
-        ? Promise.resolve({ output: state.originalSrc })
-        : window.aesth.snippet({ input: state.file.path, start: state.previewT, duration: G.duration, scale: G.scale, audioSource: state.audioSource }),
+      sess.originalSrc && sess.originalKey === snipKey
+        ? Promise.resolve({ output: sess.originalSrc })
+        : window.aesth.snippet({ input: req.input, start: req.start, duration: req.duration,
+          scale: req.scale, audioSource: req.audioSource }),
     ]);
     // Record the result on its own session even if the user has moved on, so
     // coming back to that tab costs nothing - but only while this is still the
@@ -3921,7 +4018,8 @@ async function runPreview() {
     if (sess.previewJob !== jobId) return;
     sess.treatedSrc = treated.output;
     sess.originalSrc = original.output;
-    sess.originalT = req.start;
+    sess.originalKey = snipKey;
+    sess.previewKey = key;
     if (sess.id !== G.activeId) return;  // a different tab is on screen now
     if (G.activeJob !== jobId) return;   // superseded by a newer render
     $('player-empty').classList.add('hidden');
@@ -3935,6 +4033,8 @@ async function runPreview() {
     if (String(err.message || '').includes('superseded')) return;
     reportFailure('Preview', err);
   } finally {
+    // Landed, failed or killed: this job is no longer in flight for its tab.
+    if (sess.previewJob === jobId) { sess.previewJob = null; sess.previewJobKey = null; }
     if (G.activeJob === jobId) showRenderOverlay(false);
     refreshCacheInfo();
   }
@@ -5538,8 +5638,13 @@ function wireShortcuts() {
     if (e.code === 'KeyB' && !e.repeat && videoA.src) G.showOriginal(true);
   });
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'KeyB' && G.activeId) G.showOriginal(false);
+    if (e.code === 'KeyB' && G.showOriginal) G.showOriginal(false);
   });
+  // The keyup never arrives if the window loses focus while B is held - a
+  // notification, a dialog, a ⌘-Tab - and the treated clip stayed hidden
+  // behind the original, which reads exactly like a preview that stopped
+  // changing. Losing the window lets go of the key.
+  window.addEventListener('blur', () => { if (G.showOriginal) G.showOriginal(false); });
 }
 
 // ── controls ────────────────────────────────────────────────────────
@@ -5874,7 +5979,9 @@ function wireControls() {
     try {
       const r = await window.aesth.cacheClear();
       // the open tabs' cached previews are gone; keep params, drop the players
-      for (const sess of G.sessions) { sess.treatedSrc = null; sess.originalSrc = null; sess.originalT = null; }
+      for (const sess of G.sessions) {
+        sess.treatedSrc = null; sess.originalSrc = null; sess.originalKey = null; sess.previewKey = null;
+      }
       videoA.removeAttribute('src'); videoB.removeAttribute('src');
       videoA.load(); videoB.load();
       $('player-empty').classList.remove('hidden');

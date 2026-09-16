@@ -34,9 +34,11 @@ const FFMPEG = process.env.AESTHETICIAN_FFMPEG
 const FFPROBE = process.env.AESTHETICIAN_FFPROBE
   || (PACKAGED ? bundled('bin', `ffprobe${EXE}`) : 'ffprobe');
 
-/* The engine reads these; child processes inherit them. */
-function childEnv() {
+/* The engine reads these; child processes inherit them. `scratch` is the
+   directory the engine stages its intermediates in - see newScratch below. */
+function childEnv(scratch = null) {
   const env = { ...process.env, AESTHETICIAN_ASSETS: ASSETS_DIR };
+  if (scratch) env.AESTHETICIAN_TMP = scratch;
   if (PACKAGED) {
     // Never let Python write .pyc into the bundle: Resources is covered by the
     // code signature, and mutating it makes macOS refuse the next launch. The
@@ -52,7 +54,7 @@ function childEnv() {
   return env;
 }
 
-const CHILD_OPTS = () => ({ cwd: PACKAGED ? RES : REPO_ROOT, env: childEnv() });
+const CHILD_OPTS = (scratch = null) => ({ cwd: PACKAGED ? RES : REPO_ROOT, env: childEnv(scratch) });
 
 /* The dev harnesses get a profile of their own, set before anything reads
    userData. `--shot-js` runs arbitrary code in the renderer, which is the point
@@ -92,9 +94,51 @@ function dropLayerSpec(req) {
   }
 }
 
+/* ── engine scratch ──────────────────────────────────────────────────────
+   Every engine process stages its intermediates in a temp directory of its
+   own (tempfile.mkdtemp in engine/render.py) and removes it in a `finally` -
+   which a SIGKILL, the way a superseded preview or a timed-out plan dies,
+   never reaches. Left in the system temp dir those orphans piled up by the
+   hundred over a week of use. So each child is handed a scratch directory
+   this process names and owns, under userData rather than $TMPDIR, as
+   AESTHETICIAN_TMP: it is removed here when the child ends however it ended,
+   and whatever a crash of *this* process leaves behind is swept on the next
+   start. The name carries our pid, so a second running instance's live
+   scratch is never mistaken for a leftover. */
+const SCRATCH_DIR = path.join(app.getPath('userData'), 'render-scratch');
+let scratchSeq = 0;
+
+function newScratch(tag) {
+  const dir = path.join(SCRATCH_DIR, `${process.pid}-${tag}-${++scratchSeq}`);
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function dropScratch(dir) {
+  if (!dir) return;
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_) { /* the sweep gets it */ }
+}
+
+function pidAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
+}
+
+function sweepScratch() {
+  let entries = [];
+  try { entries = fs.readdirSync(SCRATCH_DIR); } catch (_) { return; }
+  for (const name of entries) {
+    const pid = parseInt(name.split('-')[0], 10);
+    if (pid && pid !== process.pid && pidAlive(pid)) continue;   // another instance's, still running
+    dropScratch(path.join(SCRATCH_DIR, name));
+  }
+}
+
 let win = null;
 let previewProc = null; // superseded previews get killed
+let previewPart = null; // the half-written file it leaves, swept at the kill
 let stillProc = null;   // and so does the still that was racing alongside one
+let stillPart = null;
+let eventsProc = null;  // the one damage plan in flight; a newer request supersedes it
 let fullProc = null;    // the one whole-clip background render, see aesth:preview-full
 let fullPart = null;    // its half-written output, swept when that render is killed
 const exportProcs = new Map();
@@ -116,9 +160,11 @@ function tailOf(text, max = 8000) {
   return `…\n${nl >= 0 ? cut.slice(nl + 1) : cut}`;
 }
 
-function runCapture(args, { timeoutMs = 60000 } = {}) {
+function runCapture(args, { timeoutMs = 60000, onSpawn = null } = {}) {
+  const scratch = newScratch('cli');
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, ['-m', 'aesthetician.cli', ...args], CHILD_OPTS());
+    const p = spawn(PYTHON, ['-m', 'aesthetician.cli', ...args], CHILD_OPTS(scratch));
+    if (onSpawn) onSpawn(p);
     let out = '';
     let err = '';
     const t = setTimeout(() => { p.kill('SIGKILL'); reject(new Error('timed out')); }, timeoutMs);
@@ -127,10 +173,11 @@ function runCapture(args, { timeoutMs = 60000 } = {}) {
     p.on('close', (code) => {
       clearTimeout(t);
       if (code === 0) resolve(out);
+      else if (p.killed) reject(new Error('superseded'));
       else reject(new Error(tailOf(err) || `exit ${code}`));
     });
     p.on('error', (e) => { clearTimeout(t); reject(e); });
-  });
+  }).finally(() => dropScratch(scratch));
 }
 
 function renderArgs(req, outputPath) {
@@ -234,9 +281,9 @@ function cacheKey(req) {
   return h.digest('hex');
 }
 
-function spawnRender(args, jobId, sender, kind, output = null) {
+function spawnRender(args, jobId, sender, kind, output = null, scratch = null) {
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, args, CHILD_OPTS());
+    const p = spawn(PYTHON, args, CHILD_OPTS(scratch));
     if (kind === 'preview') previewProc = p;
     if (kind === 'export') exportProcs.set(jobId, p);
     let err = '';
@@ -281,6 +328,16 @@ function argValue(flag) {
 app.whenReady().then(() => {
   ensureCacheDir();
   sweepLayerSpecs();
+  sweepScratch();
+  /* The dev harnesses run while someone is working in another window. On
+     macOS a regular app activates itself the moment its window shows, which
+     yanks the keyboard out from under whatever they were typing; as an
+     accessory it draws its window without taking the foreground, and every
+     check the harnesses make still works against the inactive window. */
+  const HARNESS = SMOKE || Boolean(SHOT);
+  if (HARNESS && process.platform === 'darwin' && app.setActivationPolicy) {
+    app.setActivationPolicy('accessory');
+  }
   if (SMOKE) runSmoke();
   if (SHOT) runShot();
   const iconPng = path.join(__dirname, 'renderer', 'icon.png');
@@ -298,6 +355,7 @@ app.whenReady().then(() => {
     backgroundColor: '#0a0b10',
     titleBarStyle: 'hiddenInset',
     icon: iconPng,
+    show: !HARNESS,   // the harnesses show it themselves, without focus
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -312,11 +370,13 @@ app.whenReady().then(() => {
     },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  if (HARNESS) win.showInactive();
 });
 
 app.on('window-all-closed', () => {
   if (previewProc) previewProc.kill('SIGKILL');
   if (stillProc) stillProc.kill('SIGKILL');
+  if (eventsProc) eventsProc.kill('SIGKILL');
   killFullRender();
   for (const p of exportProcs.values()) p.kill('SIGKILL');
   app.quit();
@@ -399,8 +459,10 @@ async function runShot() {
       }
     }
     if (jsFile) {
-      // Give interaction checks the same keyboard modality as a real Tab user.
-      win.focus(); win.webContents.focus();
+      // Give interaction checks the same keyboard modality as a real Tab user
+      // - inside the page only, never by pulling the window in front of the
+      // one the developer is typing into.
+      win.webContents.focus();
       win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Tab' });
       win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Tab' });
       await js(fs.readFileSync(path.resolve(jsFile), 'utf8'));
@@ -433,20 +495,36 @@ ipcMain.handle('aesth:preview', async (e, req) => {
   // return without stopping it left the old render running to completion and
   // reporting back *after* the answer the user is looking at, which is one
   // knob-flick away any time a preview takes longer than the next tweak.
-  if (previewProc) { try { previewProc.kill('SIGKILL'); } catch (_) {} previewProc = null; }
+  if (previewProc) {
+    try { previewProc.kill('SIGKILL'); } catch (_) {}
+    previewProc = null;
+    // Its half-written file goes with it. Here rather than on the child's
+    // close event, which lands after the next render may already have opened
+    // the same path: the kill site is the one moment nothing is writing it.
+    if (previewPart) { try { fs.unlinkSync(previewPart); } catch (_) {} previewPart = null; }
+  }
   // The still is not this render's predecessor, it is its partner: the renderer
   // asks for both at once and the still is the half that answers first. Killing
   // it here killed it every time, roughly a millisecond after it started.
   if (fs.existsSync(output)) return { output, cached: true };
   // Any in-flight full render is for a spec the user just left, and it is stealing cores from the render they are waiting on.
   killFullRender();
-  const args = renderArgs(req, output + '.part' + ext);
+  const part = output + '.part' + ext;
+  const args = renderArgs(req, part);
+  const scratch = newScratch('preview');
+  previewPart = part;
   try {
-    await spawnRender(args, req.jobId, e.sender, 'preview');
+    await spawnRender(args, req.jobId, e.sender, 'preview', null, scratch);
+  } catch (err) {
+    // A real failure sweeps its own debris; a kill already had it swept above.
+    if (err.message !== 'superseded') { try { fs.unlinkSync(part); } catch (_) {} }
+    throw err;
   } finally {
+    if (previewPart === part) previewPart = null;
     dropLayerSpec(req);
+    dropScratch(scratch);
   }
-  fs.renameSync(output + '.part' + ext, output);
+  fs.renameSync(part, output);
   return { output, cached: false };
 });
 
@@ -475,9 +553,9 @@ function killFullRender() {
    one is invisible by design. The stdout pipe still has to drain, though -
    --json-progress keeps writing, and a full buffer would stall the engine
    mid-clip. */
-function spawnFullRender(args, part) {
+function spawnFullRender(args, part, scratch) {
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, args, CHILD_OPTS());
+    const p = spawn(PYTHON, args, CHILD_OPTS(scratch));
     fullProc = p;
     fullPart = part;
     let err = '';
@@ -517,8 +595,9 @@ ipcMain.handle('aesth:preview-full', async (_e, req) => {
   if (fs.existsSync(output)) return { output, cached: true };
   const part = output + '.part' + ext;
   const args = renderArgs(req, part);
+  const scratch = newScratch('full');
   try {
-    await spawnFullRender(args, part);
+    await spawnFullRender(args, part, scratch);
   } catch (err) {
     // Killed on purpose, by a newer full request or by an interactive preview.
     // Not an error worth a dialog: the renderer just waits for the next one.
@@ -526,6 +605,7 @@ ipcMain.handle('aesth:preview-full', async (_e, req) => {
     throw err;
   } finally {
     dropLayerSpec(req);
+    dropScratch(scratch);
   }
   fs.renameSync(part, output);
   return { output, cached: false };
@@ -537,16 +617,22 @@ ipcMain.handle('aesth:still', async (_e, req) => {
   const key = cacheKey({ ...req, kind: 'still' });
   const output = path.join(CACHE_DIR, `${key}.png`);
   const meta = `${output}.json`;
-  if (stillProc) { try { stillProc.kill('SIGKILL'); } catch (_) {} stillProc = null; }
+  if (stillProc) {
+    try { stillProc.kill('SIGKILL'); } catch (_) {}
+    stillProc = null;
+    if (stillPart) { try { fs.unlinkSync(stillPart); } catch (_) {} stillPart = null; }
+  }
   if (fs.existsSync(output) && fs.existsSync(meta)) {
     try { return { output, ...JSON.parse(fs.readFileSync(meta, 'utf8')), cached: true }; } catch (_) { /* rewrite it */ }
   }
   const part = `${output}.part.png`;
   const args = stillArgs(req, part);
+  const scratch = newScratch('still');
+  stillPart = part;
   let out = '';
   try {
     out = await new Promise((resolve, reject) => {
-      const p = spawn(PYTHON, args, CHILD_OPTS());
+      const p = spawn(PYTHON, args, CHILD_OPTS(scratch));
       stillProc = p;
       let so = '';
       let se = '';
@@ -561,10 +647,12 @@ ipcMain.handle('aesth:still', async (_e, req) => {
       p.on('error', reject);
     });
   } catch (err) {
-    try { fs.unlinkSync(part); } catch (_) { /* never written */ }
+    if (err.message !== 'superseded') { try { fs.unlinkSync(part); } catch (_) { /* never written */ } }
     throw err;
   } finally {
+    if (stillPart === part) stillPart = null;
     dropLayerSpec(req);
+    dropScratch(scratch);
   }
   const info = JSON.parse(out.trim().split('\n').pop());
   fs.renameSync(part, output);
@@ -572,14 +660,40 @@ ipcMain.handle('aesth:still', async (_e, req) => {
   return { output, exact: info.exact, cached: false };
 });
 
-ipcMain.handle('aesth:snippet', async (_e, req) => {
+/* Two tabs on one clip ask for the same cut at once; they share the one job
+   rather than racing two ffmpegs onto one path. */
+const snippetJobs = new Map();
+
+ipcMain.handle('aesth:snippet', (_e, req) => {
   const key = cacheKey({ ...req, kind: 'snippet' });
-  const output = path.join(CACHE_DIR, `${key}${req.audioSource ? '.m4a' : '.mp4'}`);
+  const ext = req.audioSource ? '.m4a' : '.mp4';
+  const output = path.join(CACHE_DIR, `${key}${ext}`);
   if (fs.existsSync(output)) return { output };
-  await runCapture(['snippet', req.input, '-o', output,
-    '--start', String(req.start ?? 0), '--duration', String(req.duration ?? 3),
-    '--scale', String(req.scale ?? 0.5)], { timeoutMs: 120000 });
-  return { output };
+  if (snippetJobs.has(key)) return snippetJobs.get(key);
+  // Cut to a .part and renamed into place once whole, so a cut that dies - a
+  // timeout on a long clip, say - cannot leave a truncated file for the
+  // existence check above to serve as the original forever after.
+  const part = `${output}.part${ext}`;
+  const job = (async () => {
+    try {
+      await runCapture(['snippet', req.input, '-o', part,
+        '--start', String(req.start ?? 0), '--duration', String(req.duration ?? 3),
+        '--scale', String(req.scale ?? 0.5)],
+        // The whole-clip cut behind the seek surface can outrun a fixed budget.
+        { timeoutMs: 120000 + Math.ceil(req.duration || 0) * 1000 });
+      fs.renameSync(part, output);
+    } catch (err) {
+      for (const f of [part, `${part}.mux.mp4`, `${part}.snip.wav`]) {
+        try { fs.unlinkSync(f); } catch (_) { /* never written */ }
+      }
+      throw err;
+    } finally {
+      snippetJobs.delete(key);
+    }
+    return { output };
+  })();
+  snippetJobs.set(key, job);
+  return job;
 });
 
 /* ── filmstrip timeline ──────────────────────────────────────────────────
@@ -589,10 +703,16 @@ ipcMain.handle('aesth:snippet', async (_e, req) => {
    the user is waiting on to redraw decoration would be exactly backwards. */
 ipcMain.handle('aesth:events', async (_e, req) => {
   const args = eventsArgs(req);
+  // A plan is a Python boot each, and only the newest can still be wanted: the
+  // renderer keeps a plan only while it matches the spec on screen. A knob
+  // turned twice used to leave two plans running to the end.
+  if (eventsProc) { try { eventsProc.kill('SIGKILL'); } catch (_) {} eventsProc = null; }
+  let proc = null;
   let out = '';
   try {
-    out = await runCapture(args, { timeoutMs: 120000 });
+    out = await runCapture(args, { timeoutMs: 120000, onSpawn: (p) => { proc = p; eventsProc = p; } });
   } finally {
+    if (eventsProc === proc) eventsProc = null;
     dropLayerSpec(req);
   }
   return JSON.parse(out.trim().split('\n').pop());
@@ -663,10 +783,12 @@ ipcMain.handle('aesth:pick-export-path', async (_e, suggestion, audioOnly = fals
 
 ipcMain.handle('aesth:export', async (e, req) => {
   const args = renderArgs(req, req.output);
+  const scratch = newScratch('export');
   try {
-    await spawnRender(args, req.jobId, e.sender, 'export', req.output);
+    await spawnRender(args, req.jobId, e.sender, 'export', req.output, scratch);
   } finally {
     dropLayerSpec(req);
+    dropScratch(scratch);
   }
   return { output: req.output };
 });
