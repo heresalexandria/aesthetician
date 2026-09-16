@@ -246,20 +246,24 @@ class CompositeColor(Effect):
     label = "Composite NTSC/PAL"
     kind = "frame"
     desc = ("Composite color encoding and receiver decode: bandlimited luma/chroma, "
-            "cross-color rainbows on fine detail, crawling subcarrier dots and hue instability.")
+            "cross-color rainbows on fine detail, crawling subcarrier dots and hue instability, "
+            "the last two alternating line to line.")
     PARAMS = (
         Param("system", "System", "enum", "ntsc", choices=("ntsc", "pal"), group="System",
-              desc="NTSC (never-twice-same-color hue jitter) or PAL (Hanover-bar line averaging)."),
+              desc="NTSC (never-twice-same-color hue jitter) or PAL (Hanover bars: hue alternating "
+                   "line to line, a faint scanline-pitch stripe on saturated color)."),
         Param("luma_bw", "Luma Bandwidth", "float", 4.2, 1.5, 6.6, unit="MHz", group="Bandwidth",
               desc="Brightness detail the channel keeps; 4.2 is broadcast NTSC, lower is softer."),
         Param("chroma_bw", "Chroma Bandwidth", "float", 1.3, 0.3, 2.2, unit="MHz", group="Bandwidth",
               desc="Color detail bandwidth; color always smears wider than brightness."),
         Param("comb", "Comb Filter", "float", 0.2, 0.0, 1.0, group="Decoder",
-              desc="0 = notch decoder (rainbow swirls on detail), 1 = 1-line comb (dot crawl at color edges)."),
+              desc="0 = notch decoder (rainbow swirls on detail), 1 = 1-line comb (hanging dots "
+                   "along scanlines at color edges)."),
         Param("rainbow", "Cross-Color", "float", 0.35, 0.0, 1.0, group="Decoder", iscale=True,
               desc="Fine luma detail leaking into the color decoder as shimmering rainbow swirls."),
         Param("dot_crawl", "Dot Crawl", "float", 0.25, 0.0, 1.0, group="Decoder", iscale=True,
-              desc="Residual subcarrier dots on colored areas that crawl upward frame by frame."),
+              desc="Residual subcarrier dots on colored areas that crawl upward frame by frame, "
+                   "alternating every scanline - a fine dot-and-line comb on saturated color."),
         Param("phase_error", "Hue Error", "float", 0.0, -45.0, 45.0, unit="°", group="Phase",
               desc="Static hue rotation, as from a mis-set tint knob or phase drift."),
         Param("phase_noise", "Hue Instability", "float", 0.8, 0.0, 12.0, unit="°", group="Phase", iscale=True,
@@ -532,7 +536,8 @@ class VHS(Effect):
         Param("sharpen", "Edge Enhance", "float", 0.35, 0.0, 1.5, group="Playback", iscale=True,
               desc="The VCR's aperture correction: crisp overshoot halos and faint ringing after vertical edges."),
         Param("luma_noise", "Luma Noise", "float", 0.35, 0.0, 1.0, group="Noise", iscale=True,
-              desc="Streaky horizontal tape noise shimmering over the brightness channel."),
+              desc="Streaky horizontal tape noise shimmering over the brightness channel - the "
+                   "fine line texture of a played tape. Texture scales it; 0 is clean."),
         Param("chroma_noise", "Chroma Noise", "float", 0.35, 0.0, 1.0, group="Noise", iscale=True,
               desc="Coarse drifting color blotches from the noisy color-under channel."),
         Param("head_switch", "Head Switching", "float", 0.7, 0.0, 1.0, group="Playback", iscale=True,
@@ -553,7 +558,7 @@ class VHS(Effect):
               desc="Copy-of-a-copy count; each dub adds softness, noise and level drift."),
         Param("azimuth_error", "Azimuth Error", "float", 0.0, 0.0, 1.0, group="Tracking", iscale=True,
               desc="Head tilted against the recording: HF detail dies and a faint woven herringbone "
-                   "shimmer rides wherever the picture is detailed."),
+                   "shimmer - a fine two-line comb grating - rides wherever the picture is detailed."),
         Param("head_beat", "Head Beat", "float", 0.0, 0.0, 1.0, group="Playback", iscale=True,
               desc="The two video heads disagreeing on chroma phase: color saturation and hue pulse "
                    "on a ~2-frame beat, most visible on flat saturated areas."),
@@ -1443,12 +1448,12 @@ class SignalRF(Effect):
         Param("ghost_alpha", "Ghost Visibility", "float", 0.25, 0.0, 0.8, group="Ghosting", iscale=True,
               desc="Opacity of the reflections; each further ghost is fainter."),
         Param("hum_bar", "Hum Bar", "float", 0.0, 0.0, 1.0, group="Interference", iscale=True,
-              desc="A wide dark mains-hum band crawling slowly up the picture."),
+              desc="A wide dark horizontal mains-hum band crawling slowly up the picture."),
         Param("hum_speed", "Hum Bar Speed", "float", 0.12, 0.01, 1.0, unit="bars/s", group="Interference",
               desc="Crawl rate of the hum bar - the beat between mains and vertical sync."),
         Param("impulse_noise", "Impulse Noise", "float", 0.0, 0.0, 30.0, unit="events/s",
               group="Interference", iscale=True,
-              desc="Sparse bright one-line dashes from ignition or motor interference."),
+              desc="Sparse bright single-scanline dashes from ignition or motor interference."),
         Param("weak_signal", "Weak Signal", "float", 0.0, 0.0, 1.0, group="Reception", iscale=True,
               desc="Master fade toward the noise floor: washed-out color, lifted snow, gray haze."),
     )

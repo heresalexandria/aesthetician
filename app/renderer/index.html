@@ -215,6 +215,13 @@
         <span id="override-count"></span>
         <button id="btn-reset-overrides" class="link-btn" title="Discard every manual tweak and return to the preset's own values">Reset all</button>
       </div>
+      <div id="param-search-row" class="hidden">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="param-search" type="search" aria-label="Find a control in this aesthetic" placeholder="Find a control…" spellcheck="false"/>
+        </div>
+        <button id="param-search-desc" class="chip desc-chip" type="button" aria-pressed="false" title="Also match what each control's tooltip says: its description, its options and the effect's own summary">+ descriptions</button>
+      </div>
       <div id="param-list"><div class="hint">Pick an aesthetic on the left.</div></div>
     </aside>
   </div>

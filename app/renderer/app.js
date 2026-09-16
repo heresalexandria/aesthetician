@@ -44,6 +44,8 @@ const G = {
   guideOpen: false,    // the ✦ chip: browse the curated collections instead of the library
   recents: [],         // preset ids picked by hand, newest first (persisted)
   searchIndex: new Map(),   // preset id -> tokenized search fields (see searchFields)
+  paramQuery: '',      // the knob pane's own search; kept across preset and layer switches
+  paramDesc: false,    // ...and whether it reads the tooltips too (persisted)
 };
 
 /* Update state. Declared up here with G rather than beside the update code:
@@ -86,6 +88,7 @@ function loadStore() {
     if (Array.isArray(s.collapsed)) G.collapsed = new Set(s.collapsed);
     if (Array.isArray(s.recents)) G.recents = s.recents.filter((id) => typeof id === 'string').slice(0, RECENTS_MAX);
     if (typeof s.refineOpen === 'boolean') G.refineOpen = s.refineOpen;
+    if (typeof s.paramDesc === 'boolean') G.paramDesc = s.paramDesc;
     if (typeof s.sortBy === 'string' && SORT_OPTIONS.some((o) => o.id === s.sortBy)) G.sortBy = s.sortBy;
     if (typeof s.duration === 'number' && s.duration >= 1 && s.duration <= 10) G.duration = s.duration;
     if (typeof s.scale === 'number' && s.scale >= 0.2 && s.scale <= 1) G.scale = s.scale;
@@ -123,6 +126,7 @@ function saveStore() {
       recents: G.recents,
       refineOpen: G.refineOpen,
       sortBy: G.sortBy,
+      paramDesc: G.paramDesc,
     }));
   } catch (_) { /* storage full or unavailable: cosmetic only */ }
 }
@@ -3310,12 +3314,179 @@ function variantOverrides() {
   return variantOverridesOf(activeLayer(state));
 }
 
+/* ── control search ─────────────────────────────────────────────────
+   The knob pane can run to a hundred rows across a dozen collapsed cards, and
+   what is on screen does not always answer to the name you would guess: the
+   line structure you are trying to switch off may be CRT → Scanlines, or it
+   may be Interlace → Combing, whose only mention of scanlines is in its
+   tooltip. So the pane has a search of its own. Names always count - the
+   label, the --set name, the group and the effect's own name - and with
+   `descriptions` on, the tooltip prose, the enum choices and the effect summary
+   count too. Every typed word has to land, as a substring, so "scan" finds
+   Scanlines and "crt bloom" narrows to the tube's bloom knobs. The query is
+   kept across preset and layer switches on purpose: type it once, then walk
+   the library with ↑/↓ and watch which effect carries it where. */
+function paramSearchTokens(query) {
+  return String(query || '').toLowerCase().split(/[^a-z0-9_]+/).filter(Boolean);
+}
+
+/* The names of every control in one effect a token list lands on, in
+   declaration order. A word that lands on the card's own name (or, with
+   descriptions, its summary) is a hit for every row in it, so "crt" opens the
+   whole tube. No tokens means no filter: every control matches. */
+function matchingControls(eff, tokens, withDesc) {
+  const card = `${eff.label} ${eff.id}${withDesc ? ' ' + (eff.desc || '') : ''}`.toLowerCase();
+  const out = [];
+  for (const prm of eff.params) {
+    if (prm.name === 'enabled') continue;     // the same switch on every card
+    let hay = `${card} ${prm.label} ${prm.name} ${prm.group || ''}`;
+    if (withDesc) hay += ` ${prm.desc || ''} ${(prm.choices || []).join(' ')}`;
+    hay = hay.toLowerCase();
+    if (tokens.every((t) => hay.includes(t))) out.push(prm.name);
+  }
+  return out;
+}
+
+/* The live search - tokens and whether tooltips count - or null when the box
+   is empty. */
+function paramSearch() {
+  const tokens = paramSearchTokens(G.paramQuery);
+  return tokens.length ? { tokens, desc: G.paramDesc } : null;
+}
+
+/* How many controls a search lands on across a preset's chains. */
+function controlHitCount(chains, tokens, withDesc) {
+  let n = 0;
+  for (const chain of chains) {
+    for (const [eid] of chain) n += matchingControls(G.schema.effects[eid], tokens, withDesc).length;
+  }
+  return n;
+}
+
+/* The other layers of this session the search would land in, with a count
+   each: a line structure on screen can belong to a layer the pane is not
+   showing. */
+function searchHitsElsewhere(search) {
+  const out = [];
+  (state.layers || []).forEach((l, i) => {
+    if (i === state.activeLayer || !l.presetId) return;
+    const p = G.schema.presets[l.presetId];
+    if (!p) return;
+    const n = controlHitCount(state.audioSource ? [p.audio] : [p.video, p.audio], search.tokens, search.desc);
+    if (n) out.push({ index: i, label: layerLabel(l), n });
+  });
+  return out;
+}
+
+/* `text` as nodes, with every occurrence of a token wrapped in <mark>. */
+function markHits(text, tokens) {
+  const frag = document.createDocumentFragment();
+  const s = String(text);
+  const alts = [...tokens].sort((a, b) => b.length - a.length)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  let last = 0;
+  for (const m of s.matchAll(new RegExp(alts.join('|'), 'gi'))) {
+    if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+    const mk = document.createElement('mark');
+    mk.className = 'p-hit';
+    mk.textContent = m[0];
+    frag.appendChild(mk);
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+  return frag;
+}
+
+function setParamQuery(q) {
+  G.paramQuery = q;
+  if ($('param-search').value !== q) $('param-search').value = q;
+  buildParamPane();
+}
+
+function setParamDesc(on) {
+  G.paramDesc = !!on;
+  saveStore();
+  buildParamPane();
+}
+
+function syncParamSearchRow() {
+  $('param-search-row').classList.remove('hidden');
+  const inp = $('param-search');
+  if (inp.value !== G.paramQuery) inp.value = G.paramQuery;
+  const chip = $('param-search-desc');
+  chip.classList.toggle('sel', G.paramDesc);
+  chip.setAttribute('aria-pressed', String(G.paramDesc));
+}
+
+/* The buttons that jump to another layer the search lands in. */
+function elsewhereButtons(elsewhere) {
+  const wrap = document.createElement('span');
+  wrap.className = 'p-elsewhere';
+  const lead = document.createElement('span');
+  lead.textContent = 'also in';
+  wrap.appendChild(lead);
+  for (const e of elsewhere) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.textContent = `${e.label} · ${e.n}`;
+    b.title = `Show layer ${e.index + 1}, ${e.label}: ${e.n} matching control${e.n === 1 ? '' : 's'}`;
+    b.onclick = () => selectLayer(e.index);
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
+/* What a search found in this preset - a count above the hits - or, when it
+   found nothing, why not and what would change that: reading the tooltips
+   too, or looking in another layer. */
+function searchSummary(p, search, holder, chains) {
+  const rows = holder.querySelectorAll('.prow').length;
+  const cards = holder.querySelectorAll('.effect-card').length;
+  const elsewhere = searchHitsElsewhere(search);
+  const box = document.createElement('div');
+  if (rows) {
+    box.className = 'p-search-note';
+    const n = document.createElement('span');
+    n.innerHTML = `<b>${rows}</b> control${rows === 1 ? '' : 's'} in <b>${cards}</b> effect${cards === 1 ? '' : 's'}`;
+    box.appendChild(n);
+    if (elsewhere.length) box.appendChild(elsewhereButtons(elsewhere));
+    return box;
+  }
+  box.className = 'p-search-empty';
+  const line = document.createElement('div');
+  line.append('Nothing in ');
+  const name = document.createElement('b');
+  name.textContent = p.name;
+  line.appendChild(name);
+  line.append(` is called “${G.paramQuery.trim()}”.`);
+  box.appendChild(line);
+  if (!search.desc) {
+    const wide = controlHitCount(chains, search.tokens, true);
+    if (wide) {
+      const more = document.createElement('button');
+      more.className = 'link-btn';
+      more.textContent = `Search descriptions too · ${wide} control${wide === 1 ? '' : 's'}`;
+      more.onclick = () => setParamDesc(true);
+      box.appendChild(more);
+    }
+  }
+  if (elsewhere.length) box.appendChild(elsewhereButtons(elsewhere));
+  const clear = document.createElement('button');
+  clear.className = 'link-btn';
+  clear.textContent = 'Clear search';
+  clear.onclick = () => setParamQuery('');
+  box.appendChild(document.createElement('div')).appendChild(clear);
+  return box;
+}
+
 function clearParamPane() {
   $('preset-title').textContent = '-';
   $('preset-sub').textContent = '';
   $('btn-fav').classList.add('hidden');
   $('btn-save-custom').classList.add('hidden');
   $('override-row').classList.add('hidden');
+  $('param-search-row').classList.add('hidden');
   $('variant-row').innerHTML = '';
   $('param-list').innerHTML = '<div class="hint">Pick an aesthetic on the left.</div>';
 }
@@ -3359,13 +3530,19 @@ function buildParamPane() {
   const holder = $('param-list');
   holder.innerHTML = '';
   const vo = variantOverrides();
+  /* A search narrows the pane to the controls it lands on, every card it
+     touches held open. The doors and notes step aside while it is on: a
+     search is a hunt for a knob. */
+  const search = paramSearch();
+  syncParamSearchRow();
+  holder.classList.toggle('searching', !!search);
   /* A caption style is half aesthetic, half editor: the words are a track of
      their own, so the pane leads with the door to them. Landing on a caption
      style with nothing written yet opens that door by itself, once per layer.
      The knobs below stay exactly what they were - per-style tweaking is the
      other half of the point. */
   if (p.family === 'captions' && !state.audioSource && state.file) {
-    holder.appendChild(captionLaunchCard());
+    if (!search) holder.appendChild(captionLaunchCard());
     const al = activeLayer(state);
     if (al && !al.capSeen) {
       al.capSeen = true;
@@ -3375,7 +3552,7 @@ function buildParamPane() {
   const sections = state.audioSource
     ? [['SOUND', p.audio, 'sound']]        // the video chain cannot apply here
     : [['PICTURE', p.video, 'picture'], ['SOUND', p.audio, 'sound']];
-  if (state.audioSource && p.video.length) {
+  if (!search && state.audioSource && p.video.length) {
     const note = document.createElement('div');
     note.className = 'audio-note';
     note.textContent = `Audio source - this preset's ${p.video.length} picture effects are not applied.`;
@@ -3383,7 +3560,13 @@ function buildParamPane() {
   }
   for (const [label, chain, field] of sections) {
     if (!chain.length) continue;
-    holder.appendChild(chainSection(label, chain, field, vo));
+    const sec = chainSection(label, chain, field, vo, search);
+    if (sec) holder.appendChild(sec);
+  }
+  if (search) {
+    const summary = searchSummary(p, search, holder, sections.map(([, chain]) => chain));
+    if (summary.classList.contains('p-search-note')) holder.prepend(summary);
+    else holder.appendChild(summary);
   }
   // The editor's style strip repeats what this pane says about the caption
   // track - which style, which variant, how many tweaks - so it is rebuilt from
@@ -3396,7 +3579,7 @@ function buildParamPane() {
    spray of per-effect `enabled` overrides: muting the section leaves every
    individual power switch and tweak exactly where the user set it, so turning
    the section back on restores the arrangement rather than a blank slate. */
-function chainSection(label, chain, field, vo) {
+function chainSection(label, chain, field, vo, search = null) {
   const sec = document.createElement('div');
   sec.className = 'chain-sec';
   const l = activeLayer(state);
@@ -3435,10 +3618,14 @@ function chainSection(label, chain, field, vo) {
   head.appendChild(offNote);
   sec.appendChild(head);
 
+  let any = false;
   for (const entry of chainWithKeys(chain)) {
-    sec.appendChild(effectCard(entry, vo));
+    const card = effectCard(entry, vo, search);
+    if (!card) continue;      // a search that lands nowhere in this effect
+    sec.appendChild(card);
+    any = true;
   }
-  return sec;
+  return any ? sec : null;
 }
 
 /* The "N tweaks · Reset all" strip under the master dials: visible only while
@@ -3452,16 +3639,22 @@ function syncOverrideRow() {
 
 const openEffectCards = new Map();
 
-function effectCard({ eid, key, params }, variantOv) {
+function effectCard({ eid, key, params }, variantOv, search = null) {
   const eff = G.schema.effects[eid];
+  /* Under a search only the rows it lands on are built, and a card it lands
+     nowhere in is not built at all. */
+  const hits = search ? new Set(matchingControls(eff, search.tokens, search.desc)) : null;
+  if (hits && !hits.size) return null;
   const card = document.createElement('div');
   card.className = 'effect-card';
   /* Effects that burn words into the picture - dates, channel labels, tape
      counters - open on sight. Their text is the first thing anyone wants to
-     change, and it was previously two clicks deep in a collapsed card. */
+     change, and it was previously two clicks deep in a collapsed card. A
+     search holds every card it touches open, without writing that into the
+     card's memory: clear the search and the stack folds back as it was. */
   const hasText = eff.params.some((p) => p.kind === 'str');
   const openKey = `${activeLayer(state).lid}:${key}`;
-  const isOpen = openEffectCards.get(openKey) ?? hasText;
+  const isOpen = !!search || (openEffectCards.get(openKey) ?? hasText);
   if (isOpen) card.classList.add('open');
   const head = document.createElement('div');
   head.className = 'effect-head';
@@ -3469,9 +3662,12 @@ function effectCard({ eid, key, params }, variantOv) {
   disclosure.className = 'effect-disclosure';
   disclosure.setAttribute('aria-expanded', String(isOpen));
   const tweaked = Object.keys(state.sets).some((s) => s.startsWith(`${key}.`));
-  disclosure.innerHTML = `<span class="chev">▶</span><span>${eff.label}</span>`
+  disclosure.innerHTML = '<span class="chev">▶</span><span class="e-name"></span>'
     + (hasText ? '<span class="e-text" title="Burns text into the picture - editable below">Aa</span>' : '')
     + (tweaked ? '<span class="e-tweaks" title="Has manual tweaks"></span>' : '');
+  const nameEl = disclosure.querySelector('.e-name');
+  if (search) nameEl.appendChild(markHits(eff.label, search.tokens));
+  else nameEl.textContent = eff.label;
   head.appendChild(disclosure);
 
   /* Every effect carries an `enabled` flag, and it belongs in the header rather
@@ -3517,10 +3713,23 @@ function effectCard({ eid, key, params }, variantOv) {
   card.appendChild(head);
   const body = document.createElement('div');
   body.className = 'effect-body';
+  /* A card the search reached through its summary rather than its name says
+     so at the top, in the summary's own words. */
+  if (search && search.desc && eff.desc) {
+    const own = `${eff.label} ${eff.id}`.toLowerCase();
+    const prose = eff.desc.toLowerCase();
+    if (!search.tokens.every((t) => own.includes(t)) && search.tokens.some((t) => prose.includes(t))) {
+      const why = document.createElement('div');
+      why.className = 'e-why';
+      why.appendChild(markHits(eff.desc, search.tokens));
+      body.appendChild(why);
+    }
+  }
 
   let lastGroup = null;
   for (const prm of eff.params) {
     if (prm.name === 'enabled') continue;   // it lives in the header
+    if (hits && !hits.has(prm.name)) continue;
     const path = `${key}.${prm.name}`;
     const baseVal = path in variantOv ? variantOv[path] : (prm.name in params ? params[prm.name] : prm.default);
     const curVal = path in state.sets ? state.sets[path] : baseVal;
@@ -3531,7 +3740,7 @@ function effectCard({ eid, key, params }, variantOv) {
       g.textContent = prm.group.toUpperCase();
       body.appendChild(g);
     }
-    body.appendChild(paramRow(path, prm, baseVal, curVal));
+    body.appendChild(paramRow(path, prm, baseVal, curVal, search));
   }
   card.appendChild(body);
   const refreshDependencies = () => {
@@ -3571,7 +3780,7 @@ function inactiveParamReason(eid, name, v) {
   return '';
 }
 
-function paramRow(path, prm, baseVal, curVal) {
+function paramRow(path, prm, baseVal, curVal, search = null) {
   const row = document.createElement('div');
   // Free text and date pickers need more width than a 92px label leaves them,
   // so those rows put the label on its own line and give the field the pane.
@@ -3580,7 +3789,8 @@ function paramRow(path, prm, baseVal, curVal) {
     + (path in state.sets ? ' overridden' : '');
   row.dataset.param = prm.name;
   const label = document.createElement('label');
-  label.textContent = prm.label;
+  if (search) label.appendChild(markHits(prm.label, search.tokens));
+  else label.textContent = prm.label;
   row.appendChild(label);
   attachTip(row, () => paramTip(path, prm, baseVal));
 
@@ -3714,6 +3924,23 @@ function paramRow(path, prm, baseVal, curVal) {
   reset.setAttribute('aria-label', `Reset ${prm.label} to preset value`);
   reset.onclick = () => { delete state.sets[path]; buildParamPane(); schedulePreview(); };
   row.appendChild(reset);
+
+  /* A hit that came from the tooltip rather than the name shows the sentence
+     it came from, so the row is not sitting there answering to a word it does
+     not display. */
+  if (search && search.desc) {
+    const own = `${prm.label} ${prm.name} ${prm.group || ''}`.toLowerCase();
+    const choices = (prm.choices || []).join(', ');
+    const inDesc = search.tokens.some((t) => (prm.desc || '').toLowerCase().includes(t));
+    const inChoices = search.tokens.some((t) => choices.toLowerCase().includes(t));
+    if (!search.tokens.every((t) => own.includes(t)) && (inDesc || inChoices)) {
+      const why = document.createElement('small');
+      why.className = 'p-why';
+      why.appendChild(markHits(`${prm.desc || ''}${inChoices ? ` Options: ${choices}.` : ''}`.trim(), search.tokens));
+      row.classList.add('why');
+      row.appendChild(why);
+    }
+  }
   return row;
 }
 
@@ -5486,17 +5713,25 @@ function wireShortcuts() {
       toggleHistoryPanel(false);
       return;
     }
+    /* ⌘⇧F is the knob pane's search; ⌘F stays the library's. */
+    if (meta && e.shiftKey && e.code === 'KeyF' && G.activeId && state.presetId) {
+      e.preventDefault(); $('param-search').focus(); $('param-search').select(); return;
+    }
     if (meta && e.code === 'KeyF' && G.activeId) {
       e.preventDefault(); $('preset-search').focus(); $('preset-search').select(); return;
     }
     if (e.code === 'Escape' && e.target === $('preset-search')) {
       e.preventDefault(); $('preset-search').value = ''; buildFacetRow(); buildPresetList(); return;
     }
-    /* ↑/↓ run the preset list. They work from the search box too - type a few
-       letters, then walk the hits without reaching for the mouse - but not from
-       a slider or dropdown, where the arrows already mean something. */
+    if (e.code === 'Escape' && e.target === $('param-search')) {
+      e.preventDefault(); setParamQuery(''); return;
+    }
+    /* ↑/↓ run the preset list. They work from the search boxes too - type a
+       few letters, then walk the hits without reaching for the mouse; or type
+       a control's name and walk the library to see who carries it - but not
+       from a slider or dropdown, where the arrows already mean something. */
     if (G.activeId && (e.code === 'ArrowDown' || e.code === 'ArrowUp')
-        && (!typingTarget(e) || e.target === $('preset-search'))) {
+        && (!typingTarget(e) || e.target === $('preset-search') || e.target === $('param-search'))) {
       e.preventDefault();
       navPreset(e.code === 'ArrowDown' ? 1 : -1);
       return;
@@ -5547,6 +5782,8 @@ function wireControls() {
   document.querySelectorAll('input.range-fill').forEach(paintRange);
   $('clear-filters').addEventListener('click', clearFilters);
   $('preset-search').addEventListener('input', () => { buildFacetRow(); buildPresetList(); });
+  $('param-search').addEventListener('input', () => setParamQuery($('param-search').value));
+  $('param-search-desc').addEventListener('click', () => setParamDesc(!G.paramDesc));
   $('era-filter').addEventListener('change', (e) => {
     G.filterEra = e.target.value;
     e.target.classList.toggle('active', !!G.filterEra);

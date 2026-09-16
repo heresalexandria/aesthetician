@@ -265,7 +265,7 @@ class DeinterlaceArtifact(Effect):
     desc = (
         "What a cheap deinterlacer leaves behind - pick your poison: bob (line "
         "twitter and a half-line vertical bounce), weave (leftover mice-teeth "
-        "combing on motion), or blend (a 30%-opacity double exposure on "
+        "combing on motion - both scanline-like on movement), or blend (a 30%-opacity double exposure on "
         "anything moving). The 'uploaded TV rip' tell."
     )
     PARAMS = (
@@ -275,7 +275,8 @@ class DeinterlaceArtifact(Effect):
                    "weave_comb = combing survives on motion; blend_ghost = "
                    "fields averaged into motion ghosts."),
         Param("amount", "Amount", "float", 0.7, 0.0, 1.0, iscale=True, group="Mode",
-              desc="How much of the artifact survives whatever player smoothed it."),
+              desc="How much of the artifact survives whatever player smoothed it; 0 removes "
+                   "the combing and twitter."),
     )
 
     def prepare(self, ctx: Context) -> None:

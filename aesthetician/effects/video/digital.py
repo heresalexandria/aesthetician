@@ -135,8 +135,9 @@ class CodecEra(Effect):
               choices=("progressive", "interlaced_tff"), group="Codec",
               desc="interlaced_tff encodes with real interlaced DCT and motion "
                    "estimation (+ilme+ildct, top field first) - the genuine "
-                   "DVD/broadcast MPEG-2 field structure. Ignored by codecs "
-                   "without interlaced modes."),
+                   "DVD/broadcast MPEG-2 field structure, and real interlace combing: "
+                   "scanline serrations on motion that progressive never has. Ignored "
+                   "by codecs without interlaced modes."),
         Param("denoise_pre", "Encoder Pre-Filter", "float", 0.0, 0.0, 1.0, iscale=True,
               group="Quality",
               desc="Broadcast-encoder noise pre-filter ahead of the first encode: "
@@ -569,11 +570,13 @@ class PixelEra(Effect):
     desc = (
         "Computer/console graphics: fat nearest-neighbor pixels at a coarse "
         "resolution, mapped into a real machine palette (Game Boy, CGA, EGA, "
-        "VGA, C64, Apple II, teletext) with ordered dithering."
+        "VGA, C64, Apple II, teletext) with ordered dithering. The pixel-row "
+        "grid has no strength knob: switch the effect off to lose it."
     )
     PARAMS = (
         Param("res_h", "Vertical Resolution", "int", 240, 64, 480, unit="px", group="Geometry",
-              desc="Vertical pixel count of the simulated display."),
+              desc="Vertical pixel count of the simulated display; lower means fatter pixel rows, "
+                   "a hard row grid that reads as scanlines on a small preview."),
         Param("palette", "Palette", "enum", "none",
               choices=("none", "gameboy_dmg", "cga", "cga_cyan", "ega16", "vga256",
                        "c64", "apple2", "teletext", "zx_spectrum"),
@@ -582,7 +585,8 @@ class PixelEra(Effect):
                                   "zx_spectrum adds true 8x8 attribute clash."),
         Param("dither", "Dithering", "enum", "bayer4",
               choices=("none", "bayer2", "bayer4", "bayer8"), group="Color",
-              desc="Ordered (Bayer) dither applied before quantization."),
+              desc="Ordered (Bayer) dither applied before quantization - a fine regular dot "
+                   "lattice over gradients."),
         Param("contrast_snap", "Contrast Snap", "float", 0.3, 0.0, 1.0, group="Color",
               desc="Pre-quantization contrast so midtones don't collapse into mud."),
         Param("pixel_aspect", "Pixel Aspect", "float", 1.0, 0.5, 2.0, group="Geometry",
@@ -650,7 +654,9 @@ class ChromaDV(Effect):
         Param("ratio", "Subsampling", "enum", "4:1:1",
               choices=("4:2:0", "4:1:1", "4:1:0"), group="Chroma",
               desc="4:2:0 = DVD/webcam, 4:1:1 = NTSC DV (4x horizontal), "
-                   "4:1:0 = quarter-res chroma both ways."),
+                   "4:1:0 = quarter-res chroma both ways. The vertical ratios rebuild "
+                   "color in row pairs - stair-stepped lines on colored edges; 4:1:1 "
+                   "steps horizontally only."),
         Param("edge_sharpen", "Edge Sharpen", "float", 0.35, 0.0, 2.0, iscale=True,
               group="Luma", desc="DV in-camera sharpening with its telltale halos."),
         Param("dct_blocks", "DCT Blocks", "float", 0.0, 0.0, 1.0, iscale=True, group="Luma",
@@ -723,15 +729,16 @@ class LCDScreen(Effect):
     label = "LCD Screen"
     kind = "frame"
     desc = (
-        "Footage-of-an-LCD playback surface: thin pixel grid, slow-response "
-        "ghosting (worst in the darks), uneven backlight bleed and a slight "
-        "viewing-angle gamma tilt. Subtle by default."
+        "Footage-of-an-LCD playback surface: thin pixel grid (a dark line every "
+        "few pixels), slow-response ghosting (worst in the darks), uneven "
+        "backlight bleed and a slight viewing-angle gamma tilt. Subtle by default."
     )
     PARAMS = (
         Param("grid", "Pixel Grid", "float", 0.25, 0.0, 1.0, iscale=True, group="Panel",
-              desc="Darkness of the LCD pixel lattice."),
+              desc="Darkness of the LCD pixel lattice: a dark line after every pixel row and "
+                   "column, which reads as fine scanlines. 0 removes the lines."),
         Param("scale", "Grid Pitch", "int", 3, 2, 10, unit="px", group="Panel",
-              desc="Pixel pitch of the simulated panel."),
+              desc="Pixel pitch of the simulated panel - the spacing of the grid lines."),
         Param("response_smear", "Response Smear", "float", 0.3, 0.0, 1.0, iscale=True,
               group="Panel", desc="Slow pixel response: previous frame ghosts through, "
                                   "strongest on dark-to-dark transitions."),

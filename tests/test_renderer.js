@@ -61,7 +61,7 @@ const R = vm.runInNewContext(
        G, U, newLayer, newCue, cueOps, migrateCues, CUE_KEYS, isCaptionStyle, captionStyleIds,
        automaticUpdateCheck, liveLayers, layerSpec, isAudioOnly, passesFilters,
        searchTokens, eraTokens, expandQuery, searchScore, searchTier, sortPresets, SORT_OPTIONS,
-       passesFacets, presetSubline, facetLabel })`,
+       passesFacets, presetSubline, facetLabel, paramSearchTokens, matchingControls })`,
   sandbox,
 );
 
@@ -583,7 +583,115 @@ const tests = [
   test_a_legacy_caption_diff_replays_into_cues,
   test_automatic_update_checks_only_when_due,
   test_section_switches_ride_the_layer_spec,
+  test_control_search_finds_a_knob_by_name_or_by_its_tooltip,
+  test_every_control_answers_to_its_own_name,
+  test_scanline_lookalikes_answer_to_the_description_search,
 ];
+
+/* Scanlines are the canonical example of a look that does not answer to its
+   name: the knob called Scanlines lives on the CRT, but far more presets draw
+   horizontal line structure from interlace combing, an LCD pixel grid, NTSC
+   dot crawl, venetian carrier bars and the rest. The description search is the
+   way in, so the tooltips of every such control have to say "scanline" - or at
+   least "line" - and this holds them to it. Subset checks, so adding more
+   vocabulary never breaks it. */
+function test_scanline_lookalikes_answer_to_the_description_search() {
+  const found = (eid, q) => new Set(R.matchingControls(S.effects[eid], R.paramSearchTokens(q), true));
+  const expectScanline = {
+    crt: ['scan_strength', 'beam_bloom', 'mask_misalign', 'retrace_lines'],
+    interlace: ['field_order', 'combing', 'twitter'],
+    deinterlace_artifact: ['mode', 'amount'],
+    lcd_screen: ['grid'],
+    pixel_era: ['res_h'],
+    codec_era: ['field_mode'],
+    rf_dx: ['venetian'],
+    jam_bars: ['bar_size'],
+    signal_rf: ['impulse_noise'],
+    ntsc: ['dot_crawl', 'comb', 'system', 'phase_noise'],
+    halftone: ['lpi'],
+  };
+  for (const [eid, names] of Object.entries(expectScanline)) {
+    const hits = found(eid, 'scanline');
+    for (const n of names) assert.ok(hits.has(n), `${eid}.${n} must answer to "scanline" through its tooltip`);
+  }
+  // Line structure that is honestly not scanlines still answers to "line".
+  const expectLine = {
+    chroma_dv: ['ratio'], vhs: ['luma_noise', 'azimuth_error', 'time_base_error'],
+    herringbone: ['amount', 'pattern', 'wavelength'], microfilm: ['scratches_scan'],
+    screen: ['surface'], lcd_screen: ['scale'], crt: ['phosphor_mask'],
+  };
+  for (const [eid, names] of Object.entries(expectLine)) {
+    const hits = found(eid, 'line');
+    for (const n of names) assert.ok(hits.has(n), `${eid}.${n} must answer to "line" through its tooltip`);
+  }
+  // ...and the name-only search still keeps its narrow answer.
+  assert.deepStrictEqual(Array.from(R.matchingControls(S.effects.crt, R.paramSearchTokens('scanline'), false)),
+    ['scan_strength']);
+}
+
+/* The knob pane's own search. Names always count; the tooltips only when asked
+   for, and asking can only ever widen the answer. The case that motivated it:
+   the line structure on screen is CRT → Scanlines by name, but Interlace only
+   admits to scanlines in its summary, and NTSC's Hue Instability only in its
+   tooltip - so a name-only search for "scanline" on a preset without a CRT
+   finds nothing, and the description search is what turns them up. */
+function test_control_search_finds_a_knob_by_name_or_by_its_tooltip() {
+  const crt = S.effects.crt, interlace = S.effects.interlace, ntsc = S.effects.ntsc;
+  const q = R.paramSearchTokens('Scanline');
+  assert.deepStrictEqual(Array.from(q), ['scanline']);
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, q, false)), ['scan_strength']);
+  assert.deepStrictEqual(Array.from(R.matchingControls(interlace, q, false)), []);
+  const prose = Array.from(R.matchingControls(crt, q, true));
+  for (const name of ['scan_strength', 'beam_bloom', 'mask_misalign']) {
+    assert.ok(prose.includes(name), `crt.${name} mentions scanlines in its tooltip`);
+  }
+  // a hit on the card's summary opens every row in it
+  assert.deepStrictEqual(Array.from(R.matchingControls(interlace, q, true)),
+    interlace.params.filter((p) => p.name !== 'enabled').map((p) => p.name));
+  assert.ok(Array.from(R.matchingControls(ntsc, q, true)).includes('phase_noise'));
+  assert.ok(!Array.from(R.matchingControls(ntsc, q, false)).includes('phase_noise'));
+
+  // every word has to land; the card's own name counts for all of its rows
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, R.paramSearchTokens('crt bloom'), false)),
+    ['bloom', 'bloom_radius', 'beam_bloom']);
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, R.paramSearchTokens('CRT xyzzy'), false)), []);
+  // the --set path, as the tooltip prints it, works as typed
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, R.paramSearchTokens('crt.scan_strength'), false)),
+    ['scan_strength']);
+  // a group name is a name
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, R.paramSearchTokens('geometry'), false)),
+    crt.params.filter((p) => p.group === 'Geometry').map((p) => p.name));
+  // nothing typed is no filter at all
+  assert.strictEqual(R.matchingControls(crt, R.paramSearchTokens('  '), false).length, crt.params.length - 1);
+  // the enabled switch lives in the card header and is never a hit
+  assert.deepStrictEqual(Array.from(R.matchingControls(crt, R.paramSearchTokens('enabled'), true)), []);
+}
+
+/* Walks the whole registry: every control turns up when you type its label or
+   its --set name, an effect's name opens every one of its rows, and switching
+   the tooltips on never loses a hit the names had found. */
+function test_every_control_answers_to_its_own_name() {
+  let n = 0;
+  for (const eff of Object.values(S.effects)) {
+    const rows = eff.params.filter((p) => p.name !== 'enabled').map((p) => p.name);
+    assert.deepStrictEqual(Array.from(R.matchingControls(eff, R.paramSearchTokens(eff.label), false)), rows,
+      `${eff.id}: its own name must open every row`);
+    for (const prm of eff.params) {
+      if (prm.name === 'enabled') continue;
+      for (const q of [prm.label, prm.name]) {
+        const tokens = R.paramSearchTokens(q);
+        const byName = Array.from(R.matchingControls(eff, tokens, false));
+        assert.ok(byName.includes(prm.name), `${eff.id}.${prm.name} must answer to "${q}"`);
+        const withProse = Array.from(R.matchingControls(eff, tokens, true));
+        for (const hit of byName) {
+          assert.ok(withProse.includes(hit), `${eff.id}: descriptions must not lose "${q}" → ${hit}`);
+        }
+        n++;
+      }
+    }
+  }
+  assert.ok(n > 1000, `walked ${n} queries`);
+}
 
 /* The PICTURE / SOUND master switches live on the layer and go to the engine
    through layerSpec. Three promises hold them together: absence means on (so

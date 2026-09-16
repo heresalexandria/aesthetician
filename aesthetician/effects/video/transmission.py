@@ -54,7 +54,8 @@ class RFDX(Effect):
               desc="How far behind the program the co-channel ghost runs."),
         Param("venetian", "Venetian Bars", "float", 0.25, 0.0, 1.0, group="Interference", iscale=True,
               desc="Fine horizontal venetian-blind bars from the two carriers beating, "
-                   "drifting vertically and swelling as the fade deepens."),
+                   "drifting vertically and swelling as the fade deepens. Easily mistaken "
+                   "for scanlines; 0 removes them."),
     )
 
     def prepare(self, ctx: Context) -> None:
@@ -166,13 +167,15 @@ class Herringbone(Effect):
             "broad rolling hum bands with a slow sideways wiggle.")
     PARAMS = (
         Param("amount", "Amount", "float", 0.35, 0.0, 1.0, group="Pattern", iscale=True,
-              desc="Visibility of the interference pattern over the picture."),
+              desc="Visibility of the interference pattern - the fine woven or striped line "
+                   "grating over the picture; 0 removes it."),
         Param("pattern", "Pattern", "enum", "herringbone",
               choices=("herringbone", "diagonal_bars", "rolling_hum"), group="Pattern",
               desc="Herringbone chevron weave (adjacent-channel beat), straight diagonal "
                    "bars (CW carrier), or broad rolling hum bands (power-line beat)."),
         Param("wavelength", "Wavelength", "float", 7.0, 3.0, 40.0, unit="px", group="Pattern",
-              desc="Stripe pitch of the beat pattern; hum bands run about ten times wider."),
+              desc="Stripe pitch of the beat pattern - the spacing of its lines; hum bands run about "
+                   "ten times wider."),
         Param("drift", "Drift", "float", 0.6, 0.0, 4.0, unit="Hz", group="Motion",
               desc="How fast the pattern crawls - an unlocked beat never sits still."),
     )
@@ -224,14 +227,16 @@ class JamBars(Effect):
     eid = "jam_bars"
     label = "Jamming Bars"
     kind = "frame"
-    desc = ("Deliberate interference stomping on the channel: broad dark bars roll through "
+    desc = ("Deliberate interference stomping on the channel: broad dark horizontal bars roll through "
             "the picture, colors smear inside them and the sync tears sideways where a bar "
             "sits - the pirate-TV / jammed-broadcast look.")
     PARAMS = (
         Param("amount", "Amount", "float", 0.35, 0.0, 1.0, group="Bars", iscale=True,
-              desc="Strength of the rolling bars; low values read as a nuisance, high as denial."),
+              desc="Strength of the rolling horizontal bars; low values read as a nuisance, high "
+                   "as denial. 0 removes them."),
         Param("bar_size", "Bar Size", "float", 0.45, 0.12, 1.0, group="Bars",
-              desc="Bar period as a fraction of the picture height."),
+              desc="Bar period as a fraction of the picture height; small values give many thin "
+                   "bars, closer to scanlines than to jamming."),
         Param("roll_speed", "Roll Speed", "float", 0.35, -2.0, 2.0, unit="bars/s", group="Bars",
               desc="How fast the bars roll; negative rolls them downward."),
         Param("tear", "Sync Tear", "float", 0.3, 0.0, 1.0, group="Tearing", iscale=True,
