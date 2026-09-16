@@ -88,12 +88,14 @@ with the filename and whichever aesthetic that clip is currently wearing.
 |---|---|
 | open another video | click **+** in the tab strip, then drop (or the current clip stays put) |
 | compare two treatments of the same clip | open it twice with **+**, set a different aesthetic in each tab, click between them |
-| go back to a clip | click its tab - preset, knobs, seed, intensity, texture and scrub all return exactly as you left them, and its rendered preview reappears instantly from cache |
+| go back to a clip | click its tab - preset, knobs, seed, intensity, texture and scrub all return exactly as you left them, and its rendered preview reappears instantly from cache. If you changed something and left before it rendered, coming back renders it |
 | close a clip | the **×** on its tab (you land on the neighbouring tab, or the drop screen if it was the last one) |
 | abandon a new-video screen | **← back to what I was working on** |
 
-Switching tabs never re-renders: the preview files persist in the cache, so
-flipping between tabs is instant.
+Switching tabs never re-renders a preview that is still current: the files
+persist in the cache, so flipping between tabs is instant. A render that was
+still going when you left carries on behind the tab you moved to, and is
+waiting when you return; one that was cut short there is started again.
 
 The chip in the title bar naming the open clip is a button: click it to show
 that file in the Finder. Hover it for the full path. If the file has been moved,
@@ -142,6 +144,12 @@ Preview cache   184.0 MB · 37 previews   Clear   Reveal
 
 Exports never go through the cache - those are written wherever you point the
 save dialog.
+
+Renders stage their working files in a `render-scratch` folder beside the
+cache. Each render's scratch is removed the moment it ends - finished, failed,
+or cut short by the next knob - and anything a crash leaves behind is swept on
+the next launch, so nothing piles up in the system temp folder over a long
+session.
 
 ## Exporting more than one thing at once
 
@@ -214,20 +222,24 @@ pretending. See [updates.md](updates.md) for the details.
 
 One aesthetic is the usual case and behaves exactly as it always has. When you
 want two, the row you are hovering grows a green **+**: click it to add that
-aesthetic as another layer on top. **+** or **=** on the keyboard does the same
-to whichever row is highlighted, so search-and-stack never needs the mouse.
+aesthetic as another layer on top (on a tab with nothing picked yet it simply
+fills the empty slot). **+** or **=** on the keyboard does the same to
+whichever row is highlighted, so search-and-stack never needs the mouse.
 
 Arrowing and clicking still *swap* the selected layer rather than adding to it -
 that is what keeps ↑/↓ usable for auditioning a whole family against the rest of
 your stack. **Enter** commits the highlighted aesthetic on its own, dropping
-everything else.
+everything else. A pick starts the layer fresh: the variant, every tweak and
+timeline edit, Intensity, Texture, the Picture / Sound switches and the layer's
+own checkbox all return to their defaults, so what you see is the preset as
+authored. Only the seed stays, so presets compare on the same noise.
 
 Both of those write over what was there, so once the selected layer carries work
-of its own - a tweak, a variant, a moved dial, or a custom you saved - they stop
-and ask first, offering to **open the aesthetic you picked in a new tab** instead
-and leave this one alone. A layer holding nothing but a preset never asks, so
-running ↑/↓ down a family stays as quick as it ever was; the question comes back
-the moment you have something to lose.
+of its own - a tweak, a variant, a moved dial, a muted section, or a custom you
+saved - they stop and ask first, offering to **open the aesthetic you picked in
+a new tab** instead and leave this one alone. A layer holding nothing but a
+preset never asks, so running ↑/↓ down a family stays as quick as it ever was;
+the question comes back the moment you have something to lose.
 
 With more than one layer a **Layers** panel appears above the knobs:
 
@@ -259,8 +271,8 @@ Saved customs appear in a **MY AESTHETICS** group at the very top of the browse
 list, each with a **✎** badge on its thumbnail and a note of the preset it grew
 from. The **✎** chip beside the search box shows only them.
 
-- Clicking one restores everything: variant, every override, intensity, texture
-  and seed.
+- Clicking one restores everything: variant, every override, intensity, texture,
+  seed, and the Picture / Sound switches.
 - Move a knob afterwards and the header adds **· edited**, so the list never
   claims you are looking at the saved version when you are not. Save again to
   keep the new one as well.
@@ -411,13 +423,18 @@ remain the source canvas dimensions. Existing explicit saved overrides remain
 available; choose Match source to release one.
 
 Every effect card carries a checkbox in its header that switches that one
-effect off in place, and the **PICTURE** and **SOUND** section headers carry a
-master checkbox of their own that mutes the whole chain for the selected
-layer. The section switch is not a spray of per-effect toggles: your
-individual switches and tweaks stay exactly where they were, dimmed but
-editable, and come back intact when the section does. A layer with both
-sections off renders nothing at all - same as unchecking it in the Layers
-panel - and the switches ride saved stacks. On the CLI the same controls are
+effect off in place. Some presets ship an effect switched off on purpose - an
+optional pass, a tape generation or a broadcast codec that the look can take
+or leave - and the card says **off in this preset** beside the switch so the
+unchecked box reads as the recipe's choice rather than something lost on the
+way in; switch it on and it becomes a tweak like any other. The **PICTURE**
+and **SOUND** section headers carry a master checkbox of their own that mutes
+the whole chain for the selected layer. The section switch is not a spray of
+per-effect toggles: your individual switches and tweaks stay exactly where
+they were, dimmed but editable, and come back intact when the section does. A
+layer with both sections off renders nothing at all - same as unchecking it in
+the Layers panel - and the switches ride saved stacks and customs. On the CLI
+the same controls are
 `--set <effect>.enabled=false` per effect, or `"picture": false` /
 `"sound": false` on a layer in `--layers`.
 

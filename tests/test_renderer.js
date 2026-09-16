@@ -558,6 +558,473 @@ function test_mode_dependencies_explain_inactive_controls() {
   assert.ok(reason('cinema_finish', 'radius', { local_contrast: 0 }));
 }
 
+/* ── tabs, previews and layers, on a live renderer ───────────────────
+   Everything above picks the renderer apart function by function. The bugs
+   that follow only exist with the whole thing running: a preview belongs to
+   a tab, a tab can be left mid-render, and what is on screen when you come
+   back is a question about three pieces of state at once. So these boot the
+   real app.js against tests/fake_dom.js - the real index.html, the real
+   schema - and drive it the way clicks do, with the preload bridge stubbed
+   so a "render" is a promise the test settles when it likes. */
+
+const { makeWindow } = require('./fake_dom');
+const HTML = fs.readFileSync(path.join(ROOT, 'app', 'renderer', 'index.html'), 'utf8');
+
+/* One booted renderer. `calls` records every bridge request; a preview stays
+   pending until the test lands it, which is how a render gets to be "in
+   flight" while the user does something else. */
+async function bootRenderer(overrides = {}) {
+  const calls = { preview: [], snippet: [], events: [], still: [] };
+  const aesth = {
+    schema: async () => S,
+    preview: (req) => new Promise((resolve, reject) => calls.preview.push({ req, resolve, reject })),
+    still: (req) => new Promise((resolve, reject) => calls.still.push({ req, resolve, reject })),
+    snippet: async (req) => {
+      calls.snippet.push(req);
+      return { output: `/cache/snip-${path.basename(req.input)}-${req.start}-${req.duration}-${req.scale}.mp4` };
+    },
+    events: async (req) => { calls.events.push(req); return { events: [] }; },
+    ...overrides,
+  };
+  let ready;
+  const readyP = new Promise((r) => { ready = r; });
+  const win = makeWindow(HTML, { aesth });
+  win.console = {
+    ...console,
+    log: (...a) => { if (String(a[0]).includes('aesth:renderer-ready')) ready(); },
+  };
+  const R = vm.runInNewContext(
+    `${SRC}\n;({ get state() { return state; }, get previewTimer() { return previewTimer; },
+       G, $, videoA, videoB, loadFile, activateSession, closeSession, openInNewTab, addLayer,
+       selectPreset, selectById, applyOnly, removeLayer, selectLayer, runPreview, schedulePreview,
+       layerSpec, liveLayers, activeLayer, newLayer, buildParamPane, effectCard, DEFAULT_TEXTURE,
+       applyRecipe, layerFromCustom, applyCustom, customDrifted, saveCustom, setPlaying,
+       showRenderOverlay, onProgress, collections, layerHasWork, describeLayerWork,
+       ensureCaptionTrack, applyCaptionStyle, captionStyleIds, newCue })`,
+    win, { filename: 'app.js' },
+  );
+  await readyP;
+  const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
+  const h = {
+    win, R, calls, tick,
+    // Past the 40 ms "deliberate pick" debounce: any render a pick asked for
+    // has been requested by now.
+    settle: () => tick(70),
+    // Answer a pending render and let the clip "load".
+    land: async (p, output) => { p.resolve({ output, cached: false }); await tick(0); await tick(0); await tick(0); },
+    overlayHidden: () => R.$('render-overlay').classList.contains('hidden'),
+    showing: () => (R.videoA.getAttribute('src') || '').replace(/^file:\/\//, '').replace(/\?t=\d+$/, ''),
+    // The most recent render request that has not been landed or lost.
+    pending: () => calls.preview[calls.preview.length - 1],
+    open: async (file, preset, output) => {
+      await R.loadFile(file);
+      const sess = R.state;
+      R.selectPreset(preset);
+      await h.settle();
+      await h.land(h.pending(), output);
+      return sess;
+    },
+  };
+  return h;
+}
+
+/* The bug as reported: work in one tab, hop to another before the render
+   lands - the second tab's own render kills the first - and come back to a
+   preview that never took the change. Nothing re-rendered it, because the tab
+   still held a file from before and the renderer trusted the file over the
+   spec. */
+async function test_a_tab_renders_again_when_its_last_render_was_lost() {
+  const h = await bootRenderer();
+  const { R, calls } = h;
+  const A = await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  assert.strictEqual(A.treatedSrc, '/cache/a1.mp4');
+
+  A.sets['vhs.dropouts'] = 40;
+  R.schedulePreview(true);
+  await h.settle();
+  const lost = h.pending();
+  assert.strictEqual(lost.req.layers[0].sets['vhs.dropouts'], 40);
+
+  await R.loadFile('/clips/two.mp4');
+  const B = R.state;
+  R.selectPreset('grindhouse-1973');
+  await h.settle();
+  const bJob = h.pending();
+  lost.reject(new Error('superseded'));   // main killed A's render to start B's
+  await h.land(bJob, '/cache/b1.mp4');
+  assert.strictEqual(h.showing(), '/cache/b1.mp4');
+  assert.strictEqual(B.treatedSrc, '/cache/b1.mp4');
+
+  const before = calls.preview.length;
+  R.activateSession(A.id);
+  await h.settle();
+  assert.strictEqual(calls.preview.length, before + 1,
+    'coming back to a tab whose last render was lost must render it again');
+  const again = h.pending();
+  assert.strictEqual(again.req.layers[0].sets['vhs.dropouts'], 40, 'and the render carries the lost change');
+  assert.ok(!h.overlayHidden(), 'and says so while it renders');
+  await h.land(again, '/cache/a2.mp4');
+  assert.strictEqual(h.showing(), '/cache/a2.mp4');
+  assert.strictEqual(A.treatedSrc, '/cache/a2.mp4');
+  assert.ok(h.overlayHidden());
+
+  // A tab whose preview is current comes back without a render.
+  const settled = calls.preview.length;
+  R.activateSession(B.id);
+  await h.settle();
+  assert.strictEqual(calls.preview.length, settled, 'a fresh preview is shown from cache, not re-rendered');
+  assert.strictEqual(h.showing(), '/cache/b1.mp4');
+}
+
+/* The overlay belongs to the render on screen. Leaving a tab mid-render used
+   to leave "rendering preview…" frozen over the next tab's finished clip -
+   and it stayed up after the first tab's render landed, because nothing on
+   that path hid it. */
+async function test_switching_tabs_mid_render_never_strands_the_overlay() {
+  const h = await bootRenderer();
+  const { R } = h;
+  const A = await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  const B = await h.open('/clips/two.mp4', 'grindhouse-1973', '/cache/b1.mp4');
+
+  R.activateSession(A.id);
+  await h.settle();
+  A.sets['vhs.dropouts'] = 40;
+  R.schedulePreview(true);
+  await h.settle();
+  const inFlight = h.pending();
+  assert.ok(!h.overlayHidden(), 'A is rendering');
+
+  R.activateSession(B.id);
+  assert.ok(h.overlayHidden(), 'B has a finished preview: no overlay over it');
+  assert.strictEqual(h.showing(), '/cache/b1.mp4');
+  R.onProgress({ jobId: inFlight.req.jobId, phase: 'video', progress: 0.5 });
+  assert.ok(h.overlayHidden(), "A's progress is not B's business");
+
+  await h.land(inFlight, '/cache/a2.mp4');
+  assert.ok(h.overlayHidden(), 'A landing behind B leaves B alone');
+  assert.strictEqual(h.showing(), '/cache/b1.mp4');
+  assert.strictEqual(A.treatedSrc, '/cache/a2.mp4', 'but A keeps what it rendered');
+
+  const n = h.calls.preview.length;
+  R.activateSession(A.id);
+  await h.settle();
+  assert.strictEqual(h.showing(), '/cache/a2.mp4', 'A shows the render that landed while it was away');
+  assert.strictEqual(h.calls.preview.length, n, 'without rendering it again');
+}
+
+/* Coming back to a tab while its render is still going should wait for that
+   render, not kill it and start over. */
+async function test_returning_mid_render_adopts_the_render_in_flight() {
+  const h = await bootRenderer();
+  const { R, calls } = h;
+  const A = await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  const B = await h.open('/clips/two.mp4', 'grindhouse-1973', '/cache/b1.mp4');
+  R.activateSession(A.id);
+  await h.settle();
+  A.sets['vhs.dropouts'] = 40;
+  R.schedulePreview(true);
+  await h.settle();
+  const inFlight = h.pending();
+  const n = calls.preview.length;
+
+  R.activateSession(B.id);
+  R.activateSession(A.id);
+  await h.settle();
+  assert.strictEqual(calls.preview.length, n, 'the render already in flight is the right one: no second request');
+  assert.ok(!h.overlayHidden(), 'and the overlay shows it');
+  R.onProgress({ jobId: inFlight.req.jobId, phase: 'video', progress: 0.5 });
+  assert.strictEqual(R.$('render-phase').textContent, 'video 50%', 'its progress reaches the bar again');
+  await h.land(inFlight, '/cache/a2.mp4');
+  assert.strictEqual(h.showing(), '/cache/a2.mp4');
+  assert.ok(h.overlayHidden());
+}
+
+/* A knob moved and a tab switched inside the debounce used to render the
+   *other* tab (a wasted, identical render) and drop the change on the floor.
+   The timer belongs to the tab that set it. */
+async function test_a_pending_debounce_belongs_to_the_tab_that_scheduled_it() {
+  const h = await bootRenderer();
+  const { R, calls } = h;
+  const A = await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  const B = await h.open('/clips/two.mp4', 'grindhouse-1973', '/cache/b1.mp4');
+  R.activateSession(A.id);
+  await h.settle();
+  A.sets['vhs.dropouts'] = 18;
+  R.schedulePreview();            // the 550 ms knob debounce
+  const n = calls.preview.length;
+  R.activateSession(B.id);
+  await h.tick(700);
+  assert.strictEqual(calls.preview.length, n, 'B is current: nothing to render there');
+  R.activateSession(A.id);
+  await h.settle();
+  assert.strictEqual(calls.preview.length, n + 1, 'A still owes a render for the change');
+  assert.strictEqual(h.pending().req.layers[0].sets['vhs.dropouts'], 18);
+}
+
+/* The untreated half of A/B is cut for the preview window: the same start,
+   the same length, the same scale. It was only ever re-cut for a new start,
+   so changing the preview length re-rendered the treated side at 5 s against
+   an original still 3 s long. */
+async function test_the_ab_original_follows_the_preview_window() {
+  const h = await bootRenderer();
+  const { R, calls } = h;
+  const A = await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  assert.strictEqual(calls.snippet.length, 1);
+  assert.strictEqual(calls.snippet[0].duration, 3);
+
+  R.G.duration = 5;
+  R.schedulePreview(true);
+  await h.settle();
+  await h.land(h.pending(), '/cache/a2.mp4');
+  assert.strictEqual(calls.snippet.length, 2, 'a longer window needs a longer original');
+  assert.strictEqual(calls.snippet[1].duration, 5);
+  assert.ok(A.originalSrc.endsWith('-5-0.5.mp4'));
+
+  A.sets['vhs.dropouts'] = 9;
+  R.schedulePreview(true);
+  await h.settle();
+  await h.land(h.pending(), '/cache/a3.mp4');
+  assert.strictEqual(calls.snippet.length, 2, 'a knob does not move the window: the original is reused');
+
+  R.G.scale = 1;
+  R.schedulePreview(true);
+  await h.settle();
+  await h.land(h.pending(), '/cache/a4.mp4');
+  assert.strictEqual(calls.snippet.length, 3, 'a new scale is a new original');
+  assert.strictEqual(calls.snippet[2].scale, 1);
+}
+
+/* The green + on a fresh tab used to stack the pick on top of the empty slot,
+   so the first thing anyone saw was a two-row Layers panel with "Empty layer"
+   in it. */
+async function test_adding_a_layer_fills_the_empty_slot_first() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  R.addLayer('vhs-1985-sp');
+  await h.settle();
+  // Joined, not deepStrictEqual: the array was born in the vm realm.
+  assert.strictEqual(R.state.layers.map((l) => l.presetId).join(','), 'vhs-1985-sp');
+  assert.strictEqual(R.state.activeLayer, 0);
+  assert.ok(R.$('layers-panel').classList.contains('hidden'), 'one layer is not a stack');
+  R.addLayer('grindhouse-1973');
+  await h.settle();
+  assert.strictEqual(R.state.layers.map((l) => l.presetId).join(','), 'vhs-1985-sp,grindhouse-1973');
+  assert.strictEqual(R.state.activeLayer, 1);
+  assert.ok(!R.$('layers-panel').classList.contains('hidden'));
+}
+
+/* Removing a layer below the selected one shifted every index up but left the
+   selection number where it was - so the knobs silently jumped to the next
+   layer along. */
+async function test_removing_a_layer_keeps_the_selection_where_it_was() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  const stack = () => {
+    R.state.layers = [R.newLayer({ presetId: 'vhs-1985-sp' }), R.newLayer({ presetId: 'grindhouse-1973' }),
+      R.newLayer({ presetId: 'classic-cartoon-1969' })];
+    R.state.activeLayer = 1;
+  };
+  stack();
+  R.removeLayer(0);
+  assert.strictEqual(R.activeLayer(R.state).presetId, 'grindhouse-1973', 'removing below keeps the same layer selected');
+  stack();
+  R.removeLayer(2);
+  assert.strictEqual(R.activeLayer(R.state).presetId, 'grindhouse-1973', 'removing above too');
+  stack();
+  R.removeLayer(1);
+  assert.strictEqual(R.activeLayer(R.state).presetId, 'classic-cartoon-1969', 'removing the selected one selects its replacement');
+  R.state.layers = [R.newLayer({ presetId: 'vhs-1985-sp' }), R.newLayer({ presetId: 'grindhouse-1973' })];
+  R.state.activeLayer = 1;
+  R.removeLayer(1);
+  assert.strictEqual(R.activeLayer(R.state).presetId, 'vhs-1985-sp', 'removing the top one falls back to the new top');
+  await h.tick(0);
+}
+
+/* A custom keeps "every knob exactly as it is now" - and the Picture / Sound
+   switches are the two knobs that were being left out, so a look saved with
+   its sound muted came back loud. */
+async function test_a_custom_remembers_its_section_switches() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  R.state.sound = false;
+  const saving = R.saveCustom();
+  await h.tick(0);
+  R.$('modal-ok').click();
+  await saving;
+  const custom = R.G.customs[R.G.customs.length - 1];
+  assert.ok(custom && custom.base === 'vhs-1985-sp');
+  assert.strictEqual(custom.sound, false);
+  assert.ok(!('picture' in custom), 'on is the default and stays implicit, like a stack');
+  assert.strictEqual(R.customDrifted(), false, 'just saved: nothing has drifted');
+
+  assert.strictEqual(R.layerFromCustom(custom).sound, false, 'stacked as a layer, still muted');
+  assert.strictEqual(R.layerFromCustom(custom).picture, true);
+
+  R.state.sound = true;
+  assert.strictEqual(R.customDrifted(), true, 'unmuting it is a drift from the saved version');
+  R.applyCustom(custom.id);
+  await h.settle();
+  assert.strictEqual(R.state.sound, false, 'applying the custom mutes it again');
+  assert.strictEqual(R.customDrifted(), false);
+}
+
+/* Hold B for the original, and if the window loses focus before the key
+   comes up - a notification, a dialog, ⌘-Tab - the keyup never arrives. The
+   treated clip stayed invisible, which reads exactly like a preview that
+   stopped changing. */
+async function test_the_b_key_lets_go_when_the_window_does() {
+  const h = await bootRenderer();
+  const { R, win } = h;
+  await h.open('/clips/one.mp4', 'vhs-1985-sp', '/cache/a1.mp4');
+  win.dispatchEvent(new win.KeyboardEvent('keydown', { code: 'KeyB' }));
+  assert.strictEqual(R.videoA.style.opacity, '0', 'B shows the original');
+  assert.ok(!R.$('ab-badge').classList.contains('hidden'));
+  win.dispatchEvent(new win.Event('blur'));
+  assert.strictEqual(R.videoA.style.opacity, '1', 'losing the window lets go of the key');
+  assert.ok(R.$('ab-badge').classList.contains('hidden'));
+}
+
+/* A recipe is a stack the library ships, and a fresh layer rests at the
+   default texture - so a recipe's layers do too, rather than the full-strength
+   1.0 that only saves made before the dial existed should get. */
+async function test_a_recipe_starts_at_the_resting_texture() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  const col = R.collections().find((c) => (c.recipes || []).length);
+  assert.ok(col, 'the schema ships at least one recipe');
+  R.applyRecipe(col.id, col.recipes[0].id);
+  await h.settle();
+  assert.strictEqual(R.state.layers.length, col.recipes[0].layers.length);
+  for (const l of R.state.layers) {
+    assert.strictEqual(l.texture, R.DEFAULT_TEXTURE, `${l.presetId} rests at the default texture`);
+    assert.strictEqual(l.intensity, 1);
+  }
+}
+
+/* "Some of the config on the right is unchecked already." A fresh layer's pane
+   has to show exactly what the preset authors - every switch, every checkbox,
+   every menu - and nothing carried over from another layer. Walking the whole
+   library found two things. The unchecked switches are effects a preset ships
+   turned off on purpose, an optional pass, and the pane now says so on the
+   card. And three menus lied outright: a choice authored as a number (mains
+   hum at 50, MP3 at 128 kbps) is what the engine renders, but a strict compare
+   against the string choices selected nothing, so the menu showed its first
+   entry instead. */
+async function test_a_fresh_layer_shows_the_recipes_own_switches() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  R.state.sets = {};
+  let cards = 0;
+  let shipsOff = 0;
+  for (const p of Object.values(S.presets)) {
+    for (const chain of [p.video, p.audio]) {
+      const counts = {};
+      for (const [eid, params] of chain) {
+        counts[eid] = (counts[eid] || 0) + 1;
+        const key = counts[eid] === 1 ? eid : `${eid}#${counts[eid]}`;
+        const card = R.effectCard({ eid, key, params }, {});
+        cards++;
+        const on = params.enabled !== false;
+        if (!on) shipsOff++;
+        assert.strictEqual(card.querySelector('.e-power').checked, on, `${p.id} ${key} power`);
+        assert.strictEqual(card.classList.contains('off'), !on, `${p.id} ${key} card state`);
+        const note = card.querySelector('.e-recipe-off');
+        assert.ok(note, `${p.id} ${key} carries the recipe note`);
+        assert.strictEqual(note.classList.contains('hidden'), on,
+          `${p.id} ${key}: the note shows exactly when the preset ships the effect off`);
+        for (const prm of S.effects[eid].params) {
+          if (prm.name === 'enabled' || (prm.kind !== 'bool' && prm.kind !== 'enum')) continue;
+          const want = prm.name in params ? params[prm.name] : prm.default;
+          const row = card.querySelector(`[data-param="${prm.name}"]`);
+          assert.ok(row, `${p.id} ${key}.${prm.name} has a row`);
+          if (prm.kind === 'bool') {
+            assert.strictEqual(row.querySelector('input[type="checkbox"]').checked, !!want, `${p.id} ${key}.${prm.name}`);
+          } else {
+            const sel = row.querySelector('select');
+            assert.strictEqual(sel.querySelectorAll('option').find((o) => o.selected).value, String(want), `${p.id} ${key}.${prm.name}`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(cards > 5000, `walked ${cards} cards`);
+  assert.ok(shipsOff > 100, `the library ships ${shipsOff} optional passes switched off`);
+  // Switching such a pass on is a tweak like any other, and the note steps aside.
+  R.selectPreset('argentine-indie-16mm-1998');
+  await h.settle();
+  const card = [...R.$('param-list').querySelectorAll('.effect-card')]
+    .find((c) => !c.querySelector('.e-recipe-off').classList.contains('hidden'));
+  assert.ok(card, 'this preset ships its codec pass off');
+  card.querySelector('.e-power').click();
+  assert.strictEqual(R.state.sets['codec_era.enabled'], true);
+  assert.ok(card.querySelector('.e-recipe-off').classList.contains('hidden'));
+  assert.ok(!card.classList.contains('off'));
+}
+
+/* Picking a different preset starts the layer fresh - every dial and switch,
+   not only the variant and the tweaks. Intensity used to stay where it was,
+   and so did a muted section or an unchecked layer, any of which shows the
+   new pick as no change at all. The seed stays, so running down the list
+   compares presets on the same noise. */
+async function test_a_pick_starts_the_layer_fresh() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  const l = R.state.layers[0];
+  Object.assign(l, { presetId: 'vhs-1985-sp', variant: 'ep', sets: { 'vhs.dropouts': 9 },
+    events: [{ op: 'remove', id: 'x', kind: 'dropout' }], intensity: 0.3, texture: 0.9,
+    picture: false, sound: false, enabled: false, seed: 4242 });
+  assert.ok(R.layerHasWork(l), 'a muted section is work worth asking about');
+  assert.ok(R.describeLayerWork(R.newLayer({ presetId: 'vhs-1985-sp', sound: false })).includes('sound switched off'));
+
+  R.selectPreset('grindhouse-1973');
+  await h.settle();
+  assert.strictEqual(l.presetId, 'grindhouse-1973');
+  assert.strictEqual(l.variant, null);
+  assert.strictEqual(Object.keys(l.sets).length, 0);
+  assert.strictEqual(l.events.length, 0);
+  assert.strictEqual(l.intensity, 1, 'intensity returns to 1');
+  assert.strictEqual(l.texture, R.DEFAULT_TEXTURE, 'texture returns to the resting point');
+  assert.strictEqual(l.picture, true, 'the picture section is back on');
+  assert.strictEqual(l.sound, true, 'and so is sound');
+  assert.strictEqual(l.enabled, true, 'an unchecked layer picked into is rendered');
+  assert.strictEqual(l.seed, 4242, 'the seed alone stays');
+  assert.ok(!R.layerHasWork(l), 'a fresh pick carries no work, so the next arrow is silent');
+  assert.strictEqual(R.$('intensity').value, '1', 'the dial shows it');
+  assert.strictEqual([...R.$('param-list').querySelectorAll('.sec-power')].every((p) => p.checked), true);
+  assert.strictEqual(R.liveLayers(R.state).length, 1, 'and the render request carries the layer');
+
+  // The same for a saved custom picked into a switched-off layer.
+  l.enabled = false;
+  const custom = { id: 'custom:77', name: 'probe', base: 'vhs-1985-sp', variant: null, sets: {},
+    events: [], cues: [], intensity: 0.5, texture: 0.25, seed: 5, created: 1 };
+  R.G.customs.push(custom);
+  R.applyCustom(custom.id);
+  await h.settle();
+  assert.strictEqual(l.enabled, true);
+  assert.strictEqual(l.intensity, 0.5, 'a custom brings its own dials');
+  R.G.customs.pop();
+
+  // A caption restyle keeps the script and nothing else.
+  R.state.layers = [R.newLayer()];
+  R.state.activeLayer = 0;
+  const cap = R.ensureCaptionTrack('cc-line21-1982');
+  cap.cues = [R.newCue(1, { text: 'HELLO' })];
+  Object.assign(cap, { intensity: 0.4, texture: 0.8, sound: false, sets: { 'captions.size': 2 } });
+  R.applyCaptionStyle(R.captionStyleIds().find((id) => id !== 'cc-line21-1982'));
+  await h.settle();
+  assert.strictEqual(cap.cues.length, 1, 'the words survive a change of style');
+  assert.strictEqual(cap.intensity, 1);
+  assert.strictEqual(cap.texture, R.DEFAULT_TEXTURE);
+  assert.strictEqual(cap.sound, true);
+  assert.strictEqual(Object.keys(cap.sets).length, 0);
+}
+
 const tests = [
   test_manual_numeric_edits_validate_and_cancel,
   test_mode_dependencies_explain_inactive_controls,
@@ -586,6 +1053,18 @@ const tests = [
   test_control_search_finds_a_knob_by_name_or_by_its_tooltip,
   test_every_control_answers_to_its_own_name,
   test_scanline_lookalikes_answer_to_the_description_search,
+  test_a_tab_renders_again_when_its_last_render_was_lost,
+  test_switching_tabs_mid_render_never_strands_the_overlay,
+  test_returning_mid_render_adopts_the_render_in_flight,
+  test_a_pending_debounce_belongs_to_the_tab_that_scheduled_it,
+  test_the_ab_original_follows_the_preview_window,
+  test_adding_a_layer_fills_the_empty_slot_first,
+  test_removing_a_layer_keeps_the_selection_where_it_was,
+  test_a_custom_remembers_its_section_switches,
+  test_the_b_key_lets_go_when_the_window_does,
+  test_a_recipe_starts_at_the_resting_texture,
+  test_a_fresh_layer_shows_the_recipes_own_switches,
+  test_a_pick_starts_the_layer_fresh,
 ];
 
 /* Scanlines are the canonical example of a look that does not answer to its
