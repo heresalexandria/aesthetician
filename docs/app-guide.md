@@ -228,14 +228,17 @@ whichever row is highlighted, so search-and-stack never needs the mouse.
 Arrowing and clicking still *swap* the selected layer rather than adding to it -
 that is what keeps ↑/↓ usable for auditioning a whole family against the rest of
 your stack. **Enter** commits the highlighted aesthetic on its own, dropping
-everything else.
+everything else. A pick starts the layer fresh: the variant, every tweak and
+timeline edit, Intensity, Texture, the Picture / Sound switches and the layer's
+own checkbox all return to their defaults, so what you see is the preset as
+authored. Only the seed stays, so presets compare on the same noise.
 
 Both of those write over what was there, so once the selected layer carries work
-of its own - a tweak, a variant, a moved dial, or a custom you saved - they stop
-and ask first, offering to **open the aesthetic you picked in a new tab** instead
-and leave this one alone. A layer holding nothing but a preset never asks, so
-running ↑/↓ down a family stays as quick as it ever was; the question comes back
-the moment you have something to lose.
+of its own - a tweak, a variant, a moved dial, a muted section, or a custom you
+saved - they stop and ask first, offering to **open the aesthetic you picked in
+a new tab** instead and leave this one alone. A layer holding nothing but a
+preset never asks, so running ↑/↓ down a family stays as quick as it ever was;
+the question comes back the moment you have something to lose.
 
 With more than one layer a **Layers** panel appears above the knobs:
 

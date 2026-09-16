@@ -599,7 +599,8 @@ async function bootRenderer(overrides = {}) {
        selectPreset, selectById, applyOnly, removeLayer, selectLayer, runPreview, schedulePreview,
        layerSpec, liveLayers, activeLayer, newLayer, buildParamPane, effectCard, DEFAULT_TEXTURE,
        applyRecipe, layerFromCustom, applyCustom, customDrifted, saveCustom, setPlaying,
-       showRenderOverlay, onProgress, collections })`,
+       showRenderOverlay, onProgress, collections, layerHasWork, describeLayerWork,
+       ensureCaptionTrack, applyCaptionStyle, captionStyleIds, newCue })`,
     win, { filename: 'app.js' },
   );
   await readyP;
@@ -965,6 +966,65 @@ async function test_a_fresh_layer_shows_the_recipes_own_switches() {
   assert.ok(!card.classList.contains('off'));
 }
 
+/* Picking a different preset starts the layer fresh - every dial and switch,
+   not only the variant and the tweaks. Intensity used to stay where it was,
+   and so did a muted section or an unchecked layer, any of which shows the
+   new pick as no change at all. The seed stays, so running down the list
+   compares presets on the same noise. */
+async function test_a_pick_starts_the_layer_fresh() {
+  const h = await bootRenderer();
+  const { R } = h;
+  await R.loadFile('/clips/one.mp4');
+  const l = R.state.layers[0];
+  Object.assign(l, { presetId: 'vhs-1985-sp', variant: 'ep', sets: { 'vhs.dropouts': 9 },
+    events: [{ op: 'remove', id: 'x', kind: 'dropout' }], intensity: 0.3, texture: 0.9,
+    picture: false, sound: false, enabled: false, seed: 4242 });
+  assert.ok(R.layerHasWork(l), 'a muted section is work worth asking about');
+  assert.ok(R.describeLayerWork(R.newLayer({ presetId: 'vhs-1985-sp', sound: false })).includes('sound switched off'));
+
+  R.selectPreset('grindhouse-1973');
+  await h.settle();
+  assert.strictEqual(l.presetId, 'grindhouse-1973');
+  assert.strictEqual(l.variant, null);
+  assert.strictEqual(Object.keys(l.sets).length, 0);
+  assert.strictEqual(l.events.length, 0);
+  assert.strictEqual(l.intensity, 1, 'intensity returns to 1');
+  assert.strictEqual(l.texture, R.DEFAULT_TEXTURE, 'texture returns to the resting point');
+  assert.strictEqual(l.picture, true, 'the picture section is back on');
+  assert.strictEqual(l.sound, true, 'and so is sound');
+  assert.strictEqual(l.enabled, true, 'an unchecked layer picked into is rendered');
+  assert.strictEqual(l.seed, 4242, 'the seed alone stays');
+  assert.ok(!R.layerHasWork(l), 'a fresh pick carries no work, so the next arrow is silent');
+  assert.strictEqual(R.$('intensity').value, '1', 'the dial shows it');
+  assert.strictEqual([...R.$('param-list').querySelectorAll('.sec-power')].every((p) => p.checked), true);
+  assert.strictEqual(R.liveLayers(R.state).length, 1, 'and the render request carries the layer');
+
+  // The same for a saved custom picked into a switched-off layer.
+  l.enabled = false;
+  const custom = { id: 'custom:77', name: 'probe', base: 'vhs-1985-sp', variant: null, sets: {},
+    events: [], cues: [], intensity: 0.5, texture: 0.25, seed: 5, created: 1 };
+  R.G.customs.push(custom);
+  R.applyCustom(custom.id);
+  await h.settle();
+  assert.strictEqual(l.enabled, true);
+  assert.strictEqual(l.intensity, 0.5, 'a custom brings its own dials');
+  R.G.customs.pop();
+
+  // A caption restyle keeps the script and nothing else.
+  R.state.layers = [R.newLayer()];
+  R.state.activeLayer = 0;
+  const cap = R.ensureCaptionTrack('cc-line21-1982');
+  cap.cues = [R.newCue(1, { text: 'HELLO' })];
+  Object.assign(cap, { intensity: 0.4, texture: 0.8, sound: false, sets: { 'captions.size': 2 } });
+  R.applyCaptionStyle(R.captionStyleIds().find((id) => id !== 'cc-line21-1982'));
+  await h.settle();
+  assert.strictEqual(cap.cues.length, 1, 'the words survive a change of style');
+  assert.strictEqual(cap.intensity, 1);
+  assert.strictEqual(cap.texture, R.DEFAULT_TEXTURE);
+  assert.strictEqual(cap.sound, true);
+  assert.strictEqual(Object.keys(cap.sets).length, 0);
+}
+
 const tests = [
   test_manual_numeric_edits_validate_and_cancel,
   test_mode_dependencies_explain_inactive_controls,
@@ -1001,6 +1061,7 @@ const tests = [
   test_the_b_key_lets_go_when_the_window_does,
   test_a_recipe_starts_at_the_resting_texture,
   test_a_fresh_layer_shows_the_recipes_own_switches,
+  test_a_pick_starts_the_layer_fresh,
 ];
 
 /* The PICTURE / SOUND master switches live on the layer and go to the engine

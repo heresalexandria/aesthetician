@@ -827,6 +827,7 @@ function applyCustom(cid, opts = {}) {
   state.texture = typeof c.texture === 'number' ? c.texture : 1;
   state.picture = c.picture !== false;
   state.sound = c.sound !== false;
+  activeLayer(state).enabled = true;   // picked to be seen, like any other pick
   if (typeof c.seed === 'number') state.seed = c.seed;
   syncMasterDials();
   syncSelection();
@@ -3155,9 +3156,16 @@ function selectPreset(pid, opts = {}) {
   state.sets = {};
   state.events = [];
   if (!keepCues) state.cues = [];
-  // A fresh pick starts at the resting texture, like a fresh layer: the dial
-  // was describing the old look, and most looks read best dialled back.
+  /* A pick is a fresh layer wearing the pick: every dial and switch goes back
+     to where a new layer starts. The dials were describing the old look, and a
+     muted section or an unchecked layer carried over would show the new pick
+     as no change at all. The seed alone stays, so running down the list
+     compares presets on the same noise. */
+  state.intensity = 1;
   state.texture = DEFAULT_TEXTURE;
+  state.picture = true;
+  state.sound = true;
+  l.enabled = true;
   syncMasterDials();
   syncSelection();       // the rows themselves have not changed, only which one is lit
   renderTabs();          // the tab shows which aesthetic the clip is wearing
@@ -3190,7 +3198,9 @@ function layerHasWork(l) {
     || (l.events || []).length > 0
     || (l.cues || []).length > 0
     || l.intensity !== 1
-    || l.texture !== DEFAULT_TEXTURE;
+    || l.texture !== DEFAULT_TEXTURE
+    || l.picture === false
+    || l.sound === false;
 }
 
 /* Applying a saved stack, or committing one aesthetic with Enter, replaces
@@ -3218,6 +3228,8 @@ function describeLayerWork(l) {
   if (l.variant) bits.push(`the ${l.variant} variant`);
   if (l.intensity !== 1) bits.push(`intensity ${l.intensity.toFixed(2)}`);
   if (l.texture !== DEFAULT_TEXTURE) bits.push(`texture ${l.texture.toFixed(2)}`);
+  if (l.picture === false) bits.push('picture switched off');
+  if (l.sound === false) bits.push('sound switched off');
   if (!bits.length) return '';
   if (bits.length === 1) return bits[0];
   return `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
@@ -4941,14 +4953,15 @@ function ensureCaptionTrack(styleId = null) {
   return state.layers[i];
 }
 
-/* Wearing a different style. Everything about the look is replaced - variant
-   and tweaks belonged to the old style and would land on parameters the new
-   one never set - and the script is left strictly alone. */
+/* Wearing a different style. Everything about the look is replaced - variant,
+   tweaks, dials and switches belonged to the old style, the same as any other
+   pick - and the script is left strictly alone. */
 function applyCaptionStyle(pid, opts = {}) {
   const l = ensureCaptionTrack(pid);
   if (!l) return;
   if (l.presetId !== pid) {
-    Object.assign(l, { presetId: pid, customId: null, variant: null, sets: {} });
+    Object.assign(l, { presetId: pid, customId: null, variant: null, sets: {}, events: [],
+      intensity: 1, texture: DEFAULT_TEXTURE, picture: true, sound: true, enabled: true });
     state.stackId = null;
   }
   syncSelection();
